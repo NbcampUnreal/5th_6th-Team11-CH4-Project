@@ -23,33 +23,15 @@ void ATestController::BeginPlay()
 		return;
 	}
 
-	if (IsValid(CreateSessionWidgetClass) == true)
+	if (IsValid(SessionWidgetClass) == true)
 	{
-		CreateSessionWidgetInstance = CreateWidget<UUserWidget>(this, CreateSessionWidgetClass);
-		if (IsValid(CreateSessionWidgetInstance) == true)
+		SessionWidgetInstance = CreateWidget<UUserWidget>(this, SessionWidgetClass);
+		if (IsValid(SessionWidgetInstance) == true)
 		{
-			CreateSessionWidgetInstance->AddToViewport();
+			SessionWidgetInstance->AddToViewport();
 		}
 	}
 
-	if (IsValid(JoinSessionWidgetClass) == true)
-	{
-		JoinSessionWidgetInstance = CreateWidget<UUserWidget>(this, JoinSessionWidgetClass);
-		if (IsValid(JoinSessionWidgetInstance) == true)
-		{
-			JoinSessionWidgetInstance->AddToViewport();
-		}
-	}
-
-	if (IsValid(FindSessionWidgetClass) == true)
-	{
-		FindSessionWidgetInstance = CreateWidget<UUserWidget>(this, FindSessionWidgetClass);
-		if (IsValid(FindSessionWidgetInstance) == true)
-		{
-			FindSessionWidgetInstance->AddToViewport();
-		}
-	}
-	
 	
 }
 

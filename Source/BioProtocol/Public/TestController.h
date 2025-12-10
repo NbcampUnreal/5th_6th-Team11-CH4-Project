@@ -20,22 +20,11 @@ public:
 
 protected:
 	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UUserWidget> CreateSessionWidgetClass;
+	TSubclassOf<UUserWidget> SessionWidgetClass;
 
 	UPROPERTY()
-	TObjectPtr<UUserWidget> CreateSessionWidgetInstance;
+	TObjectPtr<UUserWidget> SessionWidgetInstance;
 
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UUserWidget> JoinSessionWidgetClass;
-
-	UPROPERTY()
-	TObjectPtr<UUserWidget> JoinSessionWidgetInstance;
-
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UUserWidget> FindSessionWidgetClass;
-
-	UPROPERTY()
-	TObjectPtr<UUserWidget> FindSessionWidgetInstance;
 
 public:
 	UFUNCTION(BlueprintCallable)
