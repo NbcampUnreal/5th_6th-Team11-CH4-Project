@@ -23,7 +23,7 @@ public:
     void FindGameSessions(int32 MaxResults = 100, bool bIsLAN = true);
 
     // 세션 참가 (가장 첫 번째 결과에 조인하는 단순 버전)
-    void JoinFirstFoundSession();
+    void JoinFoundSession();
 
 protected:
     // Subsystem 라이프사이클

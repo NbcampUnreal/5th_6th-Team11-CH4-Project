@@ -45,5 +45,5 @@ public:
 	void FindGames();
 
 	UFUNCTION(BlueprintCallable)
-	void JoinFirstGame();
+	void JoinGame();
 };

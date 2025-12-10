@@ -76,13 +76,13 @@ void ATestController::FindGames()
 	}
 }
 
-void ATestController::JoinFirstGame()
+void ATestController::JoinGame()
 {
 	if (UGameInstance* GI = GetGameInstance())
 	{
 		if (USessionSubsystem* SessionSubsystem = GI->GetSubsystem<USessionSubsystem>())
 		{
-			SessionSubsystem->JoinFirstFoundSession();
+			SessionSubsystem->JoinFoundSession();
 		}
 	}
 }

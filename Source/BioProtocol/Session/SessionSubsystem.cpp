@@ -65,14 +65,12 @@ void USessionSubsystem::CreateGameSession(int32 PublicConnections, bool bIsLAN)
         return;
     }
 
-    // 기존 세션이 있으면 삭제부터
+    // 기존 세션이 있으면 삭제
     FNamedOnlineSession* ExistingSession = SessionInterface->GetNamedSession(NAME_GameSession);
     if (ExistingSession != nullptr)
     {
         UE_LOG(LogTemp, Log, TEXT("[MySessionSubsystem] Destroy existing session before creating new one"));
         SessionInterface->DestroySession(NAME_GameSession);
-        // Destroy 완료 콜백까지 기다려서 다시 Create 하는 패턴이 정석이지만,
-        // Null Subsystem 테스트용에선 일단 단순하게 갈게
     }
 
     // 델리게이트 바인딩
@@ -132,12 +130,12 @@ void USessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool bWas
     }
 
     // 세션 생성에 성공했다면, 호스트가 맵을 listen 서버로 열기
-    UWorld* World = GetWorld();
-    if (!World) return;
+    //UWorld* World = GetWorld();
+    //if (!World) return;
 
     // 예시: "GameMap?listen"
-    FString TravelURL = TEXT("/Game/Maps/GameMap?listen");
-    World->ServerTravel(TravelURL);
+    //FString TravelURL = TEXT("/Game/Maps/GameMap?listen");
+    //World->ServerTravel(TravelURL);
 }
 
 // 세션 검색
@@ -162,7 +160,10 @@ void USessionSubsystem::FindGameSessions(int32 MaxResults, bool bIsLAN)
                 this, &USessionSubsystem::HandleFindSessionsComplete));
 
     UWorld* World = GetWorld();
-    if (!World) return;
+    if (!World)
+    {
+        return;
+    }
 
     APlayerController* PC = World->GetFirstPlayerController();
     if (!PC)
@@ -204,7 +205,7 @@ void USessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 }
 
 
-void USessionSubsystem::JoinFirstFoundSession()
+void USessionSubsystem::JoinFoundSession()
 {
     SessionInterface = GetSessionInterface();
     if (!SessionInterface.IsValid() || !SessionSearch.IsValid())
@@ -228,7 +229,10 @@ void USessionSubsystem::JoinFirstFoundSession()
                 this, &USessionSubsystem::HandleJoinSessionComplete));
 
     UWorld* World = GetWorld();
-    if (!World) return;
+    if (!World)
+    {
+        return;
+    }
 
     APlayerController* PC = World->GetFirstPlayerController();
     if (!PC)
@@ -275,7 +279,10 @@ void USessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoinSess
     UE_LOG(LogTemp, Log, TEXT("[MySessionSubsystem] ConnectString: %s"), *ConnectString);
 
     UWorld* World = GetWorld();
-    if (!World) return;
+    if (!World)
+    {
+        return;
+    }
 
     APlayerController* PC = World->GetFirstPlayerController();
     if (!PC)
