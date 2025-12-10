@@ -195,13 +195,35 @@ void USessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
         bWasSuccessful,
         SessionSearch.IsValid() ? SessionSearch->SearchResults.Num() : 0);
 
-    if (!bWasSuccessful || !SessionSearch.IsValid())
+    if (bWasSuccessful || SessionSearch.IsValid())
     {
-        return;
+        for (int32 i = 0; i < SessionSearch->SearchResults.Num(); ++i)
+        {
+            const auto& Result = SessionSearch->SearchResults[i];
+
+            FSessionInfo Info;
+            Info.SearchResultIndex = i;
+            Info.PingInMs = Result.PingInMs;
+
+            // 세션 이름 (광고된 이름 있으면)
+            FString Name;
+            if (!Result.Session.SessionSettings.Get(FName(TEXT("SESSION_NAME")), Name))
+            {
+                Name = FString::Printf(TEXT("Session_%d"), i);
+            }
+            Info.SessionName = Name;
+
+            // 인원
+            const int32 OpenSlots = Result.Session.NumOpenPublicConnections;
+            const int32 MaxSlots = Result.Session.SessionSettings.NumPublicConnections;
+            Info.MaxPlayers = MaxSlots;
+            Info.CurrentPlayers = MaxSlots - OpenSlots;
+
+            LastSessionInfos.Add(Info);
+        }
     }
 
-    // 여기서 SessionSearch->SearchResults 배열을 사용해서
-    // UI에 리스트 뜨게 하거나, 이번 예제처럼 첫 번째 세션에 바로 조인할 수 있음.
+    OnSessionSearchUpdated.Broadcast(LastSessionInfos);
 }
 
 

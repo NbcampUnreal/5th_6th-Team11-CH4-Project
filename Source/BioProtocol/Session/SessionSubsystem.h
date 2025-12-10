@@ -1,15 +1,34 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "SessionSubsystem.generated.h"
 
-/**
- * 
- */
+USTRUCT(BlueprintType)
+struct FSessionInfo
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    FString SessionName;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 CurrentPlayers = 0;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 MaxPlayers = 0;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 PingInMs = 0;
+
+    // 어떤 SearchResults 인덱스인지
+    int32 SearchResultIndex = INDEX_NONE;
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSessionSearchUpdated, const TArray<FSessionInfo>&, Sessions);
+
+
 UCLASS()
 class BIOPROTOCOL_API USessionSubsystem : public UGameInstanceSubsystem
 {
@@ -17,25 +36,34 @@ class BIOPROTOCOL_API USessionSubsystem : public UGameInstanceSubsystem
 	
 public:
     // 세션 생성
+    UFUNCTION(BlueprintCallable, Category = "Session")
     void CreateGameSession(int32 PublicConnections = 4, bool bIsLAN = true);
 
     // 세션 검색
+    UFUNCTION(BlueprintCallable, Category = "Session")
     void FindGameSessions(int32 MaxResults = 100, bool bIsLAN = true);
 
-    // 세션 참가 (가장 첫 번째 결과에 조인하는 단순 버전)
+    // 세션 참가 추후에 인덱스로 들어가게 수정
+    UFUNCTION(BlueprintCallable, Category = "Session")
     void JoinFoundSession();
 
+    UPROPERTY(BlueprintAssignable)
+    FOnSessionSearchUpdated OnSessionSearchUpdated;
+
+    UFUNCTION(BlueprintCallable)
+    const TArray<FSessionInfo>& GetLastSessionInfos() const { return LastSessionInfos; }
+
+
 protected:
-    // Subsystem 라이프사이클
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
     virtual void Deinitialize() override;
 
     IOnlineSessionPtr GetSessionInterface() const;
 
 private:
-    // OnlineSubsystem & Session 인터페이스 포인터
     IOnlineSessionPtr SessionInterface;
     TSharedPtr<FOnlineSessionSearch> SessionSearch;
+    TArray<FSessionInfo> LastSessionInfos;
 
     // 델리게이트 핸들
     FDelegateHandle OnCreateSessionCompleteHandle;
