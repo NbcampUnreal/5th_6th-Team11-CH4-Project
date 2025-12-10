@@ -30,6 +30,8 @@ protected:
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
     virtual void Deinitialize() override;
 
+    IOnlineSessionPtr GetSessionInterface() const;
+
 private:
     // OnlineSubsystem & Session 인터페이스 포인터
     IOnlineSessionPtr SessionInterface;

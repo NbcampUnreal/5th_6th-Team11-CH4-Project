@@ -8,6 +8,7 @@
 #include "EngineUtils.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Blueprint/UserWidget.h"
+#include "Engine/World.h"
 
 
 
@@ -16,6 +17,11 @@
 void ATestController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (!IsLocalController())
+	{
+		return;
+	}
 
 	if (IsValid(CreateSessionWidgetClass) == true)
 	{
@@ -41,6 +47,42 @@ void ATestController::BeginPlay()
 		if (IsValid(FindSessionWidgetInstance) == true)
 		{
 			FindSessionWidgetInstance->AddToViewport();
+		}
+	}
+	
+	
+}
+
+
+void ATestController::HostGame()
+{
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (USessionSubsystem* SessionSubsystem = GI->GetSubsystem<USessionSubsystem>())
+		{
+			SessionSubsystem->CreateGameSession(4, true);
+		}
+	}
+}
+
+void ATestController::FindGames()
+{
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (USessionSubsystem* SessionSubsystem = GI->GetSubsystem<USessionSubsystem>())
+		{
+			SessionSubsystem->FindGameSessions(100, true);
+		}
+	}
+}
+
+void ATestController::JoinFirstGame()
+{
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (USessionSubsystem* SessionSubsystem = GI->GetSubsystem<USessionSubsystem>())
+		{
+			SessionSubsystem->JoinFirstFoundSession();
 		}
 	}
 }

@@ -5,6 +5,7 @@
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
 #include "Online/OnlineSessionNames.h"
+#include "OnlineSubsystemUtils.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "Engine/Engine.h"
 #include "GameFramework/PlayerController.h"
@@ -43,11 +44,21 @@ void USessionSubsystem::Deinitialize()
     Super::Deinitialize();
 }
 
+IOnlineSessionPtr USessionSubsystem::GetSessionInterface() const
+{
+    if (UWorld* World = GetWorld())
+    {
+        return Online::GetSessionInterface(World);
+    }
+    return nullptr;
+}
+
 
 
 // 세선 생성
 void USessionSubsystem::CreateGameSession(int32 PublicConnections, bool bIsLAN)
 {
+    SessionInterface = GetSessionInterface();
     if (!SessionInterface.IsValid())
     {
         UE_LOG(LogTemp, Warning, TEXT("[MySessionSubsystem] SessionInterface invalid in CreateGameSession"));
@@ -76,9 +87,10 @@ void USessionSubsystem::CreateGameSession(int32 PublicConnections, bool bIsLAN)
     SessionSettings.NumPublicConnections = PublicConnections;
     SessionSettings.bShouldAdvertise = true; // FindSessions로 찾을 수 있도록 광고
     SessionSettings.bAllowJoinInProgress = true;
-    SessionSettings.bAllowJoinViaPresence = true;
-    SessionSettings.bUsesPresence = true;
-    SessionSettings.bUseLobbiesIfAvailable = true; // EOS/Steam 등에서 Lobby 사용
+
+    SessionSettings.bAllowJoinViaPresence = false;
+    SessionSettings.bUsesPresence = false;
+    SessionSettings.bUseLobbiesIfAvailable = false; // EOS/Steam 등에서 Lobby 사용
 
     // 로컬 플레이어(0번)로 세션 생성
     UWorld* World = GetWorld();
@@ -131,6 +143,7 @@ void USessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool bWas
 // 세션 검색
 void USessionSubsystem::FindGameSessions(int32 MaxResults, bool bIsLAN)
 {
+    SessionInterface = GetSessionInterface();
     if (!SessionInterface.IsValid())
     {
         UE_LOG(LogTemp, Warning, TEXT("[MySessionSubsystem] SessionInterface invalid in FindGameSessions"));
@@ -141,7 +154,7 @@ void USessionSubsystem::FindGameSessions(int32 MaxResults, bool bIsLAN)
     SessionSearch->MaxSearchResults = MaxResults;
     SessionSearch->bIsLanQuery = bIsLAN;
     // Presence 사용 세션만 찾기
-    SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
+    //SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
 
     OnFindSessionsCompleteHandle =
         SessionInterface->AddOnFindSessionsCompleteDelegate_Handle(
@@ -193,6 +206,7 @@ void USessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 
 void USessionSubsystem::JoinFirstFoundSession()
 {
+    SessionInterface = GetSessionInterface();
     if (!SessionInterface.IsValid() || !SessionSearch.IsValid())
     {
         UE_LOG(LogTemp, Warning, TEXT("[MySessionSubsystem] JoinFirstFoundSession: invalid state"));

@@ -36,4 +36,14 @@ protected:
 
 	UPROPERTY()
 	TObjectPtr<UUserWidget> FindSessionWidgetInstance;
+
+public:
+	UFUNCTION(BlueprintCallable)
+	void HostGame();
+
+	UFUNCTION(BlueprintCallable)
+	void FindGames();
+
+	UFUNCTION(BlueprintCallable)
+	void JoinFirstGame();
 };
