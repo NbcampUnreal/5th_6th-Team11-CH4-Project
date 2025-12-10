@@ -4,6 +4,7 @@
 #include "SessionSubsystem.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
+#include "Online/OnlineSessionNames.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "Engine/Engine.h"
 #include "GameFramework/PlayerController.h"
