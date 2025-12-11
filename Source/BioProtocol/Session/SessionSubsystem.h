@@ -26,8 +26,20 @@ struct FSessionInfo
     int32 SearchResultIndex = INDEX_NONE;
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSessionSearchUpdated, const TArray<FSessionInfo>&, Sessions);
+UENUM(BlueprintType)
+enum class EJoinResultBP : uint8
+{
+    Success,
+    SessionIsFull,
+    SessionDoesNotExist,
+    CouldNotRetrieveAddress,
+    AlreadyInSession,
+    UnknownError
+};
 
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSessionSearchUpdated, const TArray<FSessionInfo>&, Sessions);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnJoinSessionFinished, EJoinResultBP, Result);
 
 UCLASS()
 class BIOPROTOCOL_API USessionSubsystem : public UGameInstanceSubsystem
@@ -45,10 +57,13 @@ public:
 
     // 세션 참가 추후에 인덱스로 들어가게 수정
     UFUNCTION(BlueprintCallable, Category = "Session")
-    void JoinFoundSession();
+    void JoinFoundSession(int32 index);
 
     UPROPERTY(BlueprintAssignable)
     FOnSessionSearchUpdated OnSessionSearchUpdated;
+
+    UPROPERTY(BlueprintAssignable)
+    FOnJoinSessionFinished OnJoinSessionFinished;
 
     UFUNCTION(BlueprintCallable)
     const TArray<FSessionInfo>& GetLastSessionInfos() const { return LastSessionInfos; }

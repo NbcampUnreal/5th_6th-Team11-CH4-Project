@@ -9,6 +9,7 @@
 #include "Interfaces/OnlineSessionInterface.h"
 #include "Engine/Engine.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/GameStateBase.h"
 
 
 void USessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -22,17 +23,17 @@ void USessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
         if (SessionInterface.IsValid())
         {
-            UE_LOG(LogTemp, Log, TEXT("[MySessionSubsystem] OnlineSubsystem: %s"),
+            UE_LOG(LogTemp, Log, TEXT("[SessionSubsystem] OnlineSubsystem: %s"),
                 *Subsystem->GetSubsystemName().ToString());
         }
         else
         {
-            UE_LOG(LogTemp, Error, TEXT("[MySessionSubsystem] SessionInterface is invalid"));
+            UE_LOG(LogTemp, Error, TEXT("[SessionSubsystem] SessionInterface is invalid"));
         }
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("[MySessionSubsystem] No OnlineSubsystem found"));
+        UE_LOG(LogTemp, Error, TEXT("[SessionSubsystem] No OnlineSubsystem found"));
     }
 }
 
@@ -58,10 +59,17 @@ IOnlineSessionPtr USessionSubsystem::GetSessionInterface() const
 // 세선 생성
 void USessionSubsystem::CreateGameSession(int32 PublicConnections, bool bIsLAN)
 {
+    if (!GetWorld() || !GetWorld()->GetAuthGameMode())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("CreateGameSession called but not on server"));
+        return;
+    }
+
     SessionInterface = GetSessionInterface();
+
     if (!SessionInterface.IsValid())
     {
-        UE_LOG(LogTemp, Warning, TEXT("[MySessionSubsystem] SessionInterface invalid in CreateGameSession"));
+        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] SessionInterface invalid in CreateGameSession"));
         return;
     }
 
@@ -69,7 +77,7 @@ void USessionSubsystem::CreateGameSession(int32 PublicConnections, bool bIsLAN)
     FNamedOnlineSession* ExistingSession = SessionInterface->GetNamedSession(NAME_GameSession);
     if (ExistingSession != nullptr)
     {
-        UE_LOG(LogTemp, Log, TEXT("[MySessionSubsystem] Destroy existing session before creating new one"));
+        UE_LOG(LogTemp, Log, TEXT("[SessionSubsystem] Destroy existing session before creating new one"));
         SessionInterface->DestroySession(NAME_GameSession);
     }
 
@@ -97,7 +105,7 @@ void USessionSubsystem::CreateGameSession(int32 PublicConnections, bool bIsLAN)
     APlayerController* PC = World->GetFirstPlayerController();
     if (!PC)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[MySessionSubsystem] No PlayerController in CreateGameSession"));
+        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] No PlayerController in CreateGameSession"));
         return;
     }
 
@@ -107,7 +115,7 @@ void USessionSubsystem::CreateGameSession(int32 PublicConnections, bool bIsLAN)
 
     if (!bCreateResult)
     {
-        UE_LOG(LogTemp, Error, TEXT("[MySessionSubsystem] CreateSession failed to start"));
+        UE_LOG(LogTemp, Error, TEXT("[SessionSubsystem] CreateSession failed to start"));
         SessionInterface->ClearOnCreateSessionCompleteDelegate_Handle(OnCreateSessionCompleteHandle);
     }
 }
@@ -121,7 +129,7 @@ void USessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool bWas
         SessionInterface->ClearOnCreateSessionCompleteDelegate_Handle(OnCreateSessionCompleteHandle);
     }
 
-    UE_LOG(LogTemp, Log, TEXT("[MySessionSubsystem] HandleCreateSessionComplete: %s, Success: %d"),
+    UE_LOG(LogTemp, Log, TEXT("[SessionSubsystem] HandleCreateSessionComplete: %s, Success: %d"),
         *SessionName.ToString(), bWasSuccessful);
 
     if (!bWasSuccessful)
@@ -129,22 +137,27 @@ void USessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool bWas
         return;
     }
 
-    // 세션 생성에 성공했다면, 호스트가 맵을 listen 서버로 열기
     //UWorld* World = GetWorld();
     //if (!World) return;
 
-    // 예시: "GameMap?listen"
-    //FString TravelURL = TEXT("/Game/Maps/GameMap?listen");
+    //FString TravelURL = TEXT("/Game/Level/TestSession?listen");
     //World->ServerTravel(TravelURL);
 }
 
 // 세션 검색
 void USessionSubsystem::FindGameSessions(int32 MaxResults, bool bIsLAN)
 {
+    if (IsRunningDedicatedServer())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("FindGameSessions called on dedicated server – ignored"));
+        return;
+    }
+
     SessionInterface = GetSessionInterface();
+
     if (!SessionInterface.IsValid())
     {
-        UE_LOG(LogTemp, Warning, TEXT("[MySessionSubsystem] SessionInterface invalid in FindGameSessions"));
+        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] SessionInterface invalid in FindGameSessions"));
         return;
     }
 
@@ -168,7 +181,7 @@ void USessionSubsystem::FindGameSessions(int32 MaxResults, bool bIsLAN)
     APlayerController* PC = World->GetFirstPlayerController();
     if (!PC)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[MySessionSubsystem] No PlayerController in FindGameSessions"));
+        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] No PlayerController in FindGameSessions"));
         return;
     }
 
@@ -178,7 +191,7 @@ void USessionSubsystem::FindGameSessions(int32 MaxResults, bool bIsLAN)
 
     if (!bFindResult)
     {
-        UE_LOG(LogTemp, Error, TEXT("[MySessionSubsystem] FindSessions failed to start"));
+        UE_LOG(LogTemp, Error, TEXT("[SessionSubsystem] FindSessions failed to start"));
         SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(OnFindSessionsCompleteHandle);
     }
 }
@@ -191,7 +204,7 @@ void USessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
         SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(OnFindSessionsCompleteHandle);
     }
 
-    UE_LOG(LogTemp, Log, TEXT("[MySessionSubsystem] HandleFindSessionsComplete: Success: %d, NumResults: %d"),
+    UE_LOG(LogTemp, Log, TEXT("[SessionSubsystem] HandleFindSessionsComplete: Success: %d, NumResults: %d"),
         bWasSuccessful,
         SessionSearch.IsValid() ? SessionSearch->SearchResults.Num() : 0);
 
@@ -229,23 +242,30 @@ void USessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 }
 
 
-void USessionSubsystem::JoinFoundSession()
+void USessionSubsystem::JoinFoundSession(int32 index)
 {
+    if (IsRunningDedicatedServer())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("FindGameSessions called on dedicated server – ignored"));
+        return;
+    }
+
     SessionInterface = GetSessionInterface();
+
     if (!SessionInterface.IsValid() || !SessionSearch.IsValid())
     {
-        UE_LOG(LogTemp, Warning, TEXT("[MySessionSubsystem] JoinFirstFoundSession: invalid state"));
+        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] JoinFirstFoundSession: invalid state"));
         return;
     }
 
     if (SessionSearch->SearchResults.Num() <= 0)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[MySessionSubsystem] No sessions found to join"));
+        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] No sessions found to join"));
         return;
     }
 
     // 일단 첫 번째 세션으로
-    const FOnlineSessionSearchResult& FirstResult = SessionSearch->SearchResults[0];
+    const FOnlineSessionSearchResult& FirstResult = SessionSearch->SearchResults[index];
 
     OnJoinSessionCompleteHandle =
         SessionInterface->AddOnJoinSessionCompleteDelegate_Handle(
@@ -261,7 +281,7 @@ void USessionSubsystem::JoinFoundSession()
     APlayerController* PC = World->GetFirstPlayerController();
     if (!PC)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[MySessionSubsystem] No PlayerController in JoinFirstFoundSession"));
+        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] No PlayerController in JoinFirstFoundSession"));
         return;
     }
 
@@ -271,7 +291,7 @@ void USessionSubsystem::JoinFoundSession()
 
     if (!bJoinResult)
     {
-        UE_LOG(LogTemp, Error, TEXT("[MySessionSubsystem] JoinSession failed to start"));
+        UE_LOG(LogTemp, Error, TEXT("[SessionSubsystem] JoinSession failed to start"));
         SessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(OnJoinSessionCompleteHandle);
     }
 }
@@ -283,12 +303,39 @@ void USessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoinSess
         SessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(OnJoinSessionCompleteHandle);
     }
 
-    UE_LOG(LogTemp, Log, TEXT("[MySessionSubsystem] HandleJoinSessionComplete: %s, Result: %d"),
+    UE_LOG(LogTemp, Log, TEXT("[SessionSubsystem] HandleJoinSessionComplete: %s, Result: %d"),
         *SessionName.ToString(), (int32)Result);
+
+    EJoinResultBP BPResult = EJoinResultBP::UnknownError;
+
+    switch (Result)
+    {
+    case EOnJoinSessionCompleteResult::Success:
+        BPResult = EJoinResultBP::Success;
+        break;
+    case EOnJoinSessionCompleteResult::SessionIsFull:
+        BPResult = EJoinResultBP::SessionIsFull;
+        break;
+    case EOnJoinSessionCompleteResult::SessionDoesNotExist:
+        BPResult = EJoinResultBP::SessionDoesNotExist;
+        break;
+    case EOnJoinSessionCompleteResult::CouldNotRetrieveAddress:
+        BPResult = EJoinResultBP::CouldNotRetrieveAddress;
+        break;
+    case EOnJoinSessionCompleteResult::AlreadyInSession:
+        BPResult = EJoinResultBP::AlreadyInSession;
+        break;
+    default:
+        BPResult = EJoinResultBP::UnknownError;
+        break;
+    }
+
+    // 여기서 BP에게 결과 알림
+    OnJoinSessionFinished.Broadcast(BPResult);
 
     if (Result != EOnJoinSessionCompleteResult::Success)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[MySessionSubsystem] JoinSession not successful"));
+        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] JoinSession not successful"));
         return;
     }
 
@@ -296,11 +343,11 @@ void USessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoinSess
     FString ConnectString;
     if (!SessionInterface->GetResolvedConnectString(SessionName, ConnectString))
     {
-        UE_LOG(LogTemp, Error, TEXT("[MySessionSubsystem] Could not get connect string"));
+        UE_LOG(LogTemp, Error, TEXT("[SessionSubsystem] Could not get connect string"));
         return;
     }
 
-    UE_LOG(LogTemp, Log, TEXT("[MySessionSubsystem] ConnectString: %s"), *ConnectString);
+    UE_LOG(LogTemp, Log, TEXT("[SessionSubsystem] ConnectString: %s"), *ConnectString);
 
     UWorld* World = GetWorld();
     if (!World)
@@ -311,7 +358,7 @@ void USessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoinSess
     APlayerController* PC = World->GetFirstPlayerController();
     if (!PC)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[MySessionSubsystem] No PlayerController in HandleJoinSessionComplete"));
+        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] No PlayerController in HandleJoinSessionComplete"));
         return;
     }
 

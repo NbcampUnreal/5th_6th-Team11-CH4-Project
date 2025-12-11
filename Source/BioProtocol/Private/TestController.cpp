@@ -36,35 +36,25 @@ void ATestController::BeginPlay()
 }
 
 
-void ATestController::HostGame()
+void ATestController::Server_CreateSession_Implementation(int32 PublicConnections, bool bIsLAN)
 {
-	if (UGameInstance* GI = GetGameInstance())
+	if (!HasAuthority())
 	{
-		if (USessionSubsystem* SessionSubsystem = GI->GetSubsystem<USessionSubsystem>())
-		{
-			SessionSubsystem->CreateGameSession(4, true);
-		}
+		return;
 	}
+
+	UGameInstance* GI = GetGameInstance();
+	if (!GI)
+	{
+		return;
+	}
+
+	USessionSubsystem* SessionSub = GI->GetSubsystem<USessionSubsystem>();
+	if (!SessionSub)
+	{
+		return;
+	}
+
+	SessionSub->CreateGameSession(PublicConnections, bIsLAN); 
 }
 
-void ATestController::FindGames()
-{
-	if (UGameInstance* GI = GetGameInstance())
-	{
-		if (USessionSubsystem* SessionSubsystem = GI->GetSubsystem<USessionSubsystem>())
-		{
-			SessionSubsystem->FindGameSessions(100, true);
-		}
-	}
-}
-
-void ATestController::JoinGame()
-{
-	if (UGameInstance* GI = GetGameInstance())
-	{
-		if (USessionSubsystem* SessionSubsystem = GI->GetSubsystem<USessionSubsystem>())
-		{
-			SessionSubsystem->JoinFoundSession();
-		}
-	}
-}

@@ -27,12 +27,8 @@ protected:
 
 
 public:
-	UFUNCTION(BlueprintCallable)
-	void HostGame();
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_CreateSession(int32 PublicConnections, bool bIsLAN);
+	void Server_CreateSession_Implementation(int32 PublicConnections, bool bIsLAN);
 
-	UFUNCTION(BlueprintCallable)
-	void FindGames();
-
-	UFUNCTION(BlueprintCallable)
-	void JoinGame();
 };
