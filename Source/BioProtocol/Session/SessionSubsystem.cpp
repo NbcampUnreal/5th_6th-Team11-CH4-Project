@@ -195,7 +195,9 @@ void USessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
         bWasSuccessful,
         SessionSearch.IsValid() ? SessionSearch->SearchResults.Num() : 0);
 
-    if (bWasSuccessful || SessionSearch.IsValid())
+    LastSessionInfos.Empty();
+
+    if (bWasSuccessful && SessionSearch.IsValid())
     {
         for (int32 i = 0; i < SessionSearch->SearchResults.Num(); ++i)
         {
@@ -205,7 +207,7 @@ void USessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
             Info.SearchResultIndex = i;
             Info.PingInMs = Result.PingInMs;
 
-            // 세션 이름 (광고된 이름 있으면)
+            // 세션 이름
             FString Name;
             if (!Result.Session.SessionSettings.Get(FName(TEXT("SESSION_NAME")), Name))
             {
