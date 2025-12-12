@@ -4,11 +4,7 @@
 #include "TestController.h"
 #include "../Session/SessionSubsystem.h"
 #include "Net/UnrealNetwork.h"
-#include "Kismet/GameplayStatics.h"
-#include "EngineUtils.h"
-#include "Kismet/KismetSystemLibrary.h"
-#include "Blueprint/UserWidget.h"
-#include "Engine/World.h"
+#include "TESTPlayerState.h"
 
 
 
@@ -22,21 +18,10 @@ void ATestController::BeginPlay()
 	{
 		return;
 	}
-
-	if (IsValid(SessionWidgetClass) == true)
-	{
-		SessionWidgetInstance = CreateWidget<UUserWidget>(this, SessionWidgetClass);
-		if (IsValid(SessionWidgetInstance) == true)
-		{
-			SessionWidgetInstance->AddToViewport();
-		}
-	}
-
 	
 }
 
-
-void ATestController::Server_CreateSession_Implementation(int32 PublicConnections, bool bIsLAN)
+void ATestController::Server_StartGameSession_Implementation()
 {
 	if (!HasAuthority())
 	{
@@ -55,6 +40,23 @@ void ATestController::Server_CreateSession_Implementation(int32 PublicConnection
 		return;
 	}
 
-	SessionSub->CreateGameSession(PublicConnections, bIsLAN); 
+	SessionSub->StartGameSession(); 
+}
+
+void ATestController::Server_SetReady_Implementation()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	ATESTPlayerState* PS = GetPlayerState<ATESTPlayerState>();
+	if (!PS)
+	{
+		return;
+	}
+
+	PS->bisReady = !PS->bisReady;
+
 }
 

@@ -14,42 +14,39 @@ void ATestGameMode::PostLogin(APlayerController* NewPlayer)
 {
     Super::PostLogin(NewPlayer);
 
-    IOnlineSubsystem* OSS = IOnlineSubsystem::Get();
-    if (!OSS) return;
-
-    IOnlineSessionPtr Session = OSS->GetSessionInterface();
-    if (!Session.IsValid()) return;
-
-    APlayerState* PS = NewPlayer->GetPlayerState<APlayerState>();
-    if (!PS || !PS->GetUniqueId().IsValid()) return;
-
-    const FUniqueNetIdRepl& IdRepl = PS->GetUniqueId();
-    Session->RegisterPlayer(
-        NAME_GameSession,
-        *IdRepl.GetUniqueNetId(),
-        /*bWasInvited=*/ false
-    );
+    //IOnlineSubsystem* OSS = IOnlineSubsystem::Get();
+    //if (!OSS) return;
+    //IOnlineSessionPtr Session = OSS->GetSessionInterface();
+    //if (!Session.IsValid()) return;
+    //APlayerState* PS = NewPlayer->GetPlayerState<APlayerState>();
+    //if (!PS || !PS->GetUniqueId().IsValid()) return;
+    //const FUniqueNetIdRepl& IdRepl = PS->GetUniqueId();
+    //Session->RegisterPlayer(
+    //    NAME_GameSession,
+    //    *IdRepl.GetUniqueNetId(),
+    //    /*bWasInvited=*/ false
+    //);
 }
 
 void ATestGameMode::Logout(AController* Exiting)
 {
-    IOnlineSubsystem* OSS = IOnlineSubsystem::Get();
-    if (OSS)
-    {
-        IOnlineSessionPtr Session = OSS->GetSessionInterface();
-        if (Session.IsValid())
-        {
-            APlayerState* PS = Exiting->GetPlayerState<APlayerState>();
-            if (PS && PS->GetUniqueId().IsValid())
-            {
-                const FUniqueNetIdRepl& IdRepl = PS->GetUniqueId();
-                Session->UnregisterPlayer(
-                    NAME_GameSession,
-                    *IdRepl.GetUniqueNetId()
-                );
-            }
-        }
-    }
+    //IOnlineSubsystem* OSS = IOnlineSubsystem::Get();
+    //if (OSS)
+    //{
+    //    IOnlineSessionPtr Session = OSS->GetSessionInterface();
+    //    if (Session.IsValid())
+    //    {
+    //        APlayerState* PS = Exiting->GetPlayerState<APlayerState>();
+    //        if (PS && PS->GetUniqueId().IsValid())
+    //        {
+    //            const FUniqueNetIdRepl& IdRepl = PS->GetUniqueId();
+    //            Session->UnregisterPlayer(
+    //                NAME_GameSession,
+    //                *IdRepl.GetUniqueNetId()
+    //            );
+    //        }
+    //    }
+    //}
 
     Super::Logout(Exiting);
 }

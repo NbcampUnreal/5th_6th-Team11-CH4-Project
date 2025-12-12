@@ -59,6 +59,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Session")
     void JoinFoundSession(int32 index);
 
+    UFUNCTION(BlueprintCallable, Category = "Session")
+    void StartGameSession();
+
     UPROPERTY(BlueprintAssignable)
     FOnSessionSearchUpdated OnSessionSearchUpdated;
 

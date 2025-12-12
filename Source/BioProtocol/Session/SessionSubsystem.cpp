@@ -98,18 +98,8 @@ void USessionSubsystem::CreateGameSession(int32 PublicConnections, bool bIsLAN)
     SessionSettings.bUsesPresence = false;
     SessionSettings.bUseLobbiesIfAvailable = false; // EOS/Steam 등에서 Lobby 사용
 
-    // 로컬 플레이어(0번)로 세션 생성
-    UWorld* World = GetWorld();
-    if (!World) return;
 
-    APlayerController* PC = World->GetFirstPlayerController();
-    if (!PC)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] No PlayerController in CreateGameSession"));
-        return;
-    }
-
-    const int32 LocalUserNum = 0; // 일단 0번으로
+    const int32 LocalUserNum = 0;
 
     bool bCreateResult = SessionInterface->CreateSession(LocalUserNum, NAME_GameSession, SessionSettings);
 
@@ -241,6 +231,30 @@ void USessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
     OnSessionSearchUpdated.Broadcast(LastSessionInfos);
 }
 
+void USessionSubsystem::StartGameSession()
+{
+
+    if (!GetWorld() || !GetWorld()->GetAuthGameMode())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] StartGameSession called on client"));
+        return;
+    }
+
+    SessionInterface = GetSessionInterface();
+
+    if (!SessionInterface.IsValid())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] SessionInterface invalid in FindGameSessions"));
+        return;
+    }
+
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    FString TravelURL = TEXT("/Game/Level/TestSession");
+    World->ServerTravel(TravelURL);
+}
+
 
 void USessionSubsystem::JoinFoundSession(int32 index)
 {
@@ -295,6 +309,8 @@ void USessionSubsystem::JoinFoundSession(int32 index)
         SessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(OnJoinSessionCompleteHandle);
     }
 }
+
+
 
 void USessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result)
 {

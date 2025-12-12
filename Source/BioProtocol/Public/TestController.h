@@ -20,15 +20,17 @@ public:
 
 protected:
 	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UUserWidget> SessionWidgetClass;
+	TSubclassOf<UUserWidget> MainMenuHUDClass;
 
-	UPROPERTY()
-	TObjectPtr<UUserWidget> SessionWidgetInstance;
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UUserWidget> LobbyHUDClass;
 
 
 public:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_CreateSession(int32 PublicConnections, bool bIsLAN);
-	void Server_CreateSession_Implementation(int32 PublicConnections, bool bIsLAN);
+	void Server_StartGameSession();
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_SetReady();
 
 };
