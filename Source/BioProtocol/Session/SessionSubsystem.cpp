@@ -119,7 +119,7 @@ void USessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool bWas
         SessionInterface->ClearOnCreateSessionCompleteDelegate_Handle(OnCreateSessionCompleteHandle);
     }
 
-    UE_LOG(LogTemp, Log, TEXT("[SessionSubsystem] HandleCreateSessionComplete: %s, Success: %d"),
+    UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] HandleCreateSessionComplete: %s, Success: %d"),
         *SessionName.ToString(), bWasSuccessful);
 
     if (!bWasSuccessful)
