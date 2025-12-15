@@ -2,6 +2,7 @@
 
 
 #include "UI/BioPlayerHUD.h"
+#include "UI/ItemSlotWidget.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "GameFramework/Pawn.h"
@@ -15,6 +16,11 @@ void UBioPlayerHUD::NativeConstruct()
 	{
 		OwnerCharacter = Cast<ACharacter>(GetOwningPlayerPawn());
 	}
+
+	Slots.Empty();
+	if (ItemSlot_0) Slots.Add(ItemSlot_0);
+	if (ItemSlot_1) Slots.Add(ItemSlot_1);
+	if (ItemSlot_2) Slots.Add(ItemSlot_2);
 }
 
 void UBioPlayerHUD::UpdateHealth(float CurrentHP)
@@ -36,5 +42,13 @@ void UBioPlayerHUD::UpdateRoleText(FString NewRole)
 	if (RoleText)
 	{
 		RoleText->SetText(FText::FromString(NewRole));
+	}
+}
+
+void UBioPlayerHUD::UpdateItemSlot(int32 SlotIndex, UTexture2D* Icon)
+{
+	if (Slots.IsValidIndex(SlotIndex) && Slots[SlotIndex])
+	{
+		Slots[SlotIndex]->UpdateSlot(Icon);
 	}
 }

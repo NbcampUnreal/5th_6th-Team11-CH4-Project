@@ -9,6 +9,8 @@
 class ACharacter;
 class UProgressBar;
 class UTextBlock;
+class UItemSlotWidget; // ★ 추가됨
+class UTexture2D;
 
 UCLASS()
 class BIOPROTOCOL_API UBioPlayerHUD : public UUserWidget
@@ -24,6 +26,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void UpdateRoleText(FString NewRole);
 
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void UpdateItemSlot(int32 SlotIndex, UTexture2D* Icon);
+
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* HealthBar;
@@ -33,6 +38,17 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* RoleText;
+
+	UPROPERTY(meta = (BindWidget))
+	UItemSlotWidget* ItemSlot_0;
+
+	UPROPERTY(meta = (BindWidget))
+	UItemSlotWidget* ItemSlot_1;
+
+	UPROPERTY(meta = (BindWidget))
+	UItemSlotWidget* ItemSlot_2;
+
+	TArray<UItemSlotWidget*> Slots;
 
 	float MaxHP = 100.0f;
 
