@@ -1,0 +1,350 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+
+#include "StaffCharacter.h"
+#include "EnhancedInputSubsystems.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "Camera/CameraComponent.h"
+#include "StaffStatusComponent.h"
+#include "EnhancedInputComponent.h"
+#include "Net/UnrealNetwork.h"
+#include <MyPlayerController.h>
+#include <Kismet/GameplayStatics.h>
+
+// Sets default values
+AStaffCharacter::AStaffCharacter()
+{
+	PrimaryActorTick.bCanEverTick = true;
+
+	bReplicates = true;
+	SetReplicateMovement(true);
+
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = true;
+	bUseControllerRotationRoll = false;
+
+	GetCharacterMovement()->bOrientRotationToMovement = false;
+	GetCharacterMovement()->bUseControllerDesiredRotation = false;
+
+
+	FirstPersonCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
+	FirstPersonCamera->SetupAttachment(GetRootComponent());
+	FirstPersonCamera->bUsePawnControlRotation = true;
+
+
+	FirstPersonMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FirstPersonMesh"));
+	FirstPersonMesh->SetupAttachment(FirstPersonCamera);
+
+	// 본인에게만 보이기
+	FirstPersonMesh->SetOnlyOwnerSee(true);
+	FirstPersonMesh->bCastDynamicShadow = false;
+	FirstPersonMesh->CastShadow = false;
+
+	// 3인칭 메쉬는 본인에겐 안 보이게
+	GetMesh()->SetOwnerNoSee(true);
+
+	// 나머지 옵션
+	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
+	GetCharacterMovement()->SetCrouchedHalfHeight(44.f);
+
+	Status = CreateDefaultSubobject<UStaffStatusComponent>(TEXT("StatusComponent"));
+
+}
+
+// Called when the game starts or when spawned
+void AStaffCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (IsLocallyControlled() == true)
+	{
+		GetMesh()->SetSkeletalMesh(StaffArmMesh);
+
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		checkf(IsValid(PC) == true, TEXT("PlayerController is invalid."));
+
+		UEnhancedInputLocalPlayerSubsystem* EILPS = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
+		checkf(IsValid(EILPS) == true, TEXT("EnhancedInputLocalPlayerSubsystem is invalid."));
+
+		EILPS->AddMappingContext(InputMappingContext, 0);
+	}
+
+}
+
+// Called every frame
+void AStaffCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+}
+
+// Called to bind functionality to input
+void AStaffCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	UEnhancedInputComponent* EIC = CastChecked<UEnhancedInputComponent>(PlayerInputComponent);
+
+	EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::HandleMoveInput);
+
+	EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::HandleLookInput);
+
+	EIC->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
+	EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+
+	EIC->BindAction(RunAction, ETriggerEvent::Triggered, this, &AStaffCharacter::HandleStartRun);
+	EIC->BindAction(RunAction, ETriggerEvent::Completed, this, &AStaffCharacter::HandleStopRun);
+
+	EIC->BindAction(CrouchAction, ETriggerEvent::Started, this, &AStaffCharacter::HandleCrouch);
+	EIC->BindAction(CrouchAction, ETriggerEvent::Completed, this, &AStaffCharacter::HandleStand);
+
+	EIC->BindAction(AttackAction, ETriggerEvent::Started, this, &ThisClass::AttackInput);
+
+	EIC->BindAction(TestKillAction, ETriggerEvent::Started, this, &AStaffCharacter::TestHit);
+
+}
+
+void AStaffCharacter::OnDeath()
+{
+	/*if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (AMyPlayerController* MyPC = Cast<AMyPlayerController>(PC))
+		{
+			MyPC->ClientStartSpectate();
+		}
+	}*/
+}
+
+void AStaffCharacter::HandleMoveInput(const FInputActionValue& InValue)
+{
+	if (IsValid(Controller) == false)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Controller is invalid."));
+		return;
+	}
+
+	const FVector2D InMovementVector = InValue.Get<FVector2D>();
+
+	const FRotator ControlRotation = Controller->GetControlRotation();
+	const FRotator ControlYawRotation(0.0f, ControlRotation.Yaw, 0.0f);
+
+	const FVector ForwardDirection = FRotationMatrix(ControlYawRotation).GetUnitAxis(EAxis::X);
+	const FVector RightDirection = FRotationMatrix(ControlYawRotation).GetUnitAxis(EAxis::Y);
+
+	AddMovementInput(ForwardDirection, InMovementVector.X);
+	AddMovementInput(RightDirection, InMovementVector.Y);
+}
+
+void AStaffCharacter::HandleLookInput(const FInputActionValue& InValue)
+{
+	if (IsValid(Controller) == false)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Controller is invalid."));
+		return;
+	}
+
+	const FVector2D InLookVector = InValue.Get<FVector2D>();
+
+	AddControllerYawInput(InLookVector.X);
+	AddControllerPitchInput(InLookVector.Y);
+}
+
+void AStaffCharacter::HandleStartRun(const FInputActionValue& InValue)
+{
+	if (!HasAuthority())
+	{
+		ServerStartRun();
+		return;
+	}
+}
+void AStaffCharacter::HandleStopRun(const FInputActionValue& InValue)
+{
+	if (!HasAuthority())
+	{
+		ServerStopRun();
+		return;
+	}
+
+}
+
+void AStaffCharacter::HandleCrouch(const FInputActionValue& InValue)
+{
+	if (IsLocallyControlled())
+	{
+		Crouch();
+	}
+
+	if (!HasAuthority())
+	{
+		ServerCrouch();
+	}
+}
+
+void AStaffCharacter::HandleStand(const FInputActionValue& InValue)
+{
+	if (IsLocallyControlled()) {
+		UnCrouch();
+	}
+
+	if (!HasAuthority())
+	{
+		ServerUnCrouch();
+	}
+}
+
+void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
+{
+	if (!GetCharacterMovement()->IsFalling())
+	{
+		GetCharacterMovement()->SetMovementMode(MOVE_None);
+		/*FTimerHandle TimerHandle;
+		GetWorldTimerManager().SetTimer(TimerHandle, FTimerDelegate::CreateLambda([&]() -> void
+			{
+				bCanAttack = true;
+				GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+			}), MeleeAttackMontagePlayTime, false);
+
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (IsValid(AnimInstance) == true)
+		{
+			AnimInstance->Montage_Play(MeleeAttackMontage);
+		}*/
+
+		/*UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (IsValid(AnimInstance) == true)
+		{
+			AnimInstance->Montage_Play(MeleeAttackMontage);
+		}*/
+
+		ServerRPCMeleeAttack();
+	}
+}
+
+void AStaffCharacter::ServerRPCMeleeAttack_Implementation()
+{
+	MulticastRPCMeleeAttack();
+}
+
+bool AStaffCharacter::ServerRPCMeleeAttack_Validate()
+{
+	return true;
+}
+
+void AStaffCharacter::SetSpeed_Implementation(float speed)
+{
+	GetCharacterMovement()->MaxWalkSpeed = speed;
+}
+
+void AStaffCharacter::ServerStartRun_Implementation()
+{
+	GetCharacterMovement()->MaxWalkSpeed = Status->MoveSpeed * 1.6f;
+
+}
+
+void AStaffCharacter::ServerStopRun_Implementation()
+{
+	GetCharacterMovement()->MaxWalkSpeed = Status->MoveSpeed;
+
+}
+
+void AStaffCharacter::ServerCrouch_Implementation()
+{
+	Crouch();
+}
+
+void AStaffCharacter::ServerUnCrouch_Implementation()
+{
+	UnCrouch();
+}
+
+void AStaffCharacter::MulticastRPCMeleeAttack_Implementation()
+{
+	PlayMeleeAttackMontage();
+}
+
+void AStaffCharacter::PlayMeleeAttackMontage()
+{
+	if (IsLocallyControlled())
+	{
+		UAnimInstance* FPAnim = FirstPersonMesh->GetAnimInstance();
+		if (FPAnim)
+		{
+			FPAnim->Montage_Play(MeleeAttackMontage);
+		}
+	}
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (IsValid(AnimInstance) == true)
+	{
+		AnimInstance->Montage_Play(MeleeAttackMontage);
+	}
+}
+
+float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	if (!HasAuthority()) return 0.f;
+
+	const float ActualDamage =
+		Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	if (ActualDamage <= 0.f) return 0.f;
+
+	if (Status)
+	{
+		Status->ApplyDamage(ActualDamage);
+	}
+
+	return ActualDamage;
+}
+
+void AStaffCharacter::TestHit()
+{
+	Server_TestHit();
+}
+
+void AStaffCharacter::Server_TestHit_Implementation()
+{
+	FVector Start = GetActorLocation();
+	FVector End = Start + GetActorForwardVector() * 500.f;
+
+	FHitResult Hit;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		Hit,
+		Start,
+		End,
+		ECC_Pawn,
+		Params
+	);
+
+	if (!bHit) return;
+
+	AActor* HitActor = Hit.GetActor();
+	if (!HitActor) 	return;
+
+	UE_LOG(LogTemp, Warning, TEXT("Hit %s"), *HitActor->GetName());
+
+	UGameplayStatics::ApplyDamage(
+		HitActor,                  
+		50,             
+		GetController(),          
+		this,                     
+		UDamageType::StaticClass()
+	);
+}
+
+//void AStaffCharacter::ServerRPCTakeDamage_Implementation(float Damage)
+//{
+//	if (Status)
+//	{
+//		Status->ApplyDamage(Damage);
+//	}
+//}
+
+//bool AStaffCharacter::ServerRPCTakeDamage_Validate(float Damage)
+//{
+//	return true;
+//}
