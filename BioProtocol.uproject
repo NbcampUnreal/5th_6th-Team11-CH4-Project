@@ -9,8 +9,11 @@
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
 			"AdditionalDependencies": [
+				
 				"Engine",
-				"CoreUObject"
+				"CoreUObject",
+				"UMG",
+				"Engine"
 			]
 		}
 	],
