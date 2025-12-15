@@ -52,6 +52,6 @@ protected:
 	class UCameraComponent* FollowCamera;
 
 	// 현재 관전 중인 대상
-	UPROPERTY(Replicated) // 클라이언트도 누굴 보는지 알아야 함
+	UPROPERTY(Replicated)
 		AActor* CurrentTarget;
 };
