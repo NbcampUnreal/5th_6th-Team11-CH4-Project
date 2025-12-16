@@ -300,8 +300,15 @@ float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 
 void AStaffCharacter::TestHit()
 {
+	//if (mat[0])
+	//{
+	//	GetMesh()->SetMaterial(0, mat[0]);
+	//}
+
+	// 서버에 요청
 	Server_TestHit();
 }
+
 
 void AStaffCharacter::Server_TestHit_Implementation()
 {
@@ -334,6 +341,20 @@ void AStaffCharacter::Server_TestHit_Implementation()
 		this,                     
 		UDamageType::StaticClass()
 	);
+	//Multicast_SetTestMaterial();
+
+}
+void AStaffCharacter::Multicast_SetTestMaterial_Implementation()
+{
+	if (GetNetMode() == NM_DedicatedServer)
+	{
+		return; 
+	}
+
+	if (mat[0])
+	{
+		GetMesh()->SetMaterial(0, mat[0]);
+	}
 }
 
 //void AStaffCharacter::ServerRPCTakeDamage_Implementation(float Damage)

@@ -34,12 +34,16 @@ public:
 
 	// 관전 대상 설정 함수
 	void SetSpectateTarget(AActor* NewTarget);
-
+	UFUNCTION(Server, Reliable)
+	void Server_SpectateNextPlayer();
+	UFUNCTION(Client, Reliable)
+	void Client_SetSpectateTarget(ACharacter* NewTarget);
 	// 다음 플레이어 관전 (입력 바인딩용)
 	void SpectateNextPlayer();
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
 	TObjectPtr<UInputAction> LookAction;
-
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
+	TObjectPtr<UInputAction> NextAction;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
 	TObjectPtr<UInputMappingContext> InputMappingContext;
 protected:

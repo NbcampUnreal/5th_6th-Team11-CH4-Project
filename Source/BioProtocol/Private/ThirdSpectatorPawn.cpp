@@ -87,9 +87,10 @@ void AThirdSpectatorPawn::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
     UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent);
-    if (EIC && LookAction)
+    if (EIC)
     {
         EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::HandleLookInput);
+        EIC->BindAction(NextAction, ETriggerEvent::Triggered, this, &ThisClass::SpectateNextPlayer);
     }
 
     
@@ -115,11 +116,33 @@ void AThirdSpectatorPawn::SetSpectateTarget(AActor* NewTarget)
     }
 }
 
-void AThirdSpectatorPawn::SpectateNextPlayer()
+void AThirdSpectatorPawn::Server_SpectateNextPlayer_Implementation()
 {
+    for (TActorIterator<ACharacter> It(GetWorld()); It; ++It)
+    {
+        ACharacter* OtherChar = *It;
+        if (IsValid(OtherChar) && OtherChar != CurrentTarget)
+        {
+            CurrentTarget = OtherChar;
+
+            Client_SetSpectateTarget(OtherChar);
+            break;
+        }
+    }
+}
+
+void AThirdSpectatorPawn::Client_SetSpectateTarget_Implementation(ACharacter* NewTarget)
+{
+    SetSpectateTarget(NewTarget);
+
+}
+
+void AThirdSpectatorPawn::SpectateNextPlayer()
+{ 
     if (!HasAuthority())
     {
-       
+        Server_SpectateNextPlayer();
+
         return;
     }
 

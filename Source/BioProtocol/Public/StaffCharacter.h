@@ -12,6 +12,7 @@ class UCameraComponent;
 class USpringArmComponent;
 class UInputMappingContext;
 class UInputAction;
+class UMaterialInterface;
 
 UCLASS()
 class BIOPROTOCOL_API AStaffCharacter : public ACharacter
@@ -114,6 +115,9 @@ private:
 	UFUNCTION(Server, Reliable)
 	void Server_TestHit();
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetTestMaterial();
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<class UStaffStatusComponent> Status;
@@ -125,4 +129,7 @@ protected:
 	USkeletalMesh* StaffMesh;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USkeletalMesh* StaffArmMesh;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMat")
+
+	TArray<UMaterialInterface*>mat;
 };
