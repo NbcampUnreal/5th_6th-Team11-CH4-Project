@@ -2,6 +2,7 @@
 
 
 #include "MyGameModeBase.h"
+#include "StaffCharacter.h"
 #include <ThirdSpectatorPawn.h>
 
 void AMyGameModeBase::OnPlayerKilled(AController* VictimController)
@@ -42,4 +43,15 @@ void AMyGameModeBase::OnPlayerKilled(AController* VictimController)
         Spectator->SpectateNextPlayer();
     }
    
+}
+
+void AMyGameModeBase::RestartPlayer(AController* NewPlayer)
+{
+    Super::RestartPlayer(NewPlayer);
+
+    if (AStaffCharacter* NewChar = Cast<AStaffCharacter>(NewPlayer->GetPawn()))
+    {       
+        NewChar->SetMaterialByIndex(AssignedMaterialCount);
+        ++AssignedMaterialCount;
+    }
 }

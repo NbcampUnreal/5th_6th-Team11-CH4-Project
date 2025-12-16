@@ -116,6 +116,27 @@ void AStaffCharacter::OnDeath()
 	}*/
 }
 
+void AStaffCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AStaffCharacter, MaterialIndex);
+}
+
+void AStaffCharacter::SetMaterialByIndex(int32 NewIndex)
+{
+	
+
+	if (HasAuthority())
+	{
+		MaterialIndex = NewIndex;
+
+		if (GetNetMode() != NM_DedicatedServer)
+		{
+			OnRep_MaterialIndex();
+		}
+	}
+}
+
 void AStaffCharacter::HandleMoveInput(const FInputActionValue& InValue)
 {
 	if (IsValid(Controller) == false)
@@ -300,13 +321,23 @@ float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 
 void AStaffCharacter::TestHit()
 {
-	//if (mat[0])
-	//{
-	//	GetMesh()->SetMaterial(0, mat[0]);
-	//}
+	if (mat[0])
+	{
+		GetMesh()->SetMaterial(0, mat[0]); //todo:1인칭팔 메테리얼로 수정필요
+	}
 
 	// 서버에 요청
 	Server_TestHit();
+}
+
+void AStaffCharacter::OnRep_MaterialIndex()
+{
+	if (IsLocallyControlled())
+		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::FromInt(MaterialIndex));
+	if (mat.IsValidIndex(MaterialIndex))
+	{
+		GetMesh()->SetMaterial(0, mat[MaterialIndex]);
+	}
 }
 
 
@@ -335,10 +366,10 @@ void AStaffCharacter::Server_TestHit_Implementation()
 	UE_LOG(LogTemp, Warning, TEXT("Hit %s"), *HitActor->GetName());
 
 	UGameplayStatics::ApplyDamage(
-		HitActor,                  
-		50,             
-		GetController(),          
-		this,                     
+		HitActor,
+		50,
+		GetController(),
+		this,
 		UDamageType::StaticClass()
 	);
 	//Multicast_SetTestMaterial();
@@ -348,7 +379,7 @@ void AStaffCharacter::Multicast_SetTestMaterial_Implementation()
 {
 	if (GetNetMode() == NM_DedicatedServer)
 	{
-		return; 
+		return;
 	}
 
 	if (mat[0])

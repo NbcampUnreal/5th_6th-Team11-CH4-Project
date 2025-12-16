@@ -34,6 +34,9 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	void OnDeath();
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	void SetMaterialByIndex(int32 NewIndex);
 
 protected:
 
@@ -121,6 +124,12 @@ private:
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<class UStaffStatusComponent> Status;
+
+	UFUNCTION()
+	void OnRep_MaterialIndex();
+
+	UPROPERTY(ReplicatedUsing = OnRep_MaterialIndex)
+	int32 MaterialIndex;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TObjectPtr<UAnimMontage> MeleeAttackMontage;
