@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "TestController.generated.h"
 
+
 /**
  * 
  */
@@ -32,5 +33,11 @@ public:
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_SetReady();
+
+	UFUNCTION(BlueprintCallable)
+	void CreateLobby(const FString& Ip, int32 Port, int32 PublicConnections);
+
+
+	void HandleLoginComplete(int32, bool bOk, const FUniqueNetId& Id, const FString& Err);
 
 };

@@ -22,6 +22,12 @@ struct FSessionInfo
     UPROPERTY(BlueprintReadOnly)
     int32 PingInMs = 0;
 
+    UPROPERTY(BlueprintReadOnly)
+    FString ServerIp;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 ServerPort = 0;
+
     // 어떤 SearchResults 인덱스인지
     int32 SearchResultIndex = INDEX_NONE;
 };
@@ -50,6 +56,9 @@ public:
     // 세션 생성
     UFUNCTION(BlueprintCallable, Category = "Session")
     void CreateGameSession(int32 PublicConnections = 4, bool bIsLAN = true);
+
+    UFUNCTION(BlueprintCallable, Category = "Session")
+    void CreateLobbyForDedicated(const FString& ServerIp, int32 ServerPort, int32 PublicConnections = 4);
 
     // 세션 검색
     UFUNCTION(BlueprintCallable, Category = "Session")
