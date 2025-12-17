@@ -6,6 +6,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "MyGameModeBase.generated.h"
 
+class AThirdSpectatorPawn;
 /**
  * 
  */
@@ -15,4 +16,9 @@ class BIOPROTOCOL_API AMyGameModeBase : public AGameModeBase
 	GENERATED_BODY()
 public:
 	virtual void OnPlayerKilled(AController* VictimController);
+	virtual void RestartPlayer(AController* NewPlayer) override;
+	UPROPERTY(EditDefaultsOnly, Category = "Spectator")
+	TSubclassOf<AThirdSpectatorPawn> SpectatorPawnClass;
+private:
+	int32 AssignedMaterialCount = 0;
 };
