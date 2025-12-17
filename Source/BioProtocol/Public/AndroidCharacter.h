@@ -10,7 +10,7 @@
  *
 
  */
-
+class UPostProcessComponent;
 UCLASS()
 class BIOPROTOCOL_API AAndroidCharacter : public AStaffCharacter
 {
@@ -23,7 +23,14 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	UFUNCTION()
 	void OnRep_IsAndroid();	
+
+protected:	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PostProcess")
+	UPostProcessComponent* PostProcessComp;
 protected:
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<UAnimInstance> StaffAnim;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -37,6 +44,15 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void ServerSwitchToStaff();
 
+	void Xray();
+	UPROPERTY(EditDefaultsOnly, Category = "XRay")
+	TSoftObjectPtr<UMaterialInterface> XRayMaterial;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
+	TObjectPtr<UInputMappingContext> SkillMappingContext;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
+	TObjectPtr<UInputAction> XrayAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
 	TObjectPtr<UInputAction> ChangeAction;
@@ -48,4 +64,7 @@ protected:
 	TObjectPtr<UAnimMontage> AndroidMeleeAttackMontage;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TObjectPtr<UAnimMontage> OriginMeleeAttackMontage;
+
+private:
+	int8 bIsXray = false;
 };

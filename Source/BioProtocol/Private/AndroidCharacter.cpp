@@ -1,14 +1,47 @@
 #include "AndroidCharacter.h"
 #include <EnhancedInputComponent.h>
 #include "Engine/Engine.h"
+#include "Components/PostProcessComponent.h"
+#include <EnhancedInputSubsystems.h>
 
 AAndroidCharacter::AAndroidCharacter()
 {
 	bReplicates = true;
 
 	//SwitchToAndroidMode();
+    PostProcessComp = CreateDefaultSubobject<UPostProcessComponent>(TEXT("PostProcessComp"));
+    PostProcessComp->SetupAttachment(RootComponent);
+    
+    PostProcessComp->bUnbound = true; 
+    PostProcessComp->Priority = 10.0f; 
+
 }
 
+void AAndroidCharacter::BeginPlay()
+{
+    Super::BeginPlay();
+
+    if (UMaterialInterface* Mat = XRayMaterial.LoadSynchronous())
+    {
+        FWeightedBlendable Blendable;
+        Blendable.Object = Mat;
+        Blendable.Weight = 1.f;
+
+        PostProcessComp->Settings.WeightedBlendables.Array.Add(Blendable);
+    }
+    PostProcessComp->bEnabled = bIsXray;
+
+    if (IsLocallyControlled() == true)
+    {       
+        APlayerController* PC = Cast<APlayerController>(GetController());
+        checkf(IsValid(PC) == true, TEXT("PlayerController is invalid."));
+
+        UEnhancedInputLocalPlayerSubsystem* EILPS = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
+        checkf(IsValid(EILPS) == true, TEXT("EnhancedInputLocalPlayerSubsystem is invalid."));
+
+        EILPS->AddMappingContext(SkillMappingContext, 1);
+    }
+}
 void AAndroidCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -16,6 +49,8 @@ void AAndroidCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	UEnhancedInputComponent* EIC = CastChecked<UEnhancedInputComponent>(PlayerInputComponent);
 
 	EIC->BindAction(ChangeAction, ETriggerEvent::Started, this, &ThisClass::SwitchAndroidMode);
+
+    EIC->BindAction(XrayAction, ETriggerEvent::Started, this, &ThisClass::Xray);
 }
 
 void AAndroidCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -23,6 +58,15 @@ void AAndroidCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AAndroidCharacter, bIsAndroid);
+}
+
+void AAndroidCharacter::Xray()
+{
+    if (!PostProcessComp) return;
+       
+    PostProcessComp->bEnabled = !PostProcessComp->bEnabled;   
+
+    bIsXray = PostProcessComp->bEnabled;
 }
 
 void AAndroidCharacter::OnRep_IsAndroid()

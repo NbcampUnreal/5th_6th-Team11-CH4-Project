@@ -70,6 +70,12 @@ void AStaffCharacter::BeginPlay()
 		EILPS->AddMappingContext(InputMappingContext, 0);
 	}
 
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		MeshComp->SetRenderCustomDepth(true);
+
+		MeshComp->SetCustomDepthStencilValue(1);
+	}
 }
 
 // Called every frame
