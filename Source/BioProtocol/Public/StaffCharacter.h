@@ -12,6 +12,7 @@ class UCameraComponent;
 class USpringArmComponent;
 class UInputMappingContext;
 class UInputAction;
+class UMaterialInterface;
 
 UCLASS()
 class BIOPROTOCOL_API AStaffCharacter : public ACharacter
@@ -33,6 +34,9 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	void OnDeath();
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	void SetMaterialByIndex(int32 NewIndex);
 
 protected:
 
@@ -114,9 +118,18 @@ private:
 	UFUNCTION(Server, Reliable)
 	void Server_TestHit();
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetTestMaterial();
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<class UStaffStatusComponent> Status;
+
+	UFUNCTION()
+	void OnRep_MaterialIndex();
+
+	UPROPERTY(ReplicatedUsing = OnRep_MaterialIndex)
+	int32 MaterialIndex;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TObjectPtr<UAnimMontage> MeleeAttackMontage;
@@ -125,4 +138,7 @@ protected:
 	USkeletalMesh* StaffMesh;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USkeletalMesh* StaffArmMesh;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMat")
+
+	TArray<UMaterialInterface*>mat;
 };

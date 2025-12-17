@@ -28,7 +28,7 @@ AThirdSpectatorPawn::AThirdSpectatorPawn()
 
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
     CameraBoom->SetupAttachment(RootComponent);
-    CameraBoom->TargetArmLength = 400.0f;
+    CameraBoom->TargetArmLength = 200.0f;
 
     CameraBoom->bUsePawnControlRotation = true;
    
@@ -49,16 +49,20 @@ void AThirdSpectatorPawn::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 void AThirdSpectatorPawn::BeginPlay()
 {
 	Super::BeginPlay();
-    
-   /* if (APlayerController* PC = Cast<APlayerController>(Controller))
+    APlayerController* PC = Cast<APlayerController>(GetController());
+      
+    if (PC)
     {
-        if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+        if (ULocalPlayer* LocalPlayer = PC->GetLocalPlayer())
         {
-            GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow,
-                FString::Printf(TEXT("2")));
-            Subsystem->AddMappingContext(InputMappingContext, 0);
+            if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(LocalPlayer))
+            {
+                Subsystem->ClearAllMappings(); 
+                Subsystem->AddMappingContext(InputMappingContext, 0);
+            }
         }
-    }   */
+    }
+
 }
 
 // Called every frame
@@ -75,10 +79,6 @@ void AThirdSpectatorPawn::Tick(float DeltaTime)
         SetActorLocation(TargetLoc);
     }   
 
-    if (IsLocallyControlled()) {
-      
-    }
-
 }
 
 // Called to bind functionality to input
@@ -87,29 +87,13 @@ void AThirdSpectatorPawn::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
     UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent);
-    if (EIC && LookAction)
+    if (EIC)
     {
         EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::HandleLookInput);
+        EIC->BindAction(NextAction, ETriggerEvent::Triggered, this, &ThisClass::SpectateNextPlayer);
     }
 
-    // 2. [추가] 여기서 Mapping Context를 등록해야 합니다.
-    // PlayerInputComponent가 넘어왔다는 것은 Controller가 있다는 뜻입니다.
-    APlayerController* PC = Cast<APlayerController>(GetController());
-
-    // 만약 GetController()가 여전히 불안하다면, PlayerInputComponent의 Owner를 확인할 수도 있지만
-    // 일반적으로 SetupPlayerInputComponent 시점엔 Controller가 유효합니다.
-    if (PC)
-    {
-        if (ULocalPlayer* LocalPlayer = PC->GetLocalPlayer())
-        {
-            if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(LocalPlayer))
-            {
-                // 중복 방지를 위해 Clear 후 추가하거나, 안전하게 추가
-                Subsystem->ClearAllMappings(); // 기존(이전 캐릭터) 매핑이 남아있을 수 있으므로 초기화 추천
-                Subsystem->AddMappingContext(InputMappingContext, 0);
-            }
-        }
-    }
+    
 }
 
 void AThirdSpectatorPawn::HandleLookInput(const FInputActionValue& InValue)
@@ -118,8 +102,7 @@ void AThirdSpectatorPawn::HandleLookInput(const FInputActionValue& InValue)
 
     if (Controller)
     {
-        GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow,
-            FString::Printf(TEXT("input")));
+      //  GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow,FString::Printf(TEXT("input")));
         AddControllerYawInput(LookAxisVector.X);
         AddControllerPitchInput(LookAxisVector.Y);
     }
@@ -133,11 +116,33 @@ void AThirdSpectatorPawn::SetSpectateTarget(AActor* NewTarget)
     }
 }
 
-void AThirdSpectatorPawn::SpectateNextPlayer()
+void AThirdSpectatorPawn::Server_SpectateNextPlayer_Implementation()
 {
+    for (TActorIterator<ACharacter> It(GetWorld()); It; ++It)
+    {
+        ACharacter* OtherChar = *It;
+        if (IsValid(OtherChar) && OtherChar != CurrentTarget)
+        {
+            CurrentTarget = OtherChar;
+
+            Client_SetSpectateTarget(OtherChar);
+            break;
+        }
+    }
+}
+
+void AThirdSpectatorPawn::Client_SetSpectateTarget_Implementation(ACharacter* NewTarget)
+{
+    SetSpectateTarget(NewTarget);
+
+}
+
+void AThirdSpectatorPawn::SpectateNextPlayer()
+{ 
     if (!HasAuthority())
     {
-       
+        Server_SpectateNextPlayer();
+
         return;
     }
 
