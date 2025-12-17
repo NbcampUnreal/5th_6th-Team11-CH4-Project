@@ -53,23 +53,30 @@ class BIOPROTOCOL_API USessionSubsystem : public UGameInstanceSubsystem
 	GENERATED_BODY()
 	
 public:
-    // 세션 생성
+
     UFUNCTION(BlueprintCallable, Category = "Session")
     void CreateGameSession(int32 PublicConnections = 4, bool bIsLAN = true);
 
+    // 로비 생성
     UFUNCTION(BlueprintCallable, Category = "Session")
     void CreateLobbyForDedicated(const FString& ServerIp, int32 ServerPort, int32 PublicConnections = 4);
 
-    // 세션 검색
+    // 로비 생성 후 완료 시 그 로비로 이동
+    void TravelToDedicatedFromLobby(const FName& LobbySessionName);
+
+    // 로비 검색
     UFUNCTION(BlueprintCallable, Category = "Session")
     void FindGameSessions(int32 MaxResults = 100, bool bIsLAN = true);
 
-    // 세션 참가 추후에 인덱스로 들어가게 수정
+    // index 로비 참가
     UFUNCTION(BlueprintCallable, Category = "Session")
     void JoinFoundSession(int32 index);
 
+    // 데디케이트 서버 게임 시작
     UFUNCTION(BlueprintCallable, Category = "Session")
     void StartGameSession();
+
+
 
     UPROPERTY(BlueprintAssignable)
     FOnSessionSearchUpdated OnSessionSearchUpdated;

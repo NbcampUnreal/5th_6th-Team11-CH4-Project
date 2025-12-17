@@ -9,6 +9,8 @@
 #include "OnlineSubsystem.h"
 #include "OnlineSubsystemUtils.h"
 #include "Interfaces/OnlineIdentityInterface.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 
 
@@ -19,37 +21,77 @@ void ATestController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	//FOnlineAccountCredentials Creds;
+	//Creds.Type = TEXT("developer");          // DevAuthTool 방식
+	//Creds.Id = TEXT("localhost:8081");     // DevAuthTool에서 쓴 포트
+	//Creds.Token = TEXT("DevUser1");         // DevAuthTool에서 만든 Credential 이름
+
+}
+
+void ATestController::LogintoEOS(int32 Credential)
+{
 	if (!IsLocalController())
 	{
 		return;
 	}
 
-	if (!IsLocalController())
-		return;
-
-	if (IOnlineSubsystem* OSS = Online::GetSubsystem(GetWorld()))
+	UWorld* World = GetWorld();
+	if (!World)
 	{
-		IOnlineIdentityPtr Identity = OSS->GetIdentityInterface();
-		if (Identity.IsValid())
-		{
-			const int32 LocalUserNum = 0;
-
-			// 이미 로그인 상태면 스킵
-			if (Identity->GetLoginStatus(LocalUserNum) == ELoginStatus::LoggedIn)
-				return;
-
-			FOnlineAccountCredentials Creds;
-			Creds.Type = TEXT("developer");          // DevAuthTool 방식
-			Creds.Id = TEXT("localhost:8081");     // DevAuthTool에서 쓴 포트
-			Creds.Token = TEXT("DevUser1");         // DevAuthTool에서 만든 Credential 이름
-
-			Identity->AddOnLoginCompleteDelegate_Handle(0,
-				FOnLoginCompleteDelegate::CreateUObject(this, &ATestController::HandleLoginComplete));
-
-			Identity->Login(0, Creds);
-		}
-
+		return;
 	}
+
+	IOnlineSubsystem* OSS = Online::GetSubsystem(World);
+	if (!OSS)
+	{
+		return;
+	}
+
+	IOnlineIdentityPtr Identity = OSS->GetIdentityInterface();
+	if (!Identity.IsValid())
+	{
+		return;
+	}
+
+	const int32 LocalUserNum = 0;
+
+	if (Identity->GetLoginStatus(LocalUserNum) == ELoginStatus::LoggedIn)
+	{
+		return;
+	}
+
+	if (bLoginInProgress)
+	{
+		return;
+	}
+
+	FString DevAuthAddr = TEXT("localhost:8081");
+	FParse::Value(FCommandLine::Get(), TEXT("EOSDevAuth="), DevAuthAddr);
+
+	FString DevToken;
+
+	if (Credential < 1) Credential = 1;
+	DevToken = FString::Printf(TEXT("DevUser%d"), Credential);
+
+	UE_LOG(LogTemp, Warning, TEXT("[EOS][Login] DevAuth=%s Token=%s"), *DevAuthAddr, *DevToken);
+
+	// 델리게이트 중복 방지
+	if (LoginCompleteHandle.IsValid())
+	{
+		Identity->ClearOnLoginCompleteDelegate_Handle(LocalUserNum, LoginCompleteHandle);
+		LoginCompleteHandle.Reset();
+	}
+
+	bLoginInProgress = true;
+
+	FOnlineAccountCredentials Creds;
+	Creds.Type = TEXT("developer");
+	Creds.Id = DevAuthAddr;
+	Creds.Token = DevToken;
+
+	Identity->AddOnLoginCompleteDelegate_Handle(LocalUserNum, FOnLoginCompleteDelegate::CreateUObject(this, &ATestController::HandleLoginComplete));
+
+	Identity->Login(LocalUserNum, Creds);
 
 }
 

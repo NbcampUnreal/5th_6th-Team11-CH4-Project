@@ -20,11 +20,6 @@ public:
 	
 
 protected:
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UUserWidget> MainMenuHUDClass;
-
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UUserWidget> LobbyHUDClass;
 
 
 public:
@@ -33,6 +28,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_SetReady();
+
+	bool bLoginInProgress = false;
+	FDelegateHandle LoginCompleteHandle;
+
+	UFUNCTION(BlueprintCallable)
+	void LogintoEOS(int32 Credential);
 
 	UFUNCTION(BlueprintCallable)
 	void CreateLobby(const FString& Ip, int32 Port, int32 PublicConnections);
