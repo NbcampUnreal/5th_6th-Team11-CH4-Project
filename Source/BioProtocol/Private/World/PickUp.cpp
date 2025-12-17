@@ -1,5 +1,5 @@
-#include "PickUp.h"
-
+#include "BioProtocol/Public/World/PickUp.h"
+#include "BioProtocol/Public/Items/ItemBase.h"
 
 APickUp::APickUp()
 {
@@ -19,7 +19,7 @@ void APickUp::BeginPlay()
 	InitializePickup(UItemBase::StaticClass(), ItemQuantity);
 }
 
-void APickUp::InitializePickup(const TSubclassOf<UItemBase> Baseclass, const int32 ItemQuantity)
+void APickUp::InitializePickup(const TSubclassOf<UItemBase> Baseclass, const int32 InItemQuantity)
 {
 	if (ItemDataTable && !DesiredItemID.IsNone())
 	{
@@ -48,24 +48,38 @@ void APickUp::InitializePickup(const TSubclassOf<UItemBase> Baseclass, const int
         // 공용 숫자 데이터 (무게, 스택 정보 등)
         ItemReference->NumericData = ItemDataRow->NumericData;
 
-		ItemQuantity <= 0 ? ItemReference->SetQuantity(1) : ItemReference->SetQuantity(ItemQuantity);
+		const int32 FinalQuantity = (InItemQuantity <= 0) ? 1 : InItemQuantity;
+		ItemReference->SetQuantity(FinalQuantity);
 
-		PickUpMesh->SetStaticMesh(ItemDataRow->AssetData.Mesh);
+		PickUpMesh->SetStaticMesh(ItemDataRow->Mesh);
 		
 		UpdateInteractableData();
 	}
 }
 
-void APickUp::InitializeDrop(UItemBase* ItemToDrop, const int32 ItemQuantity)
+void APickUp::InitializeDrop(UItemBase* ItemToDrop, const int32 InItemQuantity)
 {
+	if (!ItemToDrop)
+	{
+		return;
+	}
+
 	ItemReference = ItemToDrop;
-	ItemQuantity <= 0 ? ItemReference->SetQuantity(1) : ItemReference->SetQuantity(ItemQuantity);
-	ItemReference->NumericData.Weight = ItemToDrop->NumericData.Weight();
-	PickUpMesh->SetStaticMesh(ItemToDrop->Asset.Mesh);
+
+	const int32 FinalQuantity = (InItemQuantity <= 0) ? 1 : InItemQuantity;
+	ItemReference->SetQuantity(FinalQuantity);
+
+	// Weight는 이미 같은 값을 가리키므로 이 줄은 사실상 생략해도 됨
+	// ItemReference->NumericData.Weight = ItemToDrop->NumericData.Weight;
+
+	if (PickUpMesh && ItemToDrop->Mesh)
+	{
+		PickUpMesh->SetStaticMesh(ItemToDrop->Mesh);
+	}
 
 	UpdateInteractableData();
-
 }
+
 
 void APickUp::UpdateInteractableData()
 {
@@ -93,19 +107,26 @@ void APickUp::EndFocus()
 	}
 }
 
-void APickUp::Interact(ADXPlayerCharacter* PlayerCharacter)
+void APickUp::Interact_Implementation(ADXPlayerCharacter* PlayerCharacter)
 {
-	if(PlayerCharacter)
+	if (PlayerCharacter)
 	{
 		TakePickup(PlayerCharacter);
 	}
 }
 
+
 void APickUp::TakePickup(const ADXPlayerCharacter* Taker)
 {
 	if(IsPendingKillPending())
 	{
-		return;
+		if (ItemReference)
+		{
+			// Try to add item to player inventory
+			// based on result of the add operation
+			// adjust or destroy the pickup
+			// if(UInventoryComponent* PlayerInventory = Taker->GetInventory())
+		}
 	}
 }
 

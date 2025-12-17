@@ -10,6 +10,21 @@
 /**
  * 
  */
+USTRUCT(BlueprintType)
+struct FItemTextData
+{
+    GENERATED_BODY();
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FText Name;             // 아이템 이름
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FText Description;      // 설명
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FText InteractionText;  // "줍기", "사용" 같은 상호작용 문구
+};
+
 UCLASS()
 class BIOPROTOCOL_API UItemBase : public UObject
 {
@@ -22,6 +37,8 @@ public:
 	UInventoryComponent* OwningInventory;
     */
 	
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
+    FItemTextData TextData;
 
 	UPROPERTY(VisibleAnywhere, Category = "Item Data", meta = (UIMin = "1", UIMax="100"))
     int Quantity;

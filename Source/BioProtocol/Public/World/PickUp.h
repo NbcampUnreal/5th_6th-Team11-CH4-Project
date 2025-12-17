@@ -51,7 +51,8 @@ protected:
 
 	virtual void BeginPlay() override;
 	
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category="Interaction")
 	void Interact(ADXPlayerCharacter* PlayerCharacter);
 
 	void UpdateInteractableData();
