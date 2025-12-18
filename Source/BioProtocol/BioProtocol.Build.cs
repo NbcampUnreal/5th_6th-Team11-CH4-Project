@@ -8,7 +8,7 @@ public class BioProtocol : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "UMG", "Slate", "SlateCore", "OnlineSubsystemEOS", "OnlineSubsystemSteam", "OnlineSubsystem" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "UMG", "Slate", "SlateCore", "OnlineSubsystemEOS", "OnlineSubsystemSteam", "OnlineSubsystem" ,"VoiceChat", "EOSVoiceChat"});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
