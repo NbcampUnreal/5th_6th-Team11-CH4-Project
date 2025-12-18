@@ -3,45 +3,47 @@
 #include "Engine/Engine.h"
 #include "Components/PostProcessComponent.h"
 #include <EnhancedInputSubsystems.h>
+#include "Components/CapsuleComponent.h"
 
 AAndroidCharacter::AAndroidCharacter()
 {
 	bReplicates = true;
 
 	//SwitchToAndroidMode();
-    PostProcessComp = CreateDefaultSubobject<UPostProcessComponent>(TEXT("PostProcessComp"));
-    PostProcessComp->SetupAttachment(RootComponent);
-    
-    PostProcessComp->bUnbound = true; 
-    PostProcessComp->Priority = 10.0f; 
+	PostProcessComp = CreateDefaultSubobject<UPostProcessComponent>(TEXT("PostProcessComp"));
+	PostProcessComp->SetupAttachment(RootComponent);
+
+	PostProcessComp->bUnbound = true;
+	PostProcessComp->Priority = 10.0f;
 
 }
 
 void AAndroidCharacter::BeginPlay()
 {
-    Super::BeginPlay();
+	Super::BeginPlay();
 
-    if (UMaterialInterface* Mat = XRayMaterial.LoadSynchronous())
-    {
-        FWeightedBlendable Blendable;
-        Blendable.Object = Mat;
-        Blendable.Weight = 1.f;
+	if (UMaterialInterface* Mat = XRayMaterial.LoadSynchronous())
+	{
+		FWeightedBlendable Blendable;
+		Blendable.Object = Mat;
+		Blendable.Weight = 1.f;
 
-        PostProcessComp->Settings.WeightedBlendables.Array.Add(Blendable);
-    }
-    PostProcessComp->bEnabled = bIsXray;
+		PostProcessComp->Settings.WeightedBlendables.Array.Add(Blendable);
+	}
+	PostProcessComp->bEnabled = bIsXray;
 
-    if (IsLocallyControlled() == true)
-    {       
-        APlayerController* PC = Cast<APlayerController>(GetController());
-        checkf(IsValid(PC) == true, TEXT("PlayerController is invalid."));
+	if (IsLocallyControlled() == true)
+	{
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		checkf(IsValid(PC) == true, TEXT("PlayerController is invalid."));
 
-        UEnhancedInputLocalPlayerSubsystem* EILPS = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
-        checkf(IsValid(EILPS) == true, TEXT("EnhancedInputLocalPlayerSubsystem is invalid."));
+		UEnhancedInputLocalPlayerSubsystem* EILPS = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
+		checkf(IsValid(EILPS) == true, TEXT("EnhancedInputLocalPlayerSubsystem is invalid."));
 
-        EILPS->AddMappingContext(SkillMappingContext, 1);
-    }
+		EILPS->AddMappingContext(SkillMappingContext, 1);
+	}
 }
+
 void AAndroidCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -50,7 +52,8 @@ void AAndroidCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 	EIC->BindAction(ChangeAction, ETriggerEvent::Started, this, &ThisClass::SwitchAndroidMode);
 
-    EIC->BindAction(XrayAction, ETriggerEvent::Started, this, &ThisClass::Xray);
+	EIC->BindAction(XrayAction, ETriggerEvent::Started, this, &ThisClass::Xray);
+	EIC->BindAction(DashAction, ETriggerEvent::Started, this, &ThisClass::OnDash);
 }
 
 void AAndroidCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -60,50 +63,86 @@ void AAndroidCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(AAndroidCharacter, bIsAndroid);
 }
 
+void AAndroidCharacter::OnDash()
+{
+	if (HasAuthority())
+		Server_Dash();
+	else	
+		Server_Dash();	
+}
+
+void AAndroidCharacter::Server_Dash_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("(dash)"));
+	FVector Start = GetActorLocation();
+	FVector Forward = GetActorForwardVector();
+	FVector End = Start + Forward * BlinkDistance;
+
+	FCollisionShape Capsule = FCollisionShape::MakeCapsule(
+		GetCapsuleComponent()->GetScaledCapsuleRadius(),
+		GetCapsuleComponent()->GetScaledCapsuleHalfHeight()
+	);
+
+	FHitResult Hit;
+	bool bBlocked = GetWorld()->SweepSingleByChannel(
+		Hit,
+		Start,
+		End,
+		FQuat::Identity,
+		ECC_Pawn,
+		Capsule,
+		FCollisionQueryParams(TEXT("BlinkSweep"), false, this)
+	);
+
+	FVector FinalLocation = bBlocked ? Hit.Location : End;
+
+	TeleportTo(FinalLocation, GetActorRotation(), false, true);
+}
+
 void AAndroidCharacter::Xray()
 {
-    if (!PostProcessComp) return;
-       
-    PostProcessComp->bEnabled = !PostProcessComp->bEnabled;   
+	if (!PostProcessComp) return;
 
-    bIsXray = PostProcessComp->bEnabled;
+	PostProcessComp->bEnabled = !PostProcessComp->bEnabled;
+
+	bIsXray = PostProcessComp->bEnabled;
 }
 
 void AAndroidCharacter::OnRep_IsAndroid()
 {
-    if (bIsAndroid)
-    {
-        GetMesh()->SetSkeletalMesh(AndroidMesh);
-        GetMesh()->SetAnimInstanceClass(AndroidAnim);
-        MeleeAttackMontage = AndroidMeleeAttackMontage;
-    }
-    else
-    {
-        GetMesh()->SetSkeletalMesh(StaffMesh);
-        GetMesh()->SetAnimInstanceClass(StaffAnim);
-        MeleeAttackMontage = OriginMeleeAttackMontage;
-    }
+	if (bIsAndroid)
+	{
+		GetMesh()->SetSkeletalMesh(AndroidMesh);
+		GetMesh()->SetAnimInstanceClass(AndroidAnim);
+		MeleeAttackMontage = AndroidMeleeAttackMontage;
+	}
+	else
+	{
+		GetMesh()->SetSkeletalMesh(StaffMesh);
+		GetMesh()->SetAnimInstanceClass(StaffAnim);
+		MeleeAttackMontage = OriginMeleeAttackMontage;
+	}
 
-    // --- 1인칭: 자기 자신만 ---
-    if (IsLocallyControlled())
-    {
-        if (bIsAndroid)
-        {
-            FirstPersonMesh->SetSkeletalMesh(AndroidArmMesh);
-            FirstPersonMesh->SetAnimInstanceClass(AndroidAnim);
+	// --- 1인칭: 자기 자신만 ---
+	if (IsLocallyControlled())
+	{
+		if (bIsAndroid)
+		{
+			FirstPersonMesh->SetSkeletalMesh(AndroidArmMesh);
+			FirstPersonMesh->SetAnimInstanceClass(AndroidAnim);
 
-          //  FirstPersonMesh->SetRelativeLocation(FVector(0.f, 1.f, 0.f));
+			//  FirstPersonMesh->SetRelativeLocation(FVector(0.f, 1.f, 0.f));
 
-        }
-        else
-        {
-            FirstPersonMesh->SetSkeletalMesh(StaffArmMesh);
-            FirstPersonMesh->SetAnimInstanceClass(StaffAnim);
+		}
+		else
+		{
+			FirstPersonMesh->SetSkeletalMesh(StaffArmMesh);
+			FirstPersonMesh->SetAnimInstanceClass(StaffAnim);
 
-            //FirstPersonMesh->SetRelativeLocation(FVector(0.f, -1.f, 0.f));
+			//FirstPersonMesh->SetRelativeLocation(FVector(0.f, -1.f, 0.f));
 
-        }
-    }
+		}
+	}
 }
 
 void AAndroidCharacter::ServerSwitchToStaff_Implementation()
@@ -117,49 +156,49 @@ void AAndroidCharacter::ServerSwitchAndroid_Implementation()
 
 void AAndroidCharacter::SwitchAndroidMode()
 {
-    bool bMode = !bIsAndroid;
+	bool bMode = !bIsAndroid;
 
-    // --- 서버가 아닌 경우 RPC 호출 ---
-    if (!HasAuthority())
-    {
-        ServerSwitchAndroid();
-    }
+	// --- 서버가 아닌 경우 RPC 호출 ---
+	if (!HasAuthority())
+	{
+		ServerSwitchAndroid();
+	}
 
-    // ---------- 1인칭 ----------
-    if (IsLocallyControlled())
-    {
-        if (bMode)
-        {
-            FirstPersonMesh->SetSkeletalMesh(AndroidArmMesh);
-            FirstPersonMesh->SetAnimInstanceClass(AndroidAnim);
-        }
-        else
-        {
-            FirstPersonMesh->SetSkeletalMesh(StaffArmMesh);
-            FirstPersonMesh->SetAnimInstanceClass(StaffAnim);
-        }
-    }
+	// ---------- 1인칭 ----------
+	if (IsLocallyControlled())
+	{
+		if (bMode)
+		{
+			FirstPersonMesh->SetSkeletalMesh(AndroidArmMesh);
+			FirstPersonMesh->SetAnimInstanceClass(AndroidAnim);
+		}
+		else
+		{
+			FirstPersonMesh->SetSkeletalMesh(StaffArmMesh);
+			FirstPersonMesh->SetAnimInstanceClass(StaffAnim);
+		}
+	}
 
-    // ---------- 3인칭 ----------
-    if (bMode)
-    {
-        GetMesh()->SetSkeletalMesh(AndroidMesh);
-        GetMesh()->SetAnimInstanceClass(AndroidAnim);
-        MeleeAttackMontage = AndroidMeleeAttackMontage;
-    }
-    else
-    {
-        GetMesh()->SetSkeletalMesh(StaffMesh);
-        GetMesh()->SetAnimInstanceClass(StaffAnim);
-        MeleeAttackMontage = OriginMeleeAttackMontage;
-    }
+	// ---------- 3인칭 ----------
+	if (bMode)
+	{
+		GetMesh()->SetSkeletalMesh(AndroidMesh);
+		GetMesh()->SetAnimInstanceClass(AndroidAnim);
+		MeleeAttackMontage = AndroidMeleeAttackMontage;
+	}
+	else
+	{
+		GetMesh()->SetSkeletalMesh(StaffMesh);
+		GetMesh()->SetAnimInstanceClass(StaffAnim);
+		MeleeAttackMontage = OriginMeleeAttackMontage;
+	}
 
-    // ---------- 서버만 Replicate ----------
-    if (HasAuthority())
-    {
-        bIsAndroid = bMode;
-        // OnRep 자동 실행됨(서버→클라)
-    }
+	// ---------- 서버만 Replicate ----------
+	if (HasAuthority())
+	{
+		bIsAndroid = bMode;
+		// OnRep 자동 실행됨(서버→클라)
+	}
 }
 
 void AAndroidCharacter::SwitchToStaff()

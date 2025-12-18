@@ -44,6 +44,11 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void ServerSwitchToStaff();
 
+	void OnDash();
+
+	UFUNCTION(Server, Reliable)
+	void Server_Dash();
+
 	void Xray();
 	UPROPERTY(EditDefaultsOnly, Category = "XRay")
 	TSoftObjectPtr<UMaterialInterface> XRayMaterial;
@@ -55,6 +60,9 @@ protected:
 	TObjectPtr<UInputAction> XrayAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
+	TObjectPtr<UInputAction> DashAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
 	TObjectPtr<UInputAction> ChangeAction;
 	UPROPERTY(ReplicatedUsing = OnRep_IsAndroid)
 	uint8 bIsAndroid : 1;
@@ -64,7 +72,8 @@ protected:
 	TObjectPtr<UAnimMontage> AndroidMeleeAttackMontage;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TObjectPtr<UAnimMontage> OriginMeleeAttackMontage;
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blink")
+	float BlinkDistance = 800.f;
 private:
 	int8 bIsXray = false;
 };
