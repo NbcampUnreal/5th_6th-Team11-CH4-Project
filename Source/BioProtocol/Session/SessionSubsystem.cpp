@@ -236,7 +236,7 @@ void USessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool bWas
         return;
     }
 
-    if (bWasSuccessful && SessionInterface.IsValid())
+    if (SessionInterface.IsValid())
     {
         SessionInterface->StartSession(SessionName);
     }
@@ -448,19 +448,17 @@ void USessionSubsystem::TravelToDedicatedFromLobby(const FName& LobbySessionName
         return;
     }
 
-
-
     FString Addr;
 
-    if (const FOnlineSessionSetting* S = Named->SessionSettings.Settings.Find(FName("SERVER_ADDR")))
-    {
-        Addr = S->Data.ToString();
-    }
-
-    if (Addr.IsEmpty())
+    if (!Named->SessionSettings.Get(FName("SERVER_ADDR"), Addr) || Addr.IsEmpty())
     {
         UE_LOG(LogTemp, Error, TEXT("[TravelToDedicatedFromLobby] SERVER_ADDR missing. Can't travel."));
         return;
+    }
+
+    if (!Addr.Contains(TEXT(":")))
+    {
+        Addr = FString::Printf(TEXT("%s:%d"), *Addr, 7777);
     }
 
     UE_LOG(LogTemp, Warning, TEXT("[TravelToDedicatedFromLobby] Travel to '%s'"), *Addr);
@@ -571,19 +569,6 @@ void USessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoinSess
     }
 
     // 접속할 URL 얻기
-    const FName LobbySessionName(TEXT("LobbySession"));
-    FNamedOnlineSession* Named = SessionInterface->GetNamedSession(LobbySessionName);
-    FString Addr;
-    if (!Named || !Named->SessionSettings.Get(FName("SERVER_ADDR"), Addr) || Addr.IsEmpty())
-    {
-        UE_LOG(LogTemp, Error, TEXT("[Join] SERVER_ADDR missing -> cannot travel"));
-        return;
-    }
-
-    APlayerController* PC = GetWorld()->GetFirstPlayerController();
-    if (PC)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[Join] Travel to %s"), *Addr);
-        PC->ClientTravel(Addr, ETravelType::TRAVEL_Absolute);
-    }
+    const FName LobbySessionName = TEXT("LobbySession");
+    TravelToDedicatedFromLobby(LobbySessionName);
 }
