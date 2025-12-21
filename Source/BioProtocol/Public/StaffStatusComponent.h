@@ -54,6 +54,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")
 	float StaminaIncrease = 10.f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")
+	float JumpStamina = 20.f;
+
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentHP, BlueprintReadOnly) 
 		float CurrentHP;
 
@@ -86,6 +89,9 @@ public:
 
 	void ConsumeStaminaTick();
 	void RegenStaminaTick();
+
+	bool CanJumpByStamina() const;
+	void ConsumeJumpStamina();
 
 	FTimerHandle TimerHandle_ConsumeStamina;
 	FTimerHandle TimerHandle_RegenStamina;

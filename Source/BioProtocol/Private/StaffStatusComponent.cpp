@@ -160,6 +160,43 @@ void UStaffStatusComponent::RegenStaminaTick()
 	}
 }
 
+bool UStaffStatusComponent::CanJumpByStamina() const
+{
+	return CurrentStamina >= JumpStamina;
+}
+
+void UStaffStatusComponent::ConsumeJumpStamina()
+{
+	if (!GetOwner()->HasAuthority())
+		return;
+
+	CurrentStamina -= JumpStamina;
+	CurrentStamina = FMath::Max(CurrentStamina, 0.f);
+
+	if (CurrentStamina <= 0.f)
+	{
+		bIsRunable = false;
+
+		StopConsumeStamina();
+	}
+
+	if (CurrentStamina <= 0.f)
+	{
+		CurrentStamina = 0.f;
+		bIsRunable = false;
+
+		StopConsumeStamina();
+
+		GetWorld()->GetTimerManager().SetTimer(
+			TimerHandle_SetRunable,
+			this,
+			&UStaffStatusComponent::SetRunable,
+			3.f,
+			false
+		);
+	}
+}
+
 void UStaffStatusComponent::OnRep_LifeState()
 {
 	if (LifeState == ECharacterLifeState::Dead)

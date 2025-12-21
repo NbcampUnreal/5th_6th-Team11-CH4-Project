@@ -101,8 +101,8 @@ void AStaffCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
 	EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::HandleLookInput);
 
-	EIC->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
-	EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+	EIC->BindAction(JumpAction, ETriggerEvent::Started, this, &ThisClass::OnJump);
+	EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ThisClass::OnStopJump);
 
 	EIC->BindAction(RunAction, ETriggerEvent::Triggered, this, &AStaffCharacter::HandleStartRun);
 	EIC->BindAction(RunAction, ETriggerEvent::Completed, this, &AStaffCharacter::HandleStopRun);
@@ -257,11 +257,6 @@ bool AStaffCharacter::ServerRPCMeleeAttack_Validate()
 	return true;
 }
 
-void AStaffCharacter::SetSpeed_Implementation(float speed)
-{
-	GetCharacterMovement()->MaxWalkSpeed = speed;
-}
-
 void AStaffCharacter::ServerStartRun_Implementation()
 {
 	if (Status->CurrentStamina <= 0.f || !Status->bIsRunable)
@@ -298,6 +293,38 @@ void AStaffCharacter::ServerUnCrouch_Implementation()
 void AStaffCharacter::MulticastRPCMeleeAttack_Implementation()
 {
 	PlayMeleeAttackMontage();
+}
+
+void AStaffCharacter::OnJump()
+{
+	if (Status->CurrentStamina <= 0.f)
+		return;
+
+	ACharacter::Jump();   
+	ServerOnJump();
+}
+
+void AStaffCharacter::OnStopJump()
+{
+	ACharacter::StopJumping();
+	ServerStopJump();
+}
+
+void AStaffCharacter::ServerStopJump_Implementation()
+{
+	ACharacter::StopJumping();
+	Status->StartRegenStamina();
+}
+
+void AStaffCharacter::ServerOnJump_Implementation()
+{
+	if (Status->CurrentStamina <= 0.f)
+	{
+		ACharacter::StopJumping();
+		return;
+	}
+
+	Status->ConsumeJumpStamina(); 
 }
 
 void AStaffCharacter::PlayMeleeAttackMontage()

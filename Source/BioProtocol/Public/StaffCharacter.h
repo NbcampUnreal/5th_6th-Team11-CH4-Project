@@ -99,8 +99,14 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerUnCrouch();
 
+	void OnJump();
+	void OnStopJump();
+
 	UFUNCTION(Server, Reliable)
-	void SetSpeed(float speed);
+	void ServerOnJump();
+
+	UFUNCTION(Server, Reliable)
+	void ServerStopJump();
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerRPCMeleeAttack();
