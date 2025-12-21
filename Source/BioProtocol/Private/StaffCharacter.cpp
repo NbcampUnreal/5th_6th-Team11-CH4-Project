@@ -70,6 +70,11 @@ void AStaffCharacter::BeginPlay()
 		EILPS->AddMappingContext(InputMappingContext, 0);
 	}
 
+	if (HasAuthority() && Status)
+	{
+		Status->ApplyBaseStatus();
+	}
+
 	if (USkeletalMeshComponent* MeshComp = GetMesh())
 	{
 		MeshComp->SetRenderCustomDepth(true);
@@ -102,8 +107,8 @@ void AStaffCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	EIC->BindAction(RunAction, ETriggerEvent::Triggered, this, &AStaffCharacter::HandleStartRun);
 	EIC->BindAction(RunAction, ETriggerEvent::Completed, this, &AStaffCharacter::HandleStopRun);
 
-	EIC->BindAction(CrouchAction, ETriggerEvent::Started, this, &AStaffCharacter::HandleCrouch);
-	EIC->BindAction(CrouchAction, ETriggerEvent::Completed, this, &AStaffCharacter::HandleStand);
+	/*EIC->BindAction(CrouchAction, ETriggerEvent::Started, this, &AStaffCharacter::HandleCrouch);
+	EIC->BindAction(CrouchAction, ETriggerEvent::Completed, this, &AStaffCharacter::HandleStand);*/
 
 	EIC->BindAction(AttackAction, ETriggerEvent::Started, this, &ThisClass::AttackInput);
 
@@ -130,8 +135,6 @@ void AStaffCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 
 void AStaffCharacter::SetMaterialByIndex(int32 NewIndex)
 {
-	
-
 	if (HasAuthority())
 	{
 		MaterialIndex = NewIndex;
@@ -179,11 +182,7 @@ void AStaffCharacter::HandleLookInput(const FInputActionValue& InValue)
 
 void AStaffCharacter::HandleStartRun(const FInputActionValue& InValue)
 {
-	if (!HasAuthority())
-	{
-		ServerStartRun();
-		return;
-	}
+	ServerStartRun();
 }
 void AStaffCharacter::HandleStopRun(const FInputActionValue& InValue)
 {
@@ -265,14 +264,25 @@ void AStaffCharacter::SetSpeed_Implementation(float speed)
 
 void AStaffCharacter::ServerStartRun_Implementation()
 {
-	GetCharacterMovement()->MaxWalkSpeed = Status->MoveSpeed * 1.6f;
+	if (Status->CurrentStamina <= 0.f || !Status->bIsRunable)
+	{
+		ServerStopRun();
+		return;
+	}
 
+	GetCharacterMovement()->MaxWalkSpeed =
+		Status->MoveSpeed * Status->RunMultiply;
+
+	Status->StartConsumeStamina();
 }
 
 void AStaffCharacter::ServerStopRun_Implementation()
 {
 	GetCharacterMovement()->MaxWalkSpeed = Status->MoveSpeed;
-
+	if (Status)
+	{
+		Status->StartRegenStamina();
+	}
 }
 
 void AStaffCharacter::ServerCrouch_Implementation()

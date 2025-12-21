@@ -24,6 +24,8 @@ void UStaffStatusComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(UStaffStatusComponent, CurrentMoveSpeed);
 	DOREPLIFETIME(UStaffStatusComponent, CurrentAttack);
 	DOREPLIFETIME(UStaffStatusComponent, LifeState);
+	DOREPLIFETIME(UStaffStatusComponent, CurrentStamina);
+	DOREPLIFETIME(UStaffStatusComponent, bIsRunable);
 }
 
 
@@ -33,10 +35,10 @@ void UStaffStatusComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (GetOwner()->HasAuthority())
-	{
-		ApplyBaseStatus();
-	}
+	//if (GetOwner()->HasAuthority())
+	//{
+	//	ApplyBaseStatus();
+	//}
 
 }
 
@@ -52,6 +54,7 @@ void UStaffStatusComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 void UStaffStatusComponent::ApplyBaseStatus()
 {
 	CurrentHP = MaxHP;
+	CurrentStamina = MaxStamina;
 	CurrentMoveSpeed = MoveSpeed;
 	CurrentAttack = Attack;
 	if (ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner()))
@@ -59,10 +62,108 @@ void UStaffStatusComponent::ApplyBaseStatus()
 		OwnerCharacter->GetCharacterMovement()->MaxWalkSpeed = MoveSpeed;
 	}
 }
+
+
+void UStaffStatusComponent::StartConsumeStamina()
+{
+	if (!GetOwner()->HasAuthority())
+		return;
+
+	if (GetWorld()->GetTimerManager().IsTimerActive(TimerHandle_ConsumeStamina))
+		return;
+
+	StopRegenStamina(); 
+
+	GetWorld()->GetTimerManager().SetTimer(
+		TimerHandle_ConsumeStamina,
+		this,
+		&UStaffStatusComponent::ConsumeStaminaTick,
+		0.1f,   // 10Hz
+		true
+	);
+}
+
+void UStaffStatusComponent::StopConsumeStamina()
+{
+	if (!GetOwner()->HasAuthority())
+		return;
+
+	GetWorld()->GetTimerManager().ClearTimer(TimerHandle_ConsumeStamina);
+}
+
+void UStaffStatusComponent::StartRegenStamina()
+{
+	if (!GetOwner()->HasAuthority())
+		return;
+
+	StopConsumeStamina();
+
+	if (GetWorld()->GetTimerManager().IsTimerActive(TimerHandle_RegenStamina))
+		return;
+
+	GetWorld()->GetTimerManager().SetTimer(
+		TimerHandle_RegenStamina,
+		this,
+		&UStaffStatusComponent::RegenStaminaTick,
+		0.1f,
+		true
+	);
+}
+
+void UStaffStatusComponent::StopRegenStamina()
+{
+	GetWorld()->GetTimerManager().ClearTimer(TimerHandle_RegenStamina);
+}
+
+void UStaffStatusComponent::ConsumeStaminaTick()
+{
+	float TickInterval = 0.1f;
+
+	CurrentStamina -= StaminaReduce * TickInterval;
+	CurrentStamina = FMath::Max(CurrentStamina, 0.f);
+	//UE_LOG(LogTemp, Error, TEXT("%f"), CurrentStamina);
+
+	if (CurrentStamina <= 0.f)
+	{
+		bIsRunable = false;
+		StopConsumeStamina();
+	}
+
+	if (CurrentStamina <= 0.f)
+	{
+		CurrentStamina = 0.f;
+		bIsRunable = false;
+
+		StopConsumeStamina();
+
+		GetWorld()->GetTimerManager().SetTimer(
+			TimerHandle_SetRunable,
+			this,
+			&UStaffStatusComponent::SetRunable,
+			3.f,
+			false
+		);
+	}
+}
+
+void UStaffStatusComponent::RegenStaminaTick()
+{
+	constexpr float TickInterval = 0.1f;
+
+	CurrentStamina += StaminaIncrease * TickInterval;
+	CurrentStamina = FMath::Min(CurrentStamina, MaxStamina);
+	//UE_LOG(LogTemp, Error, TEXT("%f"), CurrentStamina);
+
+	if (CurrentStamina >= MaxStamina)
+	{
+		StopRegenStamina();
+	}
+}
+
 void UStaffStatusComponent::OnRep_LifeState()
 {
 	if (LifeState == ECharacterLifeState::Dead)
-	{		
+	{
 		if (AStaffCharacter* OwnerChar = Cast<AStaffCharacter>(GetOwner()))
 		{
 			OwnerChar->OnDeath();
@@ -74,7 +175,13 @@ void UStaffStatusComponent::OnRep_LifeState()
 void UStaffStatusComponent::OnRep_CurrentHP()
 {
 	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow,
-	FString::Printf(TEXT("%s HP: %f (RepNotified)"),*GetOwner()->GetName(), CurrentHP));
+		FString::Printf(TEXT("%s HP: %f (RepNotified)"), *GetOwner()->GetName(), CurrentHP));
+}
+
+void UStaffStatusComponent::OnRep_CurrentStamina()
+{
+	//UE_LOG(LogTemp, Warning, TEXT("CLIENT Stamina Updated: %f"), CurrentStamina);
+
 }
 
 void UStaffStatusComponent::ApplyDamage(float Damage)
@@ -98,10 +205,10 @@ void UStaffStatusComponent::ApplyDamage(float Damage)
 
 			if (APlayerController* PC = Cast<APlayerController>(OwnerCharacter->GetController()))
 			{
-			/*	if (AMyPlayerController* MyPC = Cast<AMyPlayerController>(PC))
-				{
-					MyPC->ClientStartSpectate();
-				}*/
+				/*	if (AMyPlayerController* MyPC = Cast<AMyPlayerController>(PC))
+					{
+						MyPC->ClientStartSpectate();
+					}*/
 				AMyGameModeBase* GM = Cast<AMyGameModeBase>(GetWorld()->GetAuthGameMode());
 				if (GM)
 				{
@@ -110,7 +217,7 @@ void UStaffStatusComponent::ApplyDamage(float Damage)
 			}
 		}
 
-		
+
 	}
 }
 

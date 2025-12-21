@@ -35,6 +35,9 @@ public:
 	float MaxHP = 100.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")
+	float MaxStamina = 100.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")
 	float Attack = 20.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")
@@ -43,11 +46,25 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")
 	float MoveSpeed = 600.f;
 
-	UPROPERTY(ReplicatedUsing = OnRep_CurrentHP, BlueprintReadOnly) // <--- ReplicatedUsing Ãß°¡
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")
+	float RunMultiply = 1.6f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")
+	float StaminaReduce = 5.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")
+	float StaminaIncrease = 10.f;
+
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentHP, BlueprintReadOnly) 
 		float CurrentHP;
+
+		UPROPERTY(Replicated, BlueprintReadOnly)
+		float CurrentStamina;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	float CurrentMoveSpeed;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	uint8 bIsRunable=true;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	float CurrentAttack;
@@ -61,8 +78,28 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_LifeState, BlueprintReadOnly, Category = "Status")
 	ECharacterLifeState LifeState = ECharacterLifeState::Alive;
 
+	void StartConsumeStamina();
+	void StopConsumeStamina();
+
+	void StartRegenStamina();
+	void StopRegenStamina();
+
+	void ConsumeStaminaTick();
+	void RegenStaminaTick();
+
+	FTimerHandle TimerHandle_ConsumeStamina;
+	FTimerHandle TimerHandle_RegenStamina;
 	UFUNCTION()
 	void OnRep_LifeState();
 	UFUNCTION()
 	void OnRep_CurrentHP();
+
+	void SetRunable() {	bIsRunable = true;};
+
+	UFUNCTION()
+	void OnRep_CurrentStamina();
+
+private:
+	FTimerHandle TimerHandle_SetRunable;
+
 };
