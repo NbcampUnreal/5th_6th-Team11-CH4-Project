@@ -46,6 +46,14 @@ protected:
 
 	void OnDash();
 
+	void OnChangeMode(float scale);
+
+	UFUNCTION(Server, Reliable)
+	void Server_OnChangeMode();
+
+	UFUNCTION()
+	void OnRep_CharacterScale();
+
 	UFUNCTION(Server, Reliable)
 	void Server_Dash();
 
@@ -63,6 +71,9 @@ protected:
 	TObjectPtr<UInputAction> DashAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
+	TObjectPtr<UInputAction> ScaleChangeAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
 	TObjectPtr<UInputAction> ChangeAction;
 	UPROPERTY(ReplicatedUsing = OnRep_IsAndroid)
 	uint8 bIsAndroid : 1;
@@ -76,4 +87,16 @@ protected:
 	float BlinkDistance = 800.f;
 private:
 	int8 bIsXray = false;
+	UPROPERTY(ReplicatedUsing = OnRep_CharacterScale)
+	float CharacterScale = 1.f;
+private:
+	float BaseCapsuleRadius;
+	float BaseCapsuleHalfHeight;
+	FVector BaseMeshScale;
+	FVector BaseCameraOffset;
+	FVector BaseMeshOffset;
+	float NormalScale = 1.0f;
+	float HunterScale = 1.5f;
+	UPROPERTY();
+	int8 bIsHunter = false;
 };

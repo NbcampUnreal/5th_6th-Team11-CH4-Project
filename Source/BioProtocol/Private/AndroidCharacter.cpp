@@ -4,6 +4,8 @@
 #include "Components/PostProcessComponent.h"
 #include <EnhancedInputSubsystems.h>
 #include "Components/CapsuleComponent.h"
+#include "Camera/CameraComponent.h"
+#include "GameFramework/CharacterMovementComponent.h" 
 
 AAndroidCharacter::AAndroidCharacter()
 {
@@ -42,6 +44,12 @@ void AAndroidCharacter::BeginPlay()
 
 		EILPS->AddMappingContext(SkillMappingContext, 1);
 	}
+	UCapsuleComponent* Capsule = GetCapsuleComponent();
+	BaseCapsuleRadius = Capsule->GetUnscaledCapsuleRadius();
+	BaseCapsuleHalfHeight = Capsule->GetUnscaledCapsuleHalfHeight();
+	BaseMeshOffset = GetMesh()->GetRelativeLocation();
+	BaseMeshScale = GetMesh()->GetRelativeScale3D();
+	BaseCameraOffset = FirstPersonCamera->GetRelativeLocation();
 }
 
 void AAndroidCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -54,6 +62,8 @@ void AAndroidCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 	EIC->BindAction(XrayAction, ETriggerEvent::Started, this, &ThisClass::Xray);
 	EIC->BindAction(DashAction, ETriggerEvent::Started, this, &ThisClass::OnDash);
+	EIC->BindAction(ScaleChangeAction, ETriggerEvent::Started, this, &ThisClass::Server_OnChangeMode);
+
 }
 
 void AAndroidCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -61,14 +71,63 @@ void AAndroidCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AAndroidCharacter, bIsAndroid);
+	DOREPLIFETIME(AAndroidCharacter, CharacterScale);
+
 }
 
 void AAndroidCharacter::OnDash()
 {
 	if (HasAuthority())
 		Server_Dash();
-	else	
-		Server_Dash();	
+	else
+		Server_Dash();
+}
+
+void AAndroidCharacter::OnChangeMode(float scale)
+{
+	UCapsuleComponent* Capsule = GetCapsuleComponent();
+	UCharacterMovementComponent* Move = GetCharacterMovement();
+
+	const float NewRadius = BaseCapsuleRadius * scale;
+	const float NewHalfHeight = BaseCapsuleHalfHeight * scale;
+
+	Capsule->SetCapsuleSize(NewRadius, NewHalfHeight, true);
+
+	GetMesh()->SetRelativeScale3D(BaseMeshScale * scale);
+
+	const float DeltaHalfHeight = NewHalfHeight - BaseCapsuleHalfHeight;
+
+	FVector NewMeshLocation = BaseMeshOffset;
+	NewMeshLocation.Z -= DeltaHalfHeight;
+
+	GetMesh()->SetRelativeLocation(NewMeshLocation);
+
+	if (IsLocallyControlled())
+	{
+		FirstPersonCamera->SetRelativeLocation(BaseCameraOffset * scale);
+	}
+
+	/*Move->MaxStepHeight = BaseMaxStepHeight * scale;
+	Move->BrakingDecelerationWalking = BaseBrakingDecel * scale;*/
+}
+
+void AAndroidCharacter::OnRep_CharacterScale()
+{
+	OnChangeMode(CharacterScale);
+}
+
+void AAndroidCharacter::Server_OnChangeMode_Implementation()
+{
+	if (HasAuthority())
+	{
+		if (!bIsHunter)
+			CharacterScale = HunterScale;
+		else
+			CharacterScale = NormalScale;
+
+		OnRep_CharacterScale();
+		bIsHunter = !bIsHunter;
+	}
 }
 
 void AAndroidCharacter::Server_Dash_Implementation()
