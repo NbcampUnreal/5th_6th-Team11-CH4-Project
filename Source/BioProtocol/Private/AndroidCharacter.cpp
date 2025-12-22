@@ -133,7 +133,7 @@ void AAndroidCharacter::Server_OnChangeMode_Implementation()
 
 void AAndroidCharacter::Server_Dash_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("(dash)"));
+	//UE_LOG(LogTemp, Warning, TEXT("(dash)"));
 	FVector Start = GetActorLocation();
 	FVector Forward = GetActorForwardVector();
 	FVector End = Start + Forward * BlinkDistance;
@@ -275,8 +275,4 @@ void AAndroidCharacter::SwitchAndroidMode()
 		bIsAndroid = bMode;
 		// OnRep 자동 실행됨(서버→클라)
 	}
-}
-
-void AAndroidCharacter::SwitchToStaff()
-{
 }

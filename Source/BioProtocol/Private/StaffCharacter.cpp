@@ -186,14 +186,18 @@ void AStaffCharacter::HandleLookInput(const FInputActionValue& InValue)
 	{
 		const float CurrentYaw = Controller->GetControlRotation().Yaw;
 		const float NextYaw = CurrentYaw + InLookVector.X;
+		const float DeltaFromBase = FMath::FindDeltaAngleDegrees(LeverBaseYaw, NextYaw);
 
-		const float DeltaFromBase =
-			FMath::FindDeltaAngleDegrees(LeverBaseYaw, NextYaw);
+		const float MaxAngle = 80.f;
+		float Scale = 1.f;
 
-		if (FMath::Abs(DeltaFromBase) <= 90.f)
+		if (FMath::Abs(DeltaFromBase) > MaxAngle * 0.4f)
 		{
-			AddControllerYawInput(InLookVector.X);
+			float t = (FMath::Abs(DeltaFromBase) - MaxAngle * 0.4f) / (MaxAngle * 0.4f);
+			Scale = FMath::InterpEaseInOut(1.f, 0.f, t, 2.f);
 		}
+
+		AddControllerYawInput(InLookVector.X * Scale);
 	}
 	else
 	{
@@ -272,10 +276,7 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 	}
 }
 
-void AStaffCharacter::ServerPullLever_Implementation()
-{
-	ServerPullLever_Internal();
-}
+
 
 void AStaffCharacter::PullLever()
 {
@@ -286,8 +287,12 @@ void AStaffCharacter::PullLever()
 	{
 		bHoldingLever = true;
 		LeverBaseYaw = GetControlRotation().Yaw;
-		ServerPullLever(); 
+		ServerPullLever(); //ServerPullLever_Implementation
 	}
+}
+void AStaffCharacter::ServerPullLever_Implementation()
+{
+	ServerPullLever_Internal();
 }
 
 void AStaffCharacter::ServerPullLever_Internal()
@@ -296,19 +301,50 @@ void AStaffCharacter::ServerPullLever_Internal()
 	if (!C)
 		return;
 	//ktodo:레버관련(게이지 차는거같은거) 추가필요
+	//UE_LOG(LogTemp, Warning, TEXT("test"));
+	if (!GetWorld()->GetTimerManager().IsTimerActive(GaugeTimerHandle))
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			GaugeTimerHandle,
+			this,
+			&AStaffCharacter::TestUpdateLeverGauge,
+			0.1f,   
+			true    
+		);
+	}
 
-	if (!bHoldingLever) {
-		bHoldingLever = true;
-		LeverBaseYaw = C->GetControlRotation().Yaw;
+}
+
+
+void AStaffCharacter::TestUpdateLeverGauge()
+{
+	TestGuage = FMath::Clamp(TestGuage + 1.f, 0.f, 100.f);
+
+	if (TestGuage >= 100.f)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(GaugeTimerHandle);
 	}
 }
 
 void AStaffCharacter::ReleaseLever()
-{	
+{
 	if (!IsLocallyControlled())
 		return;
 
 	bHoldingLever = false;
+
+
+	//뗄떼 원래 각도로 돌리기
+	FRotator CurrentRot = Controller->GetControlRotation();
+	CurrentRot.Yaw = LeverBaseYaw;
+	Controller->SetControlRotation(CurrentRot);
+
+	ServerReleaseLever();
+}
+
+void AStaffCharacter::ServerReleaseLever_Implementation()
+{
+	GetWorld()->GetTimerManager().ClearTimer(GaugeTimerHandle);
 }
 
 void AStaffCharacter::ServerRPCMeleeAttack_Implementation()
@@ -431,11 +467,6 @@ float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 
 void AStaffCharacter::TestHit()
 {
-	if (mat[0])
-	{
-		GetMesh()->SetMaterial(0, mat[0]); //todo:1인칭팔 메테리얼로 수정필요
-	}
-
 	// 서버에 요청
 	Server_TestHit();
 }

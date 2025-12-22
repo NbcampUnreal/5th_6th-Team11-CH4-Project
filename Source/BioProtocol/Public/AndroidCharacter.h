@@ -17,8 +17,9 @@ class BIOPROTOCOL_API AAndroidCharacter : public AStaffCharacter
 	GENERATED_BODY()
 public:
 	AAndroidCharacter();
+
+	//olivia 스킨 교체함수(폐지예정)
 	void SwitchAndroidMode();
-	void SwitchToStaff();
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	UFUNCTION()
@@ -31,6 +32,9 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	// ================================
+	// Olivia 관련용 변수 (폐지 예상)
+	// ================================	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<UAnimInstance> StaffAnim;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -43,6 +47,8 @@ protected:
 	void ServerSwitchAndroid();
 	UFUNCTION(Server, Reliable)
 	void ServerSwitchToStaff();
+	// ================================
+
 
 	void OnDash();
 
@@ -62,6 +68,7 @@ protected:
 	TSoftObjectPtr<UMaterialInterface> XRayMaterial;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
+	//skill(대시,벽투시)용 imc
 	TObjectPtr<UInputMappingContext> SkillMappingContext;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
@@ -92,6 +99,10 @@ protected:
 
 private:
 	int8 bIsXray = false;
+
+/// <summary>
+/// 퍼지모드 크기변경관련
+/// </summary>
 	UPROPERTY(ReplicatedUsing = OnRep_CharacterScale)
 	float CharacterScale = 1.f;
 private:
