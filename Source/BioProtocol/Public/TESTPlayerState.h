@@ -6,15 +6,28 @@
 #include "GameFramework/PlayerState.h"
 #include "TESTPlayerState.generated.h"
 
-/**
- * 
- */
+UENUM(BlueprintType)
+enum class EVoiceTeam : uint8
+{
+	Citizen,
+	Mafia
+};
+
 UCLASS()
 class BIOPROTOCOL_API ATESTPlayerState : public APlayerState
 {
 	GENERATED_BODY()
 	
 public:
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_VoiceTeam, Category = "Voice")
+	EVoiceTeam VoiceTeam = EVoiceTeam::Citizen;
+
+	UFUNCTION()
+	void OnRep_VoiceTeam();
+
+	// 서버에서만 세팅
+	void Server_SetVoiceTeam(EVoiceTeam NewTeam);
+
 	UPROPERTY(ReplicatedUsing = OnRep_EOSPlayerName, BlueprintReadOnly, Category = "EOS")
 	FString EOSPlayerName;
 

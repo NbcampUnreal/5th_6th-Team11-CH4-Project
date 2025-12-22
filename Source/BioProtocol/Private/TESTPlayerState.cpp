@@ -1,6 +1,15 @@
 ﻿
 #include "TESTPlayerState.h"
 #include "Net/UnrealNetwork.h"
+
+void ATESTPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(ATESTPlayerState, bisReady);
+    DOREPLIFETIME(ATESTPlayerState, EOSPlayerName);
+    DOREPLIFETIME(ATESTPlayerState, VoiceTeam);
+}
+
 void ATESTPlayerState::BeginPlay()
 {
 	Super::BeginPlay();
@@ -9,6 +18,30 @@ void ATESTPlayerState::BeginPlay()
 	{
 		TryInitEOSPlayerName();
 	}
+
+
+    FString BaseUrl;
+    const bool bFound = GConfig->GetString(
+        TEXT("EOSVoiceChat"),
+        TEXT("InsecureClientBaseUrl"),
+        BaseUrl,
+        GEngineIni
+    );
+
+    UE_LOG(LogTemp, Warning, TEXT("[EOSVoiceChat] InsecureClientBaseUrl Found=%d Value=%s"),
+        bFound ? 1 : 0, *BaseUrl);
+}
+
+void ATESTPlayerState::OnRep_VoiceTeam()
+{
+    UE_LOG(LogTemp, Log, TEXT("[VoiceTeam] OnRep VoiceTeam=%d"), (int32)VoiceTeam);
+}
+
+void ATESTPlayerState::Server_SetVoiceTeam(EVoiceTeam NewTeam)
+{
+    if (!HasAuthority()) return;
+    VoiceTeam = NewTeam;
+    ForceNetUpdate();
 }
 
 void ATESTPlayerState::Server_SetEOSPlayerName(const FString& InEOSPlayerName)
@@ -24,12 +57,7 @@ void ATESTPlayerState::OnRep_EOSPlayerName()
 
 
 
-void ATESTPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(ATESTPlayerState, bisReady);
-	DOREPLIFETIME(ATESTPlayerState, EOSPlayerName);
-}
+
 
 void ATESTPlayerState::TryInitEOSPlayerName()
 {

@@ -23,12 +23,6 @@ protected:
 
 public:
 	// EOS
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_StartGameSession();
-
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_SetReady();
-
 	UFUNCTION(BlueprintCallable)
 	void LoginToEOS(int32 Credential);
 
@@ -42,6 +36,31 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetEOSPlayerName(const FString& InEOSPlayerName);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_StartGameSession();
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_SetReady();
+
+
+	// 보이스 채널
+
+	UFUNCTION(Client, Reliable)
+	void Client_JoinPrivateVoiceChannel(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken);
+
+	UFUNCTION(BlueprintCallable, Category = "Voice")
+	void JoinPrivateVoiceChannel_Local(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken);
+
+	// PTT용(블루프린트에서 눌렀다/뗐다 연결해도 됨)
+	UFUNCTION(BlueprintCallable, Category = "Voice")
+	void VoiceTransmitToAll();
+
+	UFUNCTION(BlueprintCallable, Category = "Voice")
+	void VoiceTransmitToChannel(const FString& ChannelName);
+
+	UFUNCTION(BlueprintCallable, Category = "Voice")
+	void VoiceTransmitToNone();
 
 private:
 	// 보이스 관련
@@ -59,5 +78,9 @@ private:
 
 	IVoiceChatUser* VoiceChatUser = nullptr;
 	void CacheVoiceChatUser();
+
+
+	FString PublicChannelName;   // 로비 채널 이름 캐시
+	FString PrivateChannelName;
 
 };

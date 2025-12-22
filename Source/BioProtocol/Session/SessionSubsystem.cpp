@@ -98,7 +98,8 @@ void USessionSubsystem::CreateGameSession(int32 PublicConnections, bool bIsLAN)
 
     SessionSettings.bAllowJoinViaPresence = true;
     SessionSettings.bUsesPresence = true;
-    SessionSettings.bUseLobbiesIfAvailable = false; // EOS/Steam 등에서 Lobby 사용
+    SessionSettings.bUseLobbiesIfAvailable = true; // EOS/Steam 등에서 Lobby 사용
+    SessionSettings.bUseLobbiesVoiceChatIfAvailable = true;
 
 
     const int32 LocalUserNum = 0;

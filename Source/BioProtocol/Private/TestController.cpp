@@ -1,7 +1,12 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
+#define STR2(x) #x
+#define STR(x) STR2(x)
 
+#pragma message("WITH_VOICECHAT=" STR(WITH_VOICECHAT))
+#pragma message("UE_SERVER=" STR(UE_SERVER))
 
 #include "TestController.h"
+#include "VoiceChat.h"
 #include "../Session/SessionSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "TESTPlayerState.h"
@@ -15,8 +20,8 @@
 #include "GameFramework/PlayerState.h"
 
 #include "IOnlineSubsystemEOS.h"
-#include "VoiceChat.h"
-
+#include "EOSVoiceChat.h"
+#include "EOSVoiceChatTypes.h"
 
 
 
@@ -298,4 +303,82 @@ void ATestController::CacheVoiceChatUser()
 		UE_LOG(LogTemp, Log, TEXT("[Voice] Cached IVoiceChatUser for LocalUserId=%s"), *LocalUserId->ToString());
 	}
 
+}
+
+void ATestController::Client_JoinPrivateVoiceChannel_Implementation(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken)
+{
+	JoinPrivateVoiceChannel_Local(ChannelName, ClientBaseUrl, ParticipantToken);
+}
+
+void ATestController::JoinPrivateVoiceChannel_Local(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken)
+{
+	if (!IsLocalController())
+		return;
+
+	CacheVoiceChatUser();
+	if (!VoiceChatUser)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Voice] JoinPrivate failed: VoiceChatUser null"));
+		return;
+	}
+
+	PrivateChannelName = ChannelName;
+
+	// EOS Trusted Server credentials
+	FEOSVoiceChatChannelCredentials Creds;
+	Creds.ClientBaseUrl = ClientBaseUrl;
+	Creds.ParticipantToken = ParticipantToken;
+
+	const FString JsonCreds = Creds.ToJson();
+
+	UE_LOG(LogTemp, Log, TEXT("[Voice] Joining private channel: %s"), *ChannelName);
+	UE_LOG(LogTemp, Log, TEXT("[Voice] ClientBaseUrl: %s"), *ClientBaseUrl);
+
+	// 채널 참가 (비동기)
+	VoiceChatUser->JoinChannel(
+		ChannelName,
+		JsonCreds,
+		EVoiceChatChannelType::NonPositional,
+		FOnVoiceChatChannelJoinCompleteDelegate::CreateLambda(
+			[ChannelName](const FString& JoinedChannel, const FVoiceChatResult& Result)
+			{
+				if (Result.IsSuccess())
+				{
+					UE_LOG(LogTemp, Log, TEXT("[Voice] Successfully joined private channel: %s"),
+						*JoinedChannel);
+				}
+				else
+				{
+					UE_LOG(LogTemp, Error, TEXT("[Voice] Failed to join channel: %s, Error: %s"),
+						*JoinedChannel, *Result.ErrorDesc);
+				}
+			}
+		)
+	);
+}
+
+
+void ATestController::VoiceTransmitToAll()
+{
+	CacheVoiceChatUser();
+	if (!VoiceChatUser) return;
+
+	VoiceChatUser->TransmitToAllChannels(); // docs :contentReference[oaicite:2]{index=2}
+}
+
+void ATestController::VoiceTransmitToChannel(const FString& ChannelName)
+{
+	CacheVoiceChatUser();
+	if (!VoiceChatUser) return;
+
+	TSet<FString> Channels = { ChannelName };
+	VoiceChatUser->TransmitToSpecificChannels(Channels);
+}
+
+void ATestController::VoiceTransmitToNone()
+{
+	CacheVoiceChatUser();
+	if (!VoiceChatUser) return;
+
+	VoiceChatUser->TransmitToNoChannels(); // docs :contentReference[oaicite:4]{index=4}
 }
