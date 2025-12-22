@@ -43,7 +43,19 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_SetReady();
 
+public:
+	// 팀별 송신 제어
+	UFUNCTION(BlueprintCallable, Category = "Voice")
+	void VoiceTransmitToPublic();  // 전체 채널로만 송신
 
+	UFUNCTION(BlueprintCallable, Category = "Voice")
+	void VoiceTransmitToMafiaOnly();  // 마피아 채널로만 송신
+
+	UFUNCTION(BlueprintCallable, Category = "Voice")
+	void VoiceTransmitToBothChannels();  // 마피아용: 두 채널 모두 송신
+
+
+public:
 	// 보이스 채널
 
 	UFUNCTION(Client, Reliable)

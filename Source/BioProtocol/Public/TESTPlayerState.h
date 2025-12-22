@@ -20,7 +20,7 @@ class BIOPROTOCOL_API ATESTPlayerState : public APlayerState
 	
 public:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_VoiceTeam, Category = "Voice")
-	EVoiceTeam VoiceTeam = EVoiceTeam::Citizen;
+	EVoiceTeam VoiceTeam = EVoiceTeam::Mafia;
 
 	UFUNCTION()
 	void OnRep_VoiceTeam();

@@ -13,20 +13,57 @@ void ATestGameMode::PostLogin(APlayerController* NewPlayer)
 
     UE_LOG(LogTemp, Log, TEXT("[GameMode] Player logged in. Total players: %d"), GetNumPlayers());
 
-    // 예시: 2명 이상일 때 테스트 채널 생성
-    if (GetNumPlayers() >= 2)
+    // PlayerState의 팀 설정 (실제 게임 로직에 맞게 수정)
+    if (ATestController* TestPC = Cast<ATestController>(NewPlayer))
     {
+        if (ATESTPlayerState* PS = TestPC->GetPlayerState<ATESTPlayerState>())
+        {
+            // 예시: 홀수 번째 플레이어는 마피아
+            // 실제로는 게임 로직에 맞게 팀 배정
+            int32 PlayerNum = GetNumPlayers();
+            EVoiceTeam Team = (PlayerNum % 3 == 0) ? EVoiceTeam::Mafia : EVoiceTeam::Citizen;
+            PS->Server_SetVoiceTeam(Team);
+
+            UE_LOG(LogTemp, Warning, TEXT("[GameMode] Player %d assigned to team: %d"),
+                PlayerNum, (int32)Team);
+        }
+    }
+
+    // 게임 시작 조건 (예: 4명 이상)
+    if (GetNumPlayers() >= 4)
+    {
+        // 모든 플레이어 수집
         TArray<APlayerController*> AllPlayers;
+        TArray<APlayerController*> MafiaPlayers;
+
         for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
         {
             if (APlayerController* PC = It->Get())
             {
                 AllPlayers.Add(PC);
+
+                // 마피아 플레이어만 따로 수집
+                if (ATestController* TestPC = Cast<ATestController>(PC))
+                {
+                    if (ATESTPlayerState* PS = TestPC->GetPlayerState<ATESTPlayerState>())
+                    {
+                        if (PS->VoiceTeam == EVoiceTeam::Mafia)
+                        {
+                            MafiaPlayers.Add(PC);
+                        }
+                    }
+                }
             }
         }
 
-        // 테스트용으로 Citizen 팀 채널 생성
+        // 1. 전체 보이스 채널 생성 (모든 플레이어)
         CreatePrivateVoiceChannel(EVoiceTeam::Citizen, AllPlayers);
+
+        // 2. 마피아 전용 채널 생성 (마피아만)
+        if (MafiaPlayers.Num() > 0)
+        {
+            CreatePrivateVoiceChannel(EVoiceTeam::Mafia, MafiaPlayers);
+        }
     }
 }
 

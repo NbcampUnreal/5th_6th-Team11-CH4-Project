@@ -229,6 +229,10 @@ void ATestController::UpdateProximityVoice()
 		return;
 	}
 
+	// 내 팀 확인
+	ATESTPlayerState* MyPS = GetPlayerState<ATESTPlayerState>();
+	const bool bIAmMafia = (MyPS && MyPS->VoiceTeam == EVoiceTeam::Mafia);
+
 	for (TActorIterator<APawn> It(World); It; ++It)
 	{
 		APawn* OtherPawn = *It;
@@ -238,15 +242,29 @@ void ATestController::UpdateProximityVoice()
 		ATESTPlayerState* OtherPS = Cast<ATESTPlayerState>(OtherPawn->GetPlayerState());
 		if (!OtherPS) continue;
 
-		const FString& OtherPuid = OtherPS->EOSPlayerName; // 00023... 형태
+		const FString& OtherPuid = OtherPS->EOSPlayerName;
 		if (OtherPuid.IsEmpty()) continue;
 
-		const float Dist = FVector::Dist(ListenerLoc, OtherPawn->GetActorLocation());
-		const float Volume = CalcProxVolume01(Dist, ProxMinDist, ProxMaxDist);
+		// 상대방이 마피아인지 확인
+		const bool bOtherIsMafia = (OtherPS->VoiceTeam == EVoiceTeam::Mafia);
 
-		VoiceChatUser->SetPlayerVolume(OtherPuid, Volume);
+		// 마피아끼리는 거리 상관없이 항상 들림
+		if (bIAmMafia && bOtherIsMafia)
+		{
+			VoiceChatUser->SetPlayerVolume(OtherPuid, 1.0f);
+			UE_LOG(LogTemp, Verbose, TEXT("[Voice] Mafia-to-Mafia: %s volume = 1.0 (no distance)"), *OtherPuid);
+		}
+		else
+		{
+			// 일반 근접 보이스 (시민끼리, 또는 시민-마피아)
+			const float Dist = FVector::Dist(ListenerLoc, OtherPawn->GetActorLocation());
+			const float Volume = CalcProxVolume01(Dist, ProxMinDist, ProxMaxDist);
+
+			VoiceChatUser->SetPlayerVolume(OtherPuid, Volume);
+			UE_LOG(LogTemp, Verbose, TEXT("[Voice] Proximity: %s volume = %.2f (dist: %.1f)"),
+				*OtherPuid, Volume, Dist);
+		}
 	}
-
 }
 
 float ATestController::CalcProxVolume01(float Dist, float MinD, float MaxD)
@@ -322,7 +340,17 @@ void ATestController::JoinPrivateVoiceChannel_Local(const FString& ChannelName, 
 		return;
 	}
 
-	PrivateChannelName = ChannelName;
+	// 채널 이름으로 구분해서 저장
+	if (ChannelName.Contains(TEXT("Mafia")))
+	{
+		PrivateChannelName = ChannelName;
+		UE_LOG(LogTemp, Warning, TEXT("[Voice] Saved as MAFIA channel: %s"), *ChannelName);
+	}
+	else if (ChannelName.Contains(TEXT("Citizen")))
+	{
+		PublicChannelName = ChannelName;
+		UE_LOG(LogTemp, Warning, TEXT("[Voice] Saved as PUBLIC channel: %s"), *ChannelName);
+	}
 
 	// EOS Trusted Server credentials
 	FEOSVoiceChatChannelCredentials Creds;
@@ -331,8 +359,7 @@ void ATestController::JoinPrivateVoiceChannel_Local(const FString& ChannelName, 
 
 	const FString JsonCreds = Creds.ToJson();
 
-	UE_LOG(LogTemp, Log, TEXT("[Voice] Joining private channel: %s"), *ChannelName);
-	UE_LOG(LogTemp, Log, TEXT("[Voice] ClientBaseUrl: %s"), *ClientBaseUrl);
+	UE_LOG(LogTemp, Log, TEXT("[Voice] Joining channel: %s"), *ChannelName);
 
 	// 채널 참가 (비동기)
 	VoiceChatUser->JoinChannel(
@@ -344,12 +371,11 @@ void ATestController::JoinPrivateVoiceChannel_Local(const FString& ChannelName, 
 			{
 				if (Result.IsSuccess())
 				{
-					UE_LOG(LogTemp, Log, TEXT("[Voice] Successfully joined private channel: %s"),
-						*JoinedChannel);
+					UE_LOG(LogTemp, Log, TEXT("[Voice] ✓ Successfully joined channel: %s"), *JoinedChannel);
 				}
 				else
 				{
-					UE_LOG(LogTemp, Error, TEXT("[Voice] Failed to join channel: %s, Error: %s"),
+					UE_LOG(LogTemp, Error, TEXT("[Voice] ✗ Failed to join channel: %s, Error: %s"),
 						*JoinedChannel, *Result.ErrorDesc);
 				}
 			}
@@ -381,4 +407,56 @@ void ATestController::VoiceTransmitToNone()
 	if (!VoiceChatUser) return;
 
 	VoiceChatUser->TransmitToNoChannels(); // docs :contentReference[oaicite:4]{index=4}
+}
+
+void ATestController::VoiceTransmitToPublic()
+{
+	CacheVoiceChatUser();
+	if (!VoiceChatUser) return;
+
+	if (PublicChannelName.IsEmpty())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Voice] PublicChannelName is empty"));
+		return;
+	}
+
+	TSet<FString> Channels = { PublicChannelName };
+	VoiceChatUser->TransmitToSpecificChannels(Channels);
+
+	UE_LOG(LogTemp, Log, TEXT("[Voice] Transmitting to PUBLIC only: %s"), *PublicChannelName);
+}
+
+void ATestController::VoiceTransmitToMafiaOnly()
+{
+	CacheVoiceChatUser();
+	if (!VoiceChatUser) return;
+
+	if (PrivateChannelName.IsEmpty())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Voice] PrivateChannelName is empty (not mafia?)"));
+		return;
+	}
+
+	TSet<FString> Channels = { PrivateChannelName };
+	VoiceChatUser->TransmitToSpecificChannels(Channels);
+
+	UE_LOG(LogTemp, Log, TEXT("[Voice] Transmitting to MAFIA only: %s"), *PrivateChannelName);
+}
+
+void ATestController::VoiceTransmitToBothChannels()
+{
+	CacheVoiceChatUser();
+	if (!VoiceChatUser) return;
+
+	if (PublicChannelName.IsEmpty() || PrivateChannelName.IsEmpty())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Voice] Channel names missing (Public: %s, Mafia: %s)"),
+			*PublicChannelName, *PrivateChannelName);
+		return;
+	}
+
+	TSet<FString> Channels = { PublicChannelName, PrivateChannelName };
+	VoiceChatUser->TransmitToSpecificChannels(Channels);
+
+	UE_LOG(LogTemp, Log, TEXT("[Voice] Transmitting to BOTH channels"));
 }
