@@ -72,6 +72,7 @@ void AAndroidCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 
 	DOREPLIFETIME(AAndroidCharacter, bIsAndroid);
 	DOREPLIFETIME(AAndroidCharacter, CharacterScale);
+	DOREPLIFETIME(AAndroidCharacter, bIsHunter);
 
 }
 
@@ -165,6 +166,22 @@ void AAndroidCharacter::Xray()
 	PostProcessComp->bEnabled = !PostProcessComp->bEnabled;
 
 	bIsXray = PostProcessComp->bEnabled;
+}
+
+void AAndroidCharacter::ServerPullLever_Internal()
+{	
+	if (bIsHunter)
+		return;
+
+	Super::ServerPullLever_Internal();
+}
+
+void AAndroidCharacter::PullLever()
+{
+	if (bIsHunter)
+		return; 
+
+	Super::PullLever(); 
 }
 
 void AAndroidCharacter::OnRep_IsAndroid()

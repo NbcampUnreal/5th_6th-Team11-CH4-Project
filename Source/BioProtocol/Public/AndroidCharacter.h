@@ -85,6 +85,11 @@ protected:
 	TObjectPtr<UAnimMontage> OriginMeleeAttackMontage;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blink")
 	float BlinkDistance = 800.f;
+
+protected:
+	virtual void ServerPullLever_Internal() override;
+	virtual void PullLever() override;
+
 private:
 	int8 bIsXray = false;
 	UPROPERTY(ReplicatedUsing = OnRep_CharacterScale)
@@ -97,6 +102,6 @@ private:
 	FVector BaseMeshOffset;
 	float NormalScale = 1.0f;
 	float HunterScale = 1.5f;
-	UPROPERTY();
+	UPROPERTY(Replicated);
 	int8 bIsHunter = false;
 };

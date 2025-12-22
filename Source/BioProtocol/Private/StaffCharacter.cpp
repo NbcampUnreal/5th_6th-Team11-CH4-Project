@@ -104,15 +104,18 @@ void AStaffCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	EIC->BindAction(JumpAction, ETriggerEvent::Started, this, &ThisClass::OnJump);
 	EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ThisClass::OnStopJump);
 
-	EIC->BindAction(RunAction, ETriggerEvent::Triggered, this, &AStaffCharacter::HandleStartRun);
-	EIC->BindAction(RunAction, ETriggerEvent::Completed, this, &AStaffCharacter::HandleStopRun);
+	EIC->BindAction(RunAction, ETriggerEvent::Triggered, this, &ThisClass::HandleStartRun);
+	EIC->BindAction(RunAction, ETriggerEvent::Completed, this, &ThisClass::HandleStopRun);
 
 	/*EIC->BindAction(CrouchAction, ETriggerEvent::Started, this, &AStaffCharacter::HandleCrouch);
 	EIC->BindAction(CrouchAction, ETriggerEvent::Completed, this, &AStaffCharacter::HandleStand);*/
 
 	EIC->BindAction(AttackAction, ETriggerEvent::Started, this, &ThisClass::AttackInput);
 
-	EIC->BindAction(TestKillAction, ETriggerEvent::Started, this, &AStaffCharacter::TestHit);
+	EIC->BindAction(TestKillAction, ETriggerEvent::Started, this, &ThisClass::TestHit);
+
+	EIC->BindAction(TestPullLever, ETriggerEvent::Triggered, this, &ThisClass::PullLever);
+	EIC->BindAction(TestPullLever, ETriggerEvent::Completed, this, &ThisClass::ReleaseLever);
 
 }
 
@@ -153,6 +156,9 @@ void AStaffCharacter::HandleMoveInput(const FInputActionValue& InValue)
 		UE_LOG(LogTemp, Error, TEXT("Controller is invalid."));
 		return;
 	}
+	if (bHoldingLever) {
+		return;
+	}
 
 	const FVector2D InMovementVector = InValue.Get<FVector2D>();
 
@@ -176,7 +182,23 @@ void AStaffCharacter::HandleLookInput(const FInputActionValue& InValue)
 
 	const FVector2D InLookVector = InValue.Get<FVector2D>();
 
-	AddControllerYawInput(InLookVector.X);
+	if (bHoldingLever)
+	{
+		const float CurrentYaw = Controller->GetControlRotation().Yaw;
+		const float NextYaw = CurrentYaw + InLookVector.X;
+
+		const float DeltaFromBase =
+			FMath::FindDeltaAngleDegrees(LeverBaseYaw, NextYaw);
+
+		if (FMath::Abs(DeltaFromBase) <= 90.f)
+		{
+			AddControllerYawInput(InLookVector.X);
+		}
+	}
+	else
+	{
+		AddControllerYawInput(InLookVector.X);
+	}
 	AddControllerPitchInput(InLookVector.Y);
 }
 
@@ -221,6 +243,9 @@ void AStaffCharacter::HandleStand(const FInputActionValue& InValue)
 
 void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 {
+	if (bHoldingLever) {
+		return;
+	}
 	if (!GetCharacterMovement()->IsFalling())
 	{
 		GetCharacterMovement()->SetMovementMode(MOVE_None);
@@ -245,6 +270,45 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 
 		ServerRPCMeleeAttack();
 	}
+}
+
+void AStaffCharacter::ServerPullLever_Implementation()
+{
+	ServerPullLever_Internal();
+}
+
+void AStaffCharacter::PullLever()
+{
+	if (!IsLocallyControlled())
+		return;
+
+	if (!bHoldingLever)
+	{
+		bHoldingLever = true;
+		LeverBaseYaw = GetControlRotation().Yaw;
+		ServerPullLever(); 
+	}
+}
+
+void AStaffCharacter::ServerPullLever_Internal()
+{
+	AController* C = GetController();
+	if (!C)
+		return;
+	//ktodo:레버관련(게이지 차는거같은거) 추가필요
+
+	if (!bHoldingLever) {
+		bHoldingLever = true;
+		LeverBaseYaw = C->GetControlRotation().Yaw;
+	}
+}
+
+void AStaffCharacter::ReleaseLever()
+{	
+	if (!IsLocallyControlled())
+		return;
+
+	bHoldingLever = false;
 }
 
 void AStaffCharacter::ServerRPCMeleeAttack_Implementation()
@@ -297,10 +361,13 @@ void AStaffCharacter::MulticastRPCMeleeAttack_Implementation()
 
 void AStaffCharacter::OnJump()
 {
+	if (bHoldingLever) {
+		return;
+	}
 	if (Status->CurrentStamina <= 0.f)
 		return;
 
-	ACharacter::Jump();   
+	ACharacter::Jump();
 	ServerOnJump();
 }
 
@@ -324,7 +391,7 @@ void AStaffCharacter::ServerOnJump_Implementation()
 		return;
 	}
 
-	Status->ConsumeJumpStamina(); 
+	Status->ConsumeJumpStamina();
 }
 
 void AStaffCharacter::PlayMeleeAttackMontage()

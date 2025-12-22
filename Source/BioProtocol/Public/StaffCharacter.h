@@ -84,8 +84,25 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
 	TObjectPtr<UInputAction> TestKillAction;
+
+	//아이템 먹는키눌렀는데 이게 아이템인지 레버인지 검사후 레버면 PullLever 호출하는 방식으로 바뀌면 폐지
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
+	TObjectPtr<UInputAction> TestPullLever; 
+
+protected:
+	virtual void PullLever();
+
+	UFUNCTION(Server, Reliable)
+	void ServerPullLever();
+
+	virtual void ServerPullLever_Internal();
+
+	void ReleaseLever();
+
 private:
-	uint8 bIsRunning : 1;
+	uint8 bIsRunning = false;
+	uint8 bHoldingLever = false;
+	float LeverBaseYaw = 0.f;
 
 	UFUNCTION(Server, Reliable)
 	void ServerStartRun();
