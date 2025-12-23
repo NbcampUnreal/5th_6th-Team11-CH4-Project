@@ -4,9 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "BioProtocol/Session/SessionSubsystem.h"
 #include "LobbyMainWidget.generated.h"
 
-class UScrollBox;
+class UHorizontalBox;
 class UButton;
 class UTextBlock;
 class ULobbySlotWidget;
@@ -23,7 +24,7 @@ public:
 
 protected:
 	UPROPERTY(meta = (BindWidget))
-	UScrollBox* PlayerListScrollBox;
+	UHorizontalBox* PlayerListBox;
 	UPROPERTY(meta = (BindWidget))
 	UButton* ToggleReadyButton;
 	UPROPERTY(meta = (BindWidget))
@@ -35,17 +36,19 @@ protected:
 	TSubclassOf<ULobbySlotWidget> SlotWidgetClass;
 
 	TWeakObjectPtr<ALobbyPlayerState> LocalPlayerState;
-
 	int32 LastPlayerCount = 0;
-
 	bool bIsBound = false;
 
 	UFUNCTION()
 	void OnReadyClicked();
+
 	UFUNCTION()
 	void UpdateButtonText();
+
 	UFUNCTION()
 	void OnExitClicked();
+
 	void RefreshPlayerList();
+	void AddPlayerSlot(ALobbyPlayerState* PlayerState, int32 SlotIndex);
 
 };
