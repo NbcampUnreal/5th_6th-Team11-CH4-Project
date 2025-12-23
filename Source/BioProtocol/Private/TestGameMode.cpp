@@ -29,41 +29,40 @@ void ATestGameMode::PostLogin(APlayerController* NewPlayer)
         }
     }
 
-    // 게임 시작 조건 (예: 4명 이상)
-    if (GetNumPlayers() >= 4)
+    // 모든 플레이어 수집
+    TArray<APlayerController*> AllPlayers;
+    TArray<APlayerController*> MafiaPlayers;
+
+    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
     {
-        // 모든 플레이어 수집
-        TArray<APlayerController*> AllPlayers;
-        TArray<APlayerController*> MafiaPlayers;
-
-        for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+        if (APlayerController* PC = It->Get())
         {
-            if (APlayerController* PC = It->Get())
-            {
-                AllPlayers.Add(PC);
+            AllPlayers.Add(PC);
 
-                // 마피아 플레이어만 따로 수집
-                if (ATestController* TestPC = Cast<ATestController>(PC))
+            // 마피아 플레이어만 따로 수집
+            if (ATestController* TestPC = Cast<ATestController>(PC))
+            {
+                if (ATESTPlayerState* PS = TestPC->GetPlayerState<ATESTPlayerState>())
                 {
-                    if (ATESTPlayerState* PS = TestPC->GetPlayerState<ATESTPlayerState>())
+                    if (PS->VoiceTeam == EVoiceTeam::Mafia)
                     {
-                        if (PS->VoiceTeam == EVoiceTeam::Mafia)
-                        {
-                            MafiaPlayers.Add(PC);
-                        }
+                        MafiaPlayers.Add(PC);
                     }
                 }
             }
         }
+    }
 
-        // 1. 전체 보이스 채널 생성 (모든 플레이어)
+    // 1. 전체 보이스 채널 생성 (모든 플레이어)
+    if (AllPlayers.Num() > 0)
+    {
         CreatePrivateVoiceChannel(EVoiceTeam::Citizen, AllPlayers);
+    }
 
-        // 2. 마피아 전용 채널 생성 (마피아만)
-        if (MafiaPlayers.Num() > 0)
-        {
-            CreatePrivateVoiceChannel(EVoiceTeam::Mafia, MafiaPlayers);
-        }
+    // 2. 마피아 전용 채널 생성 (마피아만)
+    if (MafiaPlayers.Num() > 0)
+    {
+        CreatePrivateVoiceChannel(EVoiceTeam::Mafia, MafiaPlayers);
     }
 }
 
