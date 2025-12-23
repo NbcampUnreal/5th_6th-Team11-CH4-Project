@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "ThirdSpectatorPawn.h"
+#include "Character/ThirdSpectatorPawn.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Character.h"

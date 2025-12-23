@@ -1,23 +1,21 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "StaffAnimInstance.h"
-#include "StaffCharacter.h"
+#include "Character/AndroidAnimInstance.h"
+#include "Character/AndroidCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/Engine.h"
 
-void UStaffAnimInstance::NativeInitializeAnimation()
+void UAndroidAnimInstance::NativeInitializeAnimation()
 {
-	Super::NativeInitializeAnimation();
-
-	OwnerCharacter = Cast<AStaffCharacter>(GetOwningActor());
+	OwnerCharacter = Cast<AAndroidCharacter>(GetOwningActor());
 	if (IsValid(OwnerCharacter) == true)
 	{
 		OwnerCharacterMovementComponent = OwnerCharacter->GetCharacterMovement();
 	}
 }
 
-void UStaffAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
+void UAndroidAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeUpdateAnimation(DeltaSeconds);
 
@@ -29,7 +27,7 @@ void UStaffAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	Velocity = OwnerCharacterMovementComponent->Velocity;
 	GroundSpeed = FVector(Velocity.X, Velocity.Y, 0.f).Size();
 	bShouldMove = ((OwnerCharacterMovementComponent->GetCurrentAcceleration().IsNearlyZero()) == false) && (3.f < GroundSpeed);
-	
+
 	bIsRunning = (bShouldMove == true) && (900.f < GroundSpeed);
 
 	bIsFalling = OwnerCharacterMovementComponent->IsFalling();

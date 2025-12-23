@@ -1,11 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "StaffStatusComponent.h"
+#include "Character/StaffStatusComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include <StaffCharacter.h>
-#include <MyPlayerController.h>
+#include <Character/StaffCharacter.h>
+#include <Character/MyPlayerController.h>
 #include "MyGameModeBase.h"
 
 // Sets default values for this component's properties

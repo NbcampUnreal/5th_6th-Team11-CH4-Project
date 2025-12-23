@@ -2,8 +2,8 @@
 
 
 #include "MyGameModeBase.h"
-#include "StaffCharacter.h"
-#include <ThirdSpectatorPawn.h>
+#include "Character/StaffCharacter.h"
+#include <Character/ThirdSpectatorPawn.h>
 
 void AMyGameModeBase::OnPlayerKilled(AController* VictimController)
 {

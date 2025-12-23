@@ -1,15 +1,15 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "StaffCharacter.h"
+#include "Character/StaffCharacter.h"
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
-#include "StaffStatusComponent.h"
+#include "Character/StaffStatusComponent.h"
 #include "EnhancedInputComponent.h"
 #include "Net/UnrealNetwork.h"
-#include <MyPlayerController.h>
+#include <Character/MyPlayerController.h>
 #include <Kismet/GameplayStatics.h>
 
 // Sets default values
