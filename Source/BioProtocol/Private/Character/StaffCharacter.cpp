@@ -117,6 +117,8 @@ void AStaffCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	EIC->BindAction(TestPullLever, ETriggerEvent::Triggered, this, &ThisClass::PullLever);
 	EIC->BindAction(TestPullLever, ETriggerEvent::Completed, this, &ThisClass::ReleaseLever);
 
+	EIC->BindAction(TestItem1, ETriggerEvent::Started, this, &ThisClass::TestItemSlot1);
+
 }
 
 void AStaffCharacter::OnDeath()
@@ -134,6 +136,8 @@ void AStaffCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AStaffCharacter, MaterialIndex);
+	DOREPLIFETIME(AStaffCharacter, bIsGunEquipped);
+
 }
 
 void AStaffCharacter::SetMaterialByIndex(int32 NewIndex)
@@ -324,6 +328,24 @@ void AStaffCharacter::TestUpdateLeverGauge()
 	{
 		GetWorld()->GetTimerManager().ClearTimer(GaugeTimerHandle);
 	}
+}
+
+void AStaffCharacter::TestItemSlot1()
+{	
+	if (HasAuthority())
+	{
+		bIsGunEquipped = !bIsGunEquipped;
+	}
+	else
+	{
+		ServerTestItemSlot1();
+	}
+}
+
+void AStaffCharacter::ServerTestItemSlot1_Implementation()
+{
+	bIsGunEquipped = !bIsGunEquipped;
+
 }
 
 void AStaffCharacter::ReleaseLever()

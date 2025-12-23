@@ -35,4 +35,6 @@ void UStaffAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	bIsFalling = OwnerCharacterMovementComponent->IsFalling();
 
 	bIsCrouch = OwnerCharacterMovementComponent->IsCrouching();
+
+	bIsGun = OwnerCharacter->IsGunEquipped();
 }

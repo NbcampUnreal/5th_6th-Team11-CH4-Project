@@ -38,6 +38,9 @@ public:
 
 	void SetMaterialByIndex(int32 NewIndex);
 
+public:
+	bool IsGunEquipped() const { return bIsGunEquipped; };
+
 protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
@@ -91,6 +94,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
 	TObjectPtr<UInputAction> TestPullLever; 
 
+	//item이나 inventory클래스안에 아이템 꺼내기 입력 따로있으면 폐지
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
+	TObjectPtr<UInputAction> TestItem1;
+
 protected:
 	//레버당기기 시작(아니면 상호작용오래하면서 시야각 제한필요 할때 호출)
 	virtual void PullLever();	
@@ -108,6 +115,11 @@ protected:
 	virtual void ServerPullLever_Internal();
 	void TestUpdateLeverGauge(); //게이지 차는거 테스트용(실제 레버작용하는 오브젝트에 쓸껏)
 	float TestGuage=0;//테스트게이지
+
+	void TestItemSlot1();
+
+	UFUNCTION(Server, Reliable)
+	void ServerTestItemSlot1();
 
 	FTimerHandle GaugeTimerHandle;
 
@@ -182,4 +194,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMat")
 	//플레이어 구분용 메테리얼
 	TArray<UMaterialInterface*>mat;
+
+	protected:
+		UPROPERTY(Replicated)
+		bool bIsGunEquipped;
 };
