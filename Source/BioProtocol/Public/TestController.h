@@ -4,7 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "VoiceChatResult.h"
 #include "TestController.generated.h"
+
+
 
 
 class IVoiceChatUser;
@@ -54,6 +57,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voice")
 	void VoiceTransmitToBothChannels();  // 마피아용: 두 채널 모두 송신
 
+	UFUNCTION(BlueprintCallable, Category = "Voice")
+	void DebugVoiceStatus();
+
 
 public:
 	// 보이스 채널
@@ -95,4 +101,6 @@ private:
 	FString PublicChannelName;   // 로비 채널 이름 캐시
 	FString PrivateChannelName;
 
+
+	void OnVoiceChannelJoined(const FString& ChannelName, const FVoiceChatResult& Result);
 };

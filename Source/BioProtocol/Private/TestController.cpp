@@ -374,26 +374,17 @@ void ATestController::JoinPrivateVoiceChannel_Local(const FString& ChannelName, 
 
 	const FString JsonCreds = Creds.ToJson();
 
-	UE_LOG(LogTemp, Log, TEXT("[Voice] Joining channel: %s"), *ChannelName);
+	UE_LOG(LogTemp, Warning, TEXT("[Voice] Joining channel: %s"), *ChannelName);
+	UE_LOG(LogTemp, Warning, TEXT("[Voice] ClientBaseUrl: %s"), *ClientBaseUrl);
+	UE_LOG(LogTemp, Warning, TEXT("[Voice] Token length: %d"), ParticipantToken.Len());
 
 	// 채널 참가 (비동기)
 	VoiceChatUser->JoinChannel(
 		ChannelName,
 		JsonCreds,
 		EVoiceChatChannelType::NonPositional,
-		FOnVoiceChatChannelJoinCompleteDelegate::CreateLambda(
-			[ChannelName](const FString& JoinedChannel, const FVoiceChatResult& Result)
-			{
-				if (Result.IsSuccess())
-				{
-					UE_LOG(LogTemp, Log, TEXT("[Voice] ✓ Successfully joined channel: %s"), *JoinedChannel);
-				}
-				else
-				{
-					UE_LOG(LogTemp, Error, TEXT("[Voice] ✗ Failed to join channel: %s, Error: %s"),
-						*JoinedChannel, *Result.ErrorDesc);
-				}
-			}
+		FOnVoiceChatChannelJoinCompleteDelegate::CreateUObject(
+			this, &ATestController::OnVoiceChannelJoined
 		)
 	);
 }
@@ -410,8 +401,16 @@ void ATestController::VoiceTransmitToAll()
 		return;
 	}
 
+	// 내가 참가한 채널 목록 확인
+	TArray<FString> JoinedChannels = VoiceChatUser->GetChannels();
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] Joined channels: %d"), JoinedChannels.Num());
+	for (const FString& Ch : JoinedChannels)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT]   - %s"), *Ch);
+	}
+
 	VoiceChatUser->TransmitToAllChannels();
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] TransmitToAllChannels executed"));
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] ✓ Now transmitting to ALL channels"));
 }
 
 void ATestController::VoiceTransmitToChannel(const FString& ChannelName)
@@ -428,10 +427,14 @@ void ATestController::VoiceTransmitToNone()
 	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] VoiceTransmitToNone called"));
 
 	CacheVoiceChatUser();
-	if (!VoiceChatUser) return;
+	if (!VoiceChatUser)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] VoiceChatUser is NULL"));
+		return;
+	}
 
 	VoiceChatUser->TransmitToNoChannels();
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] TransmitToNoChannels executed"));
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] ✓ Stopped transmitting (muted)"));
 }
 
 void ATestController::VoiceTransmitToPublic()
@@ -448,6 +451,14 @@ void ATestController::VoiceTransmitToPublic()
 	if (PublicChannelName.IsEmpty())
 	{
 		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] PublicChannelName is EMPTY!"));
+
+		// 디버깅: 참가한 채널 목록 출력
+		TArray<FString> JoinedChannels = VoiceChatUser->GetChannels();
+		UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] Available channels: %d"), JoinedChannels.Num());
+		for (const FString& Ch : JoinedChannels)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT]   - %s"), *Ch);
+		}
 		return;
 	}
 
@@ -455,39 +466,138 @@ void ATestController::VoiceTransmitToPublic()
 
 	TSet<FString> Channels = { PublicChannelName };
 	VoiceChatUser->TransmitToSpecificChannels(Channels);
+
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] ✓ Now transmitting to PUBLIC channel"));
 }
 
 void ATestController::VoiceTransmitToMafiaOnly()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] VoiceTransmitToMafiaOnly called"));
+
 	CacheVoiceChatUser();
-	if (!VoiceChatUser) return;
+	if (!VoiceChatUser)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] VoiceChatUser is NULL"));
+		return;
+	}
 
 	if (PrivateChannelName.IsEmpty())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Voice] PrivateChannelName is empty (not mafia?)"));
+		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] PrivateChannelName is EMPTY (not mafia?)"));
 		return;
 	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] Transmitting to: %s"), *PrivateChannelName);
 
 	TSet<FString> Channels = { PrivateChannelName };
 	VoiceChatUser->TransmitToSpecificChannels(Channels);
 
-	UE_LOG(LogTemp, Log, TEXT("[Voice] Transmitting to MAFIA only: %s"), *PrivateChannelName);
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] ✓ Now transmitting to MAFIA only"));
 }
 
 void ATestController::VoiceTransmitToBothChannels()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] VoiceTransmitToBothChannels called"));
+
 	CacheVoiceChatUser();
-	if (!VoiceChatUser) return;
+	if (!VoiceChatUser)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] VoiceChatUser is NULL"));
+		return;
+	}
 
 	if (PublicChannelName.IsEmpty() || PrivateChannelName.IsEmpty())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Voice] Channel names missing (Public: %s, Mafia: %s)"),
+		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] Channel names missing (Public: %s, Mafia: %s)"),
 			*PublicChannelName, *PrivateChannelName);
 		return;
 	}
 
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] Transmitting to BOTH channels"));
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT]   - %s"), *PublicChannelName);
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT]   - %s"), *PrivateChannelName);
+
 	TSet<FString> Channels = { PublicChannelName, PrivateChannelName };
 	VoiceChatUser->TransmitToSpecificChannels(Channels);
 
-	UE_LOG(LogTemp, Log, TEXT("[Voice] Transmitting to BOTH channels"));
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] ✓ Now transmitting to BOTH channels"));
+}
+
+
+void ATestController::OnVoiceChannelJoined(const FString& ChannelName, const FVoiceChatResult& Result)
+{
+	if (Result.IsSuccess())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Voice] ✓ Successfully joined channel: %s"), *ChannelName);
+
+		// ✅ 채널 참가 성공 후 즉시 송신 시작!
+		ATESTPlayerState* MyPS = GetPlayerState<ATESTPlayerState>();
+		if (MyPS)
+		{
+			if (MyPS->VoiceTeam == EVoiceTeam::Mafia)
+			{
+				// 마피아는 기본적으로 전체 채널에만 송신
+				VoiceTransmitToPublic();
+				UE_LOG(LogTemp, Warning, TEXT("[Voice] Mafia default: transmitting to PUBLIC channel"));
+			}
+			else
+			{
+				// 시민은 전체 채널에 송신
+				VoiceTransmitToPublic();
+				UE_LOG(LogTemp, Warning, TEXT("[Voice] Citizen default: transmitting to PUBLIC channel"));
+			}
+		}
+		else
+		{
+			// PlayerState가 없으면 모든 채널에 송신
+			VoiceTransmitToAll();
+			UE_LOG(LogTemp, Warning, TEXT("[Voice] Default: transmitting to ALL channels"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Voice] ✗ Failed to join channel: %s"), *ChannelName);
+		UE_LOG(LogTemp, Error, TEXT("[Voice]   Error: %s"), *Result.ErrorDesc);
+		UE_LOG(LogTemp, Error, TEXT("[Voice]   ErrorCode: %s"), *Result.ErrorCode);
+	}
+}
+
+void ATestController::DebugVoiceStatus()
+{
+	CacheVoiceChatUser();
+	if (!VoiceChatUser)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Voice][Debug] VoiceChatUser is NULL"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][Debug] ===== Voice Status ====="));
+
+	// 참가한 채널 목록
+	TArray<FString> JoinedChannels = VoiceChatUser->GetChannels();
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][Debug] Joined Channels: %d"), JoinedChannels.Num());
+	for (const FString& Ch : JoinedChannels)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Voice][Debug]   - %s"), *Ch);
+	}
+
+	// 송신 중인 채널 목록
+	TSet<FString> TransmitChannels = VoiceChatUser->GetTransmitChannels();
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][Debug] Transmitting to: %d channels"), TransmitChannels.Num());
+	for (const FString& Ch : TransmitChannels)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Voice][Debug]   - %s"), *Ch);
+	}
+
+	// 마이크 상태
+	bool bIsMuted = VoiceChatUser->GetAudioInputDeviceMuted();
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][Debug] Input Muted: %s"), bIsMuted ? TEXT("YES") : TEXT("NO"));
+
+	// 볼륨
+	float InputVolume = VoiceChatUser->GetAudioInputVolume();
+	float OutputVolume = VoiceChatUser->GetAudioOutputVolume();
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][Debug] Input Volume: %.2f"), InputVolume);
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][Debug] Output Volume: %.2f"), OutputVolume);
+
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][Debug] ======================="));
 }
