@@ -32,10 +32,14 @@ void ATestController::BeginPlay()
 
 	if (IsLocalController())
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[Voice][Debug] BeginPlay - IsLocalController: true"));
+
+		// EOS 로그인 전에는 VoiceChatUser를 캐싱하지 않음
+		// StartProximityVoice()만 시작 (UpdateProximityVoice 내부에서 캐싱 시도)
 		StartProximityVoice();
 	}
-
 }
+
 
 void ATestController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
@@ -150,6 +154,17 @@ void ATestController::HandleLoginComplete(int32, bool bOk, const FUniqueNetId& I
 		return;
 
 	Server_SetEOSPlayerName(Id.ToString());
+
+	// 로그인 성공 후 VoiceChatUser 캐싱
+	CacheVoiceChatUser();
+	if (VoiceChatUser)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Voice] VoiceChatUser cached after login"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Voice] Failed to cache VoiceChatUser after login"));
+	}
 }
 
 void ATestController::Server_StartGameSession_Implementation()
@@ -386,10 +401,17 @@ void ATestController::JoinPrivateVoiceChannel_Local(const FString& ChannelName, 
 
 void ATestController::VoiceTransmitToAll()
 {
-	CacheVoiceChatUser();
-	if (!VoiceChatUser) return;
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] VoiceTransmitToAll called"));
 
-	VoiceChatUser->TransmitToAllChannels(); // docs :contentReference[oaicite:2]{index=2}
+	CacheVoiceChatUser();
+	if (!VoiceChatUser)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] VoiceChatUser is NULL"));
+		return;
+	}
+
+	VoiceChatUser->TransmitToAllChannels();
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] TransmitToAllChannels executed"));
 }
 
 void ATestController::VoiceTransmitToChannel(const FString& ChannelName)
@@ -403,27 +425,36 @@ void ATestController::VoiceTransmitToChannel(const FString& ChannelName)
 
 void ATestController::VoiceTransmitToNone()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] VoiceTransmitToNone called"));
+
 	CacheVoiceChatUser();
 	if (!VoiceChatUser) return;
 
-	VoiceChatUser->TransmitToNoChannels(); // docs :contentReference[oaicite:4]{index=4}
+	VoiceChatUser->TransmitToNoChannels();
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] TransmitToNoChannels executed"));
 }
 
 void ATestController::VoiceTransmitToPublic()
 {
-	CacheVoiceChatUser();
-	if (!VoiceChatUser) return;
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] VoiceTransmitToPublic called"));
 
-	if (PublicChannelName.IsEmpty())
+	CacheVoiceChatUser();
+	if (!VoiceChatUser)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Voice] PublicChannelName is empty"));
+		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] VoiceChatUser is NULL"));
 		return;
 	}
 
+	if (PublicChannelName.IsEmpty())
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] PublicChannelName is EMPTY!"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] Transmitting to: %s"), *PublicChannelName);
+
 	TSet<FString> Channels = { PublicChannelName };
 	VoiceChatUser->TransmitToSpecificChannels(Channels);
-
-	UE_LOG(LogTemp, Log, TEXT("[Voice] Transmitting to PUBLIC only: %s"), *PublicChannelName);
 }
 
 void ATestController::VoiceTransmitToMafiaOnly()

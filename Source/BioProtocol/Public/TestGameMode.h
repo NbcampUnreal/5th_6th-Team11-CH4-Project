@@ -25,6 +25,8 @@ public:
 private:
     void OnPrivateChannelCreated(bool bSuccess, const FString& Response, EVoiceTeam Team, const TArray<APlayerController*>& Players);
 
+    void TryCreateVoiceChannels();
+
     FString TrustedServerUrl = TEXT("http://localhost:3000");
 	
 };

@@ -13,13 +13,11 @@ void ATestGameMode::PostLogin(APlayerController* NewPlayer)
 
     UE_LOG(LogTemp, Log, TEXT("[GameMode] Player logged in. Total players: %d"), GetNumPlayers());
 
-    // PlayerState의 팀 설정 (실제 게임 로직에 맞게 수정)
+    // PlayerState의 팀 설정
     if (ATestController* TestPC = Cast<ATestController>(NewPlayer))
     {
         if (ATESTPlayerState* PS = TestPC->GetPlayerState<ATESTPlayerState>())
         {
-            // 예시: 홀수 번째 플레이어는 마피아
-            // 실제로는 게임 로직에 맞게 팀 배정
             int32 PlayerNum = GetNumPlayers();
             EVoiceTeam Team = (PlayerNum % 3 == 0) ? EVoiceTeam::Mafia : EVoiceTeam::Citizen;
             PS->Server_SetVoiceTeam(Team);
@@ -29,7 +27,18 @@ void ATestGameMode::PostLogin(APlayerController* NewPlayer)
         }
     }
 
-    // 모든 플레이어 수집
+    // EOSPlayerName이 설정될 때까지 대기 후 채널 생성
+    FTimerHandle TimerHandle;
+    GetWorldTimerManager().SetTimer(TimerHandle, [this]()
+        {
+            this->TryCreateVoiceChannels();
+        }, 1.0f, false);  // 1초 후 시도
+}
+
+void ATestGameMode::TryCreateVoiceChannels()
+{
+    UE_LOG(LogTemp, Warning, TEXT("[Voice] TryCreateVoiceChannels called"));
+
     TArray<APlayerController*> AllPlayers;
     TArray<APlayerController*> MafiaPlayers;
 
@@ -37,13 +46,27 @@ void ATestGameMode::PostLogin(APlayerController* NewPlayer)
     {
         if (APlayerController* PC = It->Get())
         {
-            AllPlayers.Add(PC);
-
-            // 마피아 플레이어만 따로 수집
             if (ATestController* TestPC = Cast<ATestController>(PC))
             {
                 if (ATESTPlayerState* PS = TestPC->GetPlayerState<ATESTPlayerState>())
                 {
+                    // EOSPlayerName 확인
+                    if (PS->EOSPlayerName.IsEmpty())
+                    {
+                        UE_LOG(LogTemp, Warning, TEXT("[Voice] Player %s has no EOSPlayerName yet, retrying..."),
+                            *PC->GetName());
+
+                        // 다시 시도
+                        FTimerHandle RetryTimer;
+                        GetWorldTimerManager().SetTimer(RetryTimer, [this]()
+                            {
+                                this->TryCreateVoiceChannels();
+                            }, 0.5f, false);
+                        return;
+                    }
+
+                    AllPlayers.Add(PC);
+
                     if (PS->VoiceTeam == EVoiceTeam::Mafia)
                     {
                         MafiaPlayers.Add(PC);
@@ -53,13 +76,16 @@ void ATestGameMode::PostLogin(APlayerController* NewPlayer)
         }
     }
 
-    // 1. 전체 보이스 채널 생성 (모든 플레이어)
+    UE_LOG(LogTemp, Warning, TEXT("[Voice] Creating channels - Total: %d, Mafia: %d"),
+        AllPlayers.Num(), MafiaPlayers.Num());
+
+    // 전체 채널 생성
     if (AllPlayers.Num() > 0)
     {
         CreatePrivateVoiceChannel(EVoiceTeam::Citizen, AllPlayers);
     }
 
-    // 2. 마피아 전용 채널 생성 (마피아만)
+    // 마피아 채널 생성
     if (MafiaPlayers.Num() > 0)
     {
         CreatePrivateVoiceChannel(EVoiceTeam::Mafia, MafiaPlayers);

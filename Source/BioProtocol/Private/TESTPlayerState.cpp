@@ -18,18 +18,6 @@ void ATESTPlayerState::BeginPlay()
 	{
 		TryInitEOSPlayerName();
 	}
-
-
-    FString BaseUrl;
-    const bool bFound = GConfig->GetString(
-        TEXT("EOSVoiceChat"),
-        TEXT("InsecureClientBaseUrl"),
-        BaseUrl,
-        GEngineIni
-    );
-
-    UE_LOG(LogTemp, Warning, TEXT("[EOSVoiceChat] InsecureClientBaseUrl Found=%d Value=%s"),
-        bFound ? 1 : 0, *BaseUrl);
 }
 
 void ATESTPlayerState::OnRep_VoiceTeam()
