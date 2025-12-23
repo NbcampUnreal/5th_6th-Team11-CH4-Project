@@ -170,23 +170,18 @@ void ATestController::HandleLoginComplete(int32, bool bOk, const FUniqueNetId& I
 void ATestController::Server_StartGameSession_Implementation()
 {
 	if (!HasAuthority())
-	{
 		return;
-	}
 
 	UGameInstance* GI = GetGameInstance();
 	if (!GI)
-	{
 		return;
-	}
 
 	USessionSubsystem* SessionSub = GI->GetSubsystem<USessionSubsystem>();
 	if (!SessionSub)
-	{
 		return;
-	}
 
-	SessionSub->StartGameSession(); 
+	UE_LOG(LogTemp, Warning, TEXT("[Controller] Requesting travel to game map"));
+	SessionSub->StartGameSession();
 }
 
 void ATestController::Server_SetReady_Implementation()
@@ -338,228 +333,73 @@ void ATestController::CacheVoiceChatUser()
 
 }
 
-void ATestController::Client_JoinPrivateVoiceChannel_Implementation(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken)
-{
-	JoinPrivateVoiceChannel_Local(ChannelName, ClientBaseUrl, ParticipantToken);
-}
 
-void ATestController::JoinPrivateVoiceChannel_Local(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken)
-{
-	if (!IsLocalController())
-		return;
-
-	CacheVoiceChatUser();
-	if (!VoiceChatUser)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Voice] JoinPrivate failed: VoiceChatUser null"));
-		return;
-	}
-
-	// 채널 이름으로 구분해서 저장
-	if (ChannelName.Contains(TEXT("Mafia")))
-	{
-		PrivateChannelName = ChannelName;
-		UE_LOG(LogTemp, Warning, TEXT("[Voice] Saved as MAFIA channel: %s"), *ChannelName);
-	}
-	else if (ChannelName.Contains(TEXT("Citizen")))
-	{
-		PublicChannelName = ChannelName;
-		UE_LOG(LogTemp, Warning, TEXT("[Voice] Saved as PUBLIC channel: %s"), *ChannelName);
-	}
-
-	// EOS Trusted Server credentials
-	FEOSVoiceChatChannelCredentials Creds;
-	Creds.ClientBaseUrl = ClientBaseUrl;
-	Creds.ParticipantToken = ParticipantToken;
-
-	const FString JsonCreds = Creds.ToJson();
-
-	UE_LOG(LogTemp, Warning, TEXT("[Voice] Joining channel: %s"), *ChannelName);
-	UE_LOG(LogTemp, Warning, TEXT("[Voice] ClientBaseUrl: %s"), *ClientBaseUrl);
-	UE_LOG(LogTemp, Warning, TEXT("[Voice] Token length: %d"), ParticipantToken.Len());
-
-	// 채널 참가 (비동기)
-	VoiceChatUser->JoinChannel(
-		ChannelName,
-		JsonCreds,
-		EVoiceChatChannelType::NonPositional,
-		FOnVoiceChatChannelJoinCompleteDelegate::CreateUObject(
-			this, &ATestController::OnVoiceChannelJoined
-		)
-	);
-}
-
-
-void ATestController::VoiceTransmitToAll()
-{
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] VoiceTransmitToAll called"));
-
-	CacheVoiceChatUser();
-	if (!VoiceChatUser)
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] VoiceChatUser is NULL"));
-		return;
-	}
-
-	// 내가 참가한 채널 목록 확인
-	TArray<FString> JoinedChannels = VoiceChatUser->GetChannels();
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] Joined channels: %d"), JoinedChannels.Num());
-	for (const FString& Ch : JoinedChannels)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT]   - %s"), *Ch);
-	}
-
-	VoiceChatUser->TransmitToAllChannels();
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] ✓ Now transmitting to ALL channels"));
-}
-
-void ATestController::VoiceTransmitToChannel(const FString& ChannelName)
-{
-	CacheVoiceChatUser();
-	if (!VoiceChatUser) return;
-
-	TSet<FString> Channels = { ChannelName };
-	VoiceChatUser->TransmitToSpecificChannels(Channels);
-}
+// 송신 제어
 
 void ATestController::VoiceTransmitToNone()
 {
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] VoiceTransmitToNone called"));
-
 	CacheVoiceChatUser();
 	if (!VoiceChatUser)
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] VoiceChatUser is NULL"));
 		return;
-	}
 
 	VoiceChatUser->TransmitToNoChannels();
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] ✓ Stopped transmitting (muted)"));
+	UE_LOG(LogTemp, Log, TEXT("[Voice][PTT] ✓ Stopped transmitting"));
 }
 
 void ATestController::VoiceTransmitToPublic()
 {
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] VoiceTransmitToPublic called"));
-
 	CacheVoiceChatUser();
 	if (!VoiceChatUser)
+		return;
+
+	FString ChannelToUse = PublicGameChannelName.IsEmpty() ? LobbyChannelName : PublicGameChannelName;
+
+	if (ChannelToUse.IsEmpty())
 	{
-		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] VoiceChatUser is NULL"));
+		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] No public channel available"));
 		return;
 	}
 
-	if (PublicChannelName.IsEmpty())
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] PublicChannelName is EMPTY!"));
-
-		// 디버깅: 참가한 채널 목록 출력
-		TArray<FString> JoinedChannels = VoiceChatUser->GetChannels();
-		UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] Available channels: %d"), JoinedChannels.Num());
-		for (const FString& Ch : JoinedChannels)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT]   - %s"), *Ch);
-		}
-		return;
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] Transmitting to: %s"), *PublicChannelName);
-
-	TSet<FString> Channels = { PublicChannelName };
+	TSet<FString> Channels = { ChannelToUse };
 	VoiceChatUser->TransmitToSpecificChannels(Channels);
 
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] ✓ Now transmitting to PUBLIC channel"));
+	UE_LOG(LogTemp, Log, TEXT("[Voice][PTT] ✓ Transmitting to PUBLIC: %s"), *ChannelToUse);
 }
 
 void ATestController::VoiceTransmitToMafiaOnly()
 {
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] VoiceTransmitToMafiaOnly called"));
-
 	CacheVoiceChatUser();
 	if (!VoiceChatUser)
+		return;
+
+	if (MafiaGameChannelName.IsEmpty())
 	{
-		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] VoiceChatUser is NULL"));
+		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] No mafia channel (not mafia or not in game?)"));
 		return;
 	}
 
-	if (PrivateChannelName.IsEmpty())
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] PrivateChannelName is EMPTY (not mafia?)"));
-		return;
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] Transmitting to: %s"), *PrivateChannelName);
-
-	TSet<FString> Channels = { PrivateChannelName };
+	TSet<FString> Channels = { MafiaGameChannelName };
 	VoiceChatUser->TransmitToSpecificChannels(Channels);
 
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] ✓ Now transmitting to MAFIA only"));
+	UE_LOG(LogTemp, Log, TEXT("[Voice][PTT] ✓ Transmitting to MAFIA ONLY"));
 }
 
 void ATestController::VoiceTransmitToBothChannels()
 {
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] VoiceTransmitToBothChannels called"));
-
 	CacheVoiceChatUser();
 	if (!VoiceChatUser)
+		return;
+
+	if (PublicGameChannelName.IsEmpty() || MafiaGameChannelName.IsEmpty())
 	{
-		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] VoiceChatUser is NULL"));
+		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] Missing channels for both transmission"));
 		return;
 	}
 
-	if (PublicChannelName.IsEmpty() || PrivateChannelName.IsEmpty())
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Voice][PTT] Channel names missing (Public: %s, Mafia: %s)"),
-			*PublicChannelName, *PrivateChannelName);
-		return;
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] Transmitting to BOTH channels"));
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT]   - %s"), *PublicChannelName);
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT]   - %s"), *PrivateChannelName);
-
-	TSet<FString> Channels = { PublicChannelName, PrivateChannelName };
+	TSet<FString> Channels = { PublicGameChannelName, MafiaGameChannelName };
 	VoiceChatUser->TransmitToSpecificChannels(Channels);
 
-	UE_LOG(LogTemp, Warning, TEXT("[Voice][PTT] ✓ Now transmitting to BOTH channels"));
-}
-
-
-void ATestController::OnVoiceChannelJoined(const FString& ChannelName, const FVoiceChatResult& Result)
-{
-	if (Result.IsSuccess())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Voice] ✓ Successfully joined channel: %s"), *ChannelName);
-
-		// ✅ 채널 참가 성공 후 즉시 송신 시작!
-		ATESTPlayerState* MyPS = GetPlayerState<ATESTPlayerState>();
-		if (MyPS)
-		{
-			if (MyPS->VoiceTeam == EVoiceTeam::Mafia)
-			{
-				// 마피아는 기본적으로 전체 채널에만 송신
-				VoiceTransmitToPublic();
-				UE_LOG(LogTemp, Warning, TEXT("[Voice] Mafia default: transmitting to PUBLIC channel"));
-			}
-			else
-			{
-				// 시민은 전체 채널에 송신
-				VoiceTransmitToPublic();
-				UE_LOG(LogTemp, Warning, TEXT("[Voice] Citizen default: transmitting to PUBLIC channel"));
-			}
-		}
-		else
-		{
-			// PlayerState가 없으면 모든 채널에 송신
-			VoiceTransmitToAll();
-			UE_LOG(LogTemp, Warning, TEXT("[Voice] Default: transmitting to ALL channels"));
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Voice] ✗ Failed to join channel: %s"), *ChannelName);
-		UE_LOG(LogTemp, Error, TEXT("[Voice]   Error: %s"), *Result.ErrorDesc);
-		UE_LOG(LogTemp, Error, TEXT("[Voice]   ErrorCode: %s"), *Result.ErrorCode);
-	}
+	UE_LOG(LogTemp, Log, TEXT("[Voice][PTT] ✓ Transmitting to BOTH channels"));
 }
 
 void ATestController::DebugVoiceStatus()
@@ -600,4 +440,216 @@ void ATestController::DebugVoiceStatus()
 	UE_LOG(LogTemp, Warning, TEXT("[Voice][Debug] Output Volume: %.2f"), OutputVolume);
 
 	UE_LOG(LogTemp, Warning, TEXT("[Voice][Debug] ======================="));
+}
+
+// 로비 채널 관련
+
+void ATestController::Client_JoinLobbyChannel_Implementation(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken)
+{
+	JoinLobbyChannel_Local(ChannelName, ClientBaseUrl, ParticipantToken);
+}
+
+void ATestController::JoinLobbyChannel_Local(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken)
+{
+	if (!IsLocalController())
+		return;
+
+	CacheVoiceChatUser();
+	if (!VoiceChatUser)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Voice][Lobby] JoinLobbyChannel failed: VoiceChatUser null"));
+		return;
+	}
+
+	LobbyChannelName = ChannelName;
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][Lobby] ✓ Joining LOBBY channel: %s"), *ChannelName);
+
+	// EOS credentials (로비는 SessionSubsystem에서 자동 생성)
+	FEOSVoiceChatChannelCredentials Creds;
+	Creds.ClientBaseUrl = ClientBaseUrl;
+	Creds.ParticipantToken = ParticipantToken;
+
+	const FString JsonCreds = Creds.ToJson();
+
+	VoiceChatUser->JoinChannel(
+		ChannelName,
+		JsonCreds,
+		EVoiceChatChannelType::NonPositional,
+		FOnVoiceChatChannelJoinCompleteDelegate::CreateLambda(
+			[this, ChannelName](const FString& JoinedChannel, const FVoiceChatResult& Result)
+			{
+				if (Result.IsSuccess())
+				{
+					UE_LOG(LogTemp, Warning, TEXT("[Voice][Lobby] ✓ Successfully joined LOBBY channel"));
+					// 로비에서는 자동으로 송신 시작
+					VoiceChatUser->TransmitToAllChannels();
+				}
+				else
+				{
+					UE_LOG(LogTemp, Error, TEXT("[Voice][Lobby] ✗ Failed to join: %s"), *Result.ErrorDesc);
+				}
+			}
+		)
+	);
+}
+
+void ATestController::LeaveLobbyChannel()
+{
+	if (!IsLocalController())
+		return;
+
+	CacheVoiceChatUser();
+	if (!VoiceChatUser || LobbyChannelName.IsEmpty())
+		return;
+
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][Lobby] Leaving lobby channel: %s"), *LobbyChannelName);
+
+	VoiceChatUser->LeaveChannel(
+		LobbyChannelName,
+		FOnVoiceChatChannelLeaveCompleteDelegate::CreateLambda(
+			[this](const FString& LeftChannel, const FVoiceChatResult& Result)
+			{
+				if (Result.IsSuccess())
+				{
+					UE_LOG(LogTemp, Warning, TEXT("[Voice][Lobby] ✓ Left lobby channel"));
+					LobbyChannelName.Empty();
+				}
+				else
+				{
+					UE_LOG(LogTemp, Error, TEXT("[Voice][Lobby] ✗ Failed to leave: %s"), *Result.ErrorDesc);
+				}
+			}
+		)
+	);
+}
+
+// 게임 채널 관련
+
+void ATestController::Client_JoinGameChannel_Implementation(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken)
+{
+	JoinGameChannel_Local(ChannelName, ClientBaseUrl, ParticipantToken);
+}
+
+void ATestController::JoinGameChannel_Local(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken)
+{
+	if (!IsLocalController())
+		return;
+
+	CacheVoiceChatUser();
+	if (!VoiceChatUser)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Voice][Game] JoinGameChannel failed: VoiceChatUser null"));
+		return;
+	}
+
+	// ✅ 수정: 채널 타입 구분 로직 개선
+	bool bIsMafiaChannel = ChannelName.Contains(TEXT("Mafia"));
+	bool bIsPublicChannel = ChannelName.Contains(TEXT("Citizen")) || ChannelName.Contains(TEXT("Public"));
+
+	if (bIsMafiaChannel)
+	{
+		MafiaGameChannelName = ChannelName;
+		UE_LOG(LogTemp, Warning, TEXT("[Voice][Game] ✓ Joining MAFIA channel: %s"), *ChannelName);
+	}
+	else if (bIsPublicChannel)
+	{
+		PublicGameChannelName = ChannelName;
+		UE_LOG(LogTemp, Warning, TEXT("[Voice][Game] ✓ Joining PUBLIC channel: %s"), *ChannelName);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Voice][Game] ⚠ Unknown channel type: %s"), *ChannelName);
+		return;
+	}
+
+	// Trusted Server credentials
+	FEOSVoiceChatChannelCredentials Creds;
+	Creds.ClientBaseUrl = ClientBaseUrl;
+	Creds.ParticipantToken = ParticipantToken;
+
+	const FString JsonCreds = Creds.ToJson();
+
+	VoiceChatUser->JoinChannel(
+		ChannelName,
+		JsonCreds,
+		EVoiceChatChannelType::NonPositional,
+		FOnVoiceChatChannelJoinCompleteDelegate::CreateUObject(
+			this, &ATestController::OnVoiceChannelJoined
+		)
+	);
+}
+
+void ATestController::LeaveGameChannels()
+{
+	if (!IsLocalController())
+		return;
+
+	CacheVoiceChatUser();
+	if (!VoiceChatUser)
+		return;
+
+	UE_LOG(LogTemp, Warning, TEXT("[Voice][Game] Leaving game channels..."));
+
+	// 공개 채널 나가기
+	if (!PublicGameChannelName.IsEmpty())
+	{
+		VoiceChatUser->LeaveChannel(
+			PublicGameChannelName,
+			FOnVoiceChatChannelLeaveCompleteDelegate::CreateLambda(
+				[this](const FString& LeftChannel, const FVoiceChatResult& Result)
+				{
+					if (Result.IsSuccess())
+					{
+						UE_LOG(LogTemp, Log, TEXT("[Voice][Game] ✓ Left PUBLIC channel"));
+						PublicGameChannelName.Empty();
+					}
+				}
+			)
+		);
+	}
+
+	// 마피아 채널 나가기
+	if (!MafiaGameChannelName.IsEmpty())
+	{
+		VoiceChatUser->LeaveChannel(
+			MafiaGameChannelName,
+			FOnVoiceChatChannelLeaveCompleteDelegate::CreateLambda(
+				[this](const FString& LeftChannel, const FVoiceChatResult& Result)
+				{
+					if (Result.IsSuccess())
+					{
+						UE_LOG(LogTemp, Log, TEXT("[Voice][Game] ✓ Left MAFIA channel"));
+						MafiaGameChannelName.Empty();
+					}
+				}
+			)
+		);
+	}
+}
+
+void ATestController::OnVoiceChannelJoined(const FString& ChannelName, const FVoiceChatResult& Result)
+{
+	if (Result.IsSuccess())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Voice][Game] ✓ Successfully joined: %s"), *ChannelName);
+
+		// ✅ 게임 시작 시 기본 송신 채널 설정
+		ATESTPlayerState* MyPS = GetPlayerState<ATESTPlayerState>();
+		if (MyPS && MyPS->VoiceTeam == EVoiceTeam::Mafia)
+		{
+			// 마피아는 공개 채널로 기본 송신
+			VoiceTransmitToPublic();
+			UE_LOG(LogTemp, Log, TEXT("[Voice][Game] Mafia default: PUBLIC channel"));
+		}
+		else
+		{
+			// 시민은 공개 채널로만 송신
+			VoiceTransmitToPublic();
+			UE_LOG(LogTemp, Log, TEXT("[Voice][Game] Citizen: PUBLIC channel"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Voice][Game] ✗ Failed to join: %s"), *Result.ErrorDesc);
+	}
 }

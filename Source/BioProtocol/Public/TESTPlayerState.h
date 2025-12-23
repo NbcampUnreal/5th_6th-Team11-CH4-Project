@@ -16,39 +16,42 @@ enum class EVoiceTeam : uint8
 UCLASS()
 class BIOPROTOCOL_API ATESTPlayerState : public APlayerState
 {
-	GENERATED_BODY()
-	
+    GENERATED_BODY()
+
 public:
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_VoiceTeam, Category = "Voice")
-	EVoiceTeam VoiceTeam = EVoiceTeam::Mafia;
+    UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_VoiceTeam, Category = "Voice")
+    EVoiceTeam VoiceTeam = EVoiceTeam::Citizen;
 
-	UFUNCTION()
-	void OnRep_VoiceTeam();
+    UFUNCTION()
+    void OnRep_VoiceTeam();
 
-	// 서버에서만 세팅
-	void Server_SetVoiceTeam(EVoiceTeam NewTeam);
+    // ✅ 블루프린트에서 호출
+    UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Voice")
+    void Server_RequestTeamChange(EVoiceTeam NewTeam);
 
-	UPROPERTY(ReplicatedUsing = OnRep_EOSPlayerName, BlueprintReadOnly, Category = "EOS")
-	FString EOSPlayerName;
+    void Server_SetVoiceTeam(EVoiceTeam NewTeam);
 
-	void Server_SetEOSPlayerName(const FString& InEOSPlayerName);
+    UPROPERTY(ReplicatedUsing = OnRep_EOSPlayerName, BlueprintReadOnly, Category = "EOS")
+    FString EOSPlayerName;
 
-	UPROPERTY(BlueprintReadWrite, Replicated)
-	bool bisReady = false;
+    void Server_SetEOSPlayerName(const FString& InEOSPlayerName);
 
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    UPROPERTY(BlueprintReadWrite, Replicated)
+    bool bisReady = false;
 
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 private:
-	UFUNCTION()
-	void OnRep_EOSPlayerName();
-
+    UFUNCTION()
+    void OnRep_EOSPlayerName();
 
 protected:
-	virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
 
 private:
-	void TryInitEOSPlayerName();
-	FTimerHandle EOSNameInitTimer;
+    void TryInitEOSPlayerName();
+    FTimerHandle EOSNameInitTimer;
 
+    // ✅ 팀 복원 함수
+    void RestoreTeamFromGameInstance();
 };

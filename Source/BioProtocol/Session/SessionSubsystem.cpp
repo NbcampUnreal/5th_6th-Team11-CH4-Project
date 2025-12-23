@@ -406,26 +406,35 @@ void USessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 // 데디케이트 서버 게임 시작
 void USessionSubsystem::StartGameSession()
 {
-
-    if (!GetWorld() || !GetWorld()->GetAuthGameMode())
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] StartGameSession called on client"));
-        return;
-    }
-
-    SessionInterface = GetSessionInterface();
-
-    if (!SessionInterface.IsValid())
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] SessionInterface invalid in FindGameSessions"));
-        return;
-    }
-
     UWorld* World = GetWorld();
-    if (!World) return;
+    if (!World)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[StartGameSession] No World"));
+        return;
+    }
+
+    // ✅ 서버에서만 실행
+    if (!World->GetAuthGameMode())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[StartGameSession] Not on server, ignored"));
+        return;
+    }
+
+    // ✅ 현재 맵 확인
+    FString CurrentMap = World->GetMapName();
+    UE_LOG(LogTemp, Warning, TEXT("[StartGameSession] Current Map: %s"), *CurrentMap);
+
+    // ✅ 이미 게임맵에 있으면 중복 Travel 방지
+    if (CurrentMap.Contains(TEXT("TestSession")))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[StartGameSession] Already in TestSession, skipping travel"));
+        return;
+    }
 
     FString TravelURL = TEXT("/Game/Level/TestSession");
-    World->ServerTravel(TravelURL);
+    UE_LOG(LogTemp, Warning, TEXT("[StartGameSession] ServerTravel to: %s"), *TravelURL);
+
+    World->ServerTravel(TravelURL, false); // ✅ Seamless=false (절대 경로)
 }
 
 // 로비 생성 완료시 그 로비로 이동

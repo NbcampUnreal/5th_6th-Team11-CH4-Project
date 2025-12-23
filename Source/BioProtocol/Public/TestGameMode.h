@@ -14,19 +14,26 @@ class BIOPROTOCOL_API ATestGameMode : public AGameMode
 	GENERATED_BODY()
 
 public:
+    virtual void BeginPlay() override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
-	virtual void Logout(AController* Exiting) override;
 
-public:
-    // 특정 팀을 위한 프라이빗 채널 생성
-    UFUNCTION(BlueprintCallable, Category = "Voice")
-    void CreatePrivateVoiceChannel(EVoiceTeam Team, const TArray<APlayerController*>& Players);
+    // 게임 시작/종료
+    UFUNCTION(BlueprintCallable, Category = "Game")
+    void StartGame();
+
+    UFUNCTION(BlueprintCallable, Category = "Game")
+    void EndGame();
+
 
 private:
-    void OnPrivateChannelCreated(bool bSuccess, const FString& Response, EVoiceTeam Team, const TArray<APlayerController*>& Players);
 
-    void TryCreateVoiceChannels();
+    void CreateGameVoiceChannels();
+    void CreatePublicGameChannel(const TArray<APlayerController*>& Players);
+    void CreateMafiaGameChannel(const TArray<APlayerController*>& Players);
+    void CreateGameChannel(EVoiceTeam Team, const TArray<APlayerController*>& Players, const FString& ChannelName);
 
     FString TrustedServerUrl = TEXT("http://localhost:3000");
+
+    bool bGameVoiceStarted = false;  // 중복 방지
 	
 };
