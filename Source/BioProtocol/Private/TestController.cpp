@@ -30,12 +30,14 @@ void ATestController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	UE_LOG(LogTemp, Warning, TEXT("[Controller] BeginPlay - Role: %d, IsLocal: %d, Map: %s"),
+		(int32)GetLocalRole(),
+		IsLocalController() ? 1 : 0,
+		*GetWorld()->GetMapName());
+
 	if (IsLocalController())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[Voice][Debug] BeginPlay - IsLocalController: true"));
-
-		// EOS 로그인 전에는 VoiceChatUser를 캐싱하지 않음
-		// StartProximityVoice()만 시작 (UpdateProximityVoice 내부에서 캐싱 시도)
 		StartProximityVoice();
 	}
 }
@@ -225,56 +227,62 @@ void ATestController::UpdateProximityVoice()
 	if (!World)
 		return;
 
+	// ✅ Listener (내 위치) 정보
 	FVector ListenerLoc;
+	FVector ListenerForward = FVector::ForwardVector;
+	FVector ListenerUp = FVector::UpVector;
+
 	if (APawn* MyPawn = GetPawn())
 	{
 		ListenerLoc = MyPawn->GetActorLocation();
+		ListenerForward = MyPawn->GetActorForwardVector();
+		ListenerUp = MyPawn->GetActorUpVector();
 	}
 	else if (PlayerCameraManager)
 	{
 		ListenerLoc = PlayerCameraManager->GetCameraLocation();
+		ListenerForward = PlayerCameraManager->GetActorForwardVector();
+		ListenerUp = PlayerCameraManager->GetActorUpVector();
 	}
 	else
 	{
 		return;
 	}
 
-	// 내 팀 확인
-	ATESTPlayerState* MyPS = GetPlayerState<ATESTPlayerState>();
-	const bool bIAmMafia = (MyPS && MyPS->VoiceTeam == EVoiceTeam::Mafia);
-
-	for (TActorIterator<APawn> It(World); It; ++It)
+	// ✅ PUBLIC 채널 (Positional) - 3D 위치만 업데이트
+	// EVoiceChatChannelType::Positional이 자동으로 거리별 감쇠 처리
+	if (!PublicGameChannelName.IsEmpty())
 	{
-		APawn* OtherPawn = *It;
-		if (!OtherPawn) continue;
-		if (OtherPawn == GetPawn()) continue;
-
-		ATESTPlayerState* OtherPS = Cast<ATESTPlayerState>(OtherPawn->GetPlayerState());
-		if (!OtherPS) continue;
-
-		const FString& OtherPuid = OtherPS->EOSPlayerName;
-		if (OtherPuid.IsEmpty()) continue;
-
-		// 상대방이 마피아인지 확인
-		const bool bOtherIsMafia = (OtherPS->VoiceTeam == EVoiceTeam::Mafia);
-
-		// 마피아끼리는 거리 상관없이 항상 들림
-		if (bIAmMafia && bOtherIsMafia)
+		for (TActorIterator<APawn> It(World); It; ++It)
 		{
-			VoiceChatUser->SetPlayerVolume(OtherPuid, 1.0f);
-			UE_LOG(LogTemp, Verbose, TEXT("[Voice] Mafia-to-Mafia: %s volume = 1.0 (no distance)"), *OtherPuid);
-		}
-		else
-		{
-			// 일반 근접 보이스 (시민끼리, 또는 시민-마피아)
-			const float Dist = FVector::Dist(ListenerLoc, OtherPawn->GetActorLocation());
-			const float Volume = CalcProxVolume01(Dist, ProxMinDist, ProxMaxDist);
+			APawn* OtherPawn = *It;
+			if (!OtherPawn || OtherPawn == GetPawn())
+				continue;
 
-			VoiceChatUser->SetPlayerVolume(OtherPuid, Volume);
-			UE_LOG(LogTemp, Verbose, TEXT("[Voice] Proximity: %s volume = %.2f (dist: %.1f)"),
-				*OtherPuid, Volume, Dist);
+			ATESTPlayerState* OtherPS = Cast<ATESTPlayerState>(OtherPawn->GetPlayerState());
+			if (!OtherPS || OtherPS->EOSPlayerName.IsEmpty())
+				continue;
+
+			// ✅ Speaker 위치만 업데이트 (볼륨은 EOS가 자동 처리)
+			FVector SpeakerLoc = OtherPawn->GetActorLocation();
+
+			VoiceChatUser->Set3DPosition(
+				PublicGameChannelName,
+				SpeakerLoc,
+				ListenerLoc,
+				ListenerForward,
+				ListenerUp
+			);
+
+			UE_LOG(LogTemp, VeryVerbose,
+				TEXT("[Voice][Positional] PUBLIC channel - Player=%s updated 3D position"),
+				*OtherPS->EOSPlayerName);
 		}
 	}
+
+	// ✅ MAFIA 채널 (NonPositional) - 아무것도 안 함!
+	// EVoiceChatChannelType::NonPositional이 거리 무관하게 자동 처리
+	// 별도 처리 불필요
 }
 
 float ATestController::CalcProxVolume01(float Dist, float MinD, float MaxD)
@@ -542,19 +550,23 @@ void ATestController::JoinGameChannel_Local(const FString& ChannelName, const FS
 		return;
 	}
 
-	// ✅ 수정: 채널 타입 구분 로직 개선
 	bool bIsMafiaChannel = ChannelName.Contains(TEXT("Mafia"));
 	bool bIsPublicChannel = ChannelName.Contains(TEXT("Citizen")) || ChannelName.Contains(TEXT("Public"));
+
+	// ✅ 채널 타입 결정
+	EVoiceChatChannelType ChannelType = EVoiceChatChannelType::NonPositional;
 
 	if (bIsMafiaChannel)
 	{
 		MafiaGameChannelName = ChannelName;
-		UE_LOG(LogTemp, Warning, TEXT("[Voice][Game] ✓ Joining MAFIA channel: %s"), *ChannelName);
+		ChannelType = EVoiceChatChannelType::NonPositional;  // 마피아는 일반 채널
+		UE_LOG(LogTemp, Warning, TEXT("[Voice][Game] ✓ Joining MAFIA channel (NonPositional): %s"), *ChannelName);
 	}
 	else if (bIsPublicChannel)
 	{
 		PublicGameChannelName = ChannelName;
-		UE_LOG(LogTemp, Warning, TEXT("[Voice][Game] ✓ Joining PUBLIC channel: %s"), *ChannelName);
+		ChannelType = EVoiceChatChannelType::Positional;  // ✅ 시민은 3D 채널
+		UE_LOG(LogTemp, Warning, TEXT("[Voice][Game] ✓ Joining PUBLIC channel (Positional 3D): %s"), *ChannelName);
 	}
 	else
 	{
@@ -562,7 +574,6 @@ void ATestController::JoinGameChannel_Local(const FString& ChannelName, const FS
 		return;
 	}
 
-	// Trusted Server credentials
 	FEOSVoiceChatChannelCredentials Creds;
 	Creds.ClientBaseUrl = ClientBaseUrl;
 	Creds.ParticipantToken = ParticipantToken;
@@ -572,7 +583,7 @@ void ATestController::JoinGameChannel_Local(const FString& ChannelName, const FS
 	VoiceChatUser->JoinChannel(
 		ChannelName,
 		JsonCreds,
-		EVoiceChatChannelType::NonPositional,
+		ChannelType,  // ✅ 채널 타입 적용
 		FOnVoiceChatChannelJoinCompleteDelegate::CreateUObject(
 			this, &ATestController::OnVoiceChannelJoined
 		)

@@ -16,7 +16,6 @@ void ATestGameMode::BeginPlay()
     if (!HasAuthority())
         return;
 
-    // ✅ 중복 실행 방지
     if (bGameVoiceStarted)
     {
         UE_LOG(LogTemp, Warning, TEXT("[GameMode] BeginPlay already processed, skipping"));
@@ -70,7 +69,7 @@ void ATestGameMode::BeginPlay()
     {
         UE_LOG(LogTemp, Warning, TEXT("[GameMode] ✓ This is GAME map, starting voice channels..."));
 
-        // 플레이어 로드 대기
+        // ✅ 대기 시간을 5초로 증가 (클라이언트 재연결 대기)
         FTimerHandle TimerHandle;
         GetWorldTimerManager().SetTimer(TimerHandle, [this]()
             {
@@ -86,9 +85,12 @@ void ATestGameMode::BeginPlay()
                 }
                 else if (PlayerCount == 0)
                 {
-                    UE_LOG(LogTemp, Error, TEXT("[GameMode] ✗ No players found after 2 seconds!"));
+                    UE_LOG(LogTemp, Error, TEXT("[GameMode] ✗ No players found after 5 seconds!"));
+
+                    // ✅ 플레이어가 없으면 로비로 복귀
+                    GetWorld()->ServerTravel("/Game/Level/Lobby?listen");
                 }
-            }, 2.0f, false);
+            }, 15.0f, false);  // ✅ 2초 → 5초로 증가
     }
     else
     {
@@ -364,11 +366,10 @@ void ATestGameMode::EndGame()
         }
     }
 
-    // 로비로 복귀
+    // ✅ ?listen 추가
     FTimerHandle TimerHandle;
     GetWorldTimerManager().SetTimer(TimerHandle, [this]()
         {
-            // ✅ 로비 맵 경로 확인
-            GetWorld()->ServerTravel("/Game/Level/Lobby");
+            GetWorld()->ServerTravel("/Game/Level/Lobby?listen");
         }, 2.0f, false);
 }

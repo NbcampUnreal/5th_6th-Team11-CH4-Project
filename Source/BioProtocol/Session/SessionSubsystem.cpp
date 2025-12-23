@@ -431,10 +431,12 @@ void USessionSubsystem::StartGameSession()
         return;
     }
 
-    FString TravelURL = TEXT("/Game/Level/TestSession");
+    // ✅ CRITICAL: ?listen 추가 - 서버가 리슨 상태 유지
+    FString TravelURL = TEXT("/Game/Level/TestSession?listen");
     UE_LOG(LogTemp, Warning, TEXT("[StartGameSession] ServerTravel to: %s"), *TravelURL);
 
-    World->ServerTravel(TravelURL, false); // ✅ Seamless=false (절대 경로)
+    // ✅ 절대 경로, Non-Seamless
+    World->ServerTravel(TravelURL, false);
 }
 
 // 로비 생성 완료시 그 로비로 이동
