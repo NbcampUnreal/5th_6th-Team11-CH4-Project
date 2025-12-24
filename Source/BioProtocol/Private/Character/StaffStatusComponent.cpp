@@ -213,12 +213,14 @@ void UStaffStatusComponent::OnRep_CurrentHP()
 {
 	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow,
 		FString::Printf(TEXT("%s HP: %f (RepNotified)"), *GetOwner()->GetName(), CurrentHP));
+	OnHPChanged.Broadcast(CurrentHP);
+
 }
 
 void UStaffStatusComponent::OnRep_CurrentStamina()
 {
 	//UE_LOG(LogTemp, Warning, TEXT("CLIENT Stamina Updated: %f"), CurrentStamina);
-
+	OnStaminaChanged.Broadcast(CurrentStamina);
 }
 
 void UStaffStatusComponent::ApplyDamage(float Damage)
@@ -230,6 +232,8 @@ void UStaffStatusComponent::ApplyDamage(float Damage)
 	CurrentHP -= FinalDamage;
 
 	UE_LOG(LogTemp, Warning, TEXT("%s - CurrentHP: %f (Server)"), *GetOwner()->GetName(), CurrentHP);
+
+	OnHPChanged.Broadcast(CurrentHP); 
 
 	if (CurrentHP <= 0.f)
 	{

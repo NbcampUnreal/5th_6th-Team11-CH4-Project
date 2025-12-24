@@ -14,6 +14,9 @@ enum class ECharacterLifeState : uint8
 	Dead  UMETA(DisplayName = "Dead")
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHPChanged, float, NewHP);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStaminaChanged, float, NewStamina);
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class BIOPROTOCOL_API UStaffStatusComponent : public UActorComponent
 {
@@ -71,6 +74,11 @@ public:
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	float CurrentAttack;
+
+	UPROPERTY(BlueprintAssignable, Category = "Status")
+	FOnHPChanged OnHPChanged;
+	FOnStaminaChanged OnStaminaChanged;
+
 public:
 	void ApplyBaseStatus();
 	void ApplyDamage(float Damage);
@@ -99,13 +107,13 @@ public:
 	void OnRep_LifeState();
 	UFUNCTION()
 	void OnRep_CurrentHP();
-
-	void SetRunable() {	bIsRunable = true;};
-
 	UFUNCTION()
 	void OnRep_CurrentStamina();
+	void SetRunable() {	bIsRunable = true;};
+	
+
+	float GetCurrentHP() { return CurrentHP; }
 
 private:
 	FTimerHandle TimerHandle_SetRunable;
-
 };
