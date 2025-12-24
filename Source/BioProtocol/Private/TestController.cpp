@@ -40,6 +40,46 @@ void ATestController::BeginPlay()
 		UE_LOG(LogTemp, Warning, TEXT("[Voice][Debug] BeginPlay - IsLocalController: true"));
 		StartProximityVoice();
 	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[GameMode] World is NULL!"));
+		return;
+	}
+
+	// ✅ 맵 이름 추출 개선
+	FString WorldName = World->GetName();
+	FString MapName = World->GetMapName();
+
+	// PIE 프리픽스 제거
+	FString CleanMapName = MapName;
+	if (CleanMapName.StartsWith(TEXT("UEDPIE_")))
+	{
+		int32 UnderscoreIndex;
+		if (CleanMapName.FindChar('_', UnderscoreIndex))
+		{
+			// UEDPIE_0_ 제거
+			CleanMapName = CleanMapName.RightChop(UnderscoreIndex + 1);
+		}
+	}
+
+	if (CleanMapName.Contains(TEXT("/")))
+	{
+		int32 LastSlashIndex;
+		CleanMapName.FindLastChar('/', LastSlashIndex);
+		CleanMapName = CleanMapName.RightChop(LastSlashIndex + 1);
+	}
+
+
+	bool bIsGameMap = CleanMapName.Equals(TEXT("TestSession"), ESearchCase::IgnoreCase) ||
+		CleanMapName.Contains(TEXT("TestSession")) ||
+		CleanMapName.Equals(TEXT("GameMap"), ESearchCase::IgnoreCase);
+
+	if (bIsGameMap)
+	{
+		VoiceTransmitToNone();
+	}
 }
 
 
