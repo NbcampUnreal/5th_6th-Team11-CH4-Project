@@ -1,5 +1,4 @@
-﻿// TestController.h
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
@@ -17,17 +16,11 @@ public:
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-public:
-    // EOS 로그인
     UFUNCTION(BlueprintCallable)
     void LoginToEOS(int32 Credential);
 
     UFUNCTION(BlueprintCallable)
     void CreateLobby(const FString& Ip, int32 Port, int32 PublicConnections);
-
-    bool bLoginInProgress = false;
-    FDelegateHandle LoginCompleteHandle;
-    void HandleLoginComplete(int32, bool bOk, const FUniqueNetId& Id, const FString& Err);
 
     UFUNCTION(Server, Reliable)
     void Server_SetEOSPlayerName(const FString& InEOSPlayerName);
@@ -38,48 +31,40 @@ public:
     UFUNCTION(BlueprintCallable, Server, Reliable)
     void Server_SetReady();
 
-public:
-    // ============ 채널 참가/나가기 ============
-
-    // 로비 채널 참가 (SessionSubsystem에서 자동 호출)
+    // 채널 참가
     UFUNCTION(Client, Reliable)
     void Client_JoinLobbyChannel(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken);
 
-    void JoinLobbyChannel_Local(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken);
-
-    // 게임 채널 참가 (GameMode에서 호출)
     UFUNCTION(Client, Reliable)
     void Client_JoinGameChannel(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken);
 
-    void JoinGameChannel_Local(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken);
-
-    // 로비 채널 나가기
     UFUNCTION(BlueprintCallable, Category = "Voice")
     void LeaveLobbyChannel();
 
-    // 게임 채널 나가기
     UFUNCTION(BlueprintCallable, Category = "Voice")
     void LeaveGameChannels();
 
-public:
-    // ============ 송신 제어 ============
+    // 송신 제어
+    UFUNCTION(BlueprintCallable, Category = "Voice")
+    void VoiceTransmitToPublic();
 
     UFUNCTION(BlueprintCallable, Category = "Voice")
-    void VoiceTransmitToPublic();  // 전체 채널로 송신
+    void VoiceTransmitToMafiaOnly();
 
     UFUNCTION(BlueprintCallable, Category = "Voice")
-    void VoiceTransmitToMafiaOnly();  // 마피아 채널로만 송신
+    void VoiceTransmitToBothChannels();
 
     UFUNCTION(BlueprintCallable, Category = "Voice")
-    void VoiceTransmitToBothChannels();  // 두 채널 모두 송신
+    void VoiceTransmitToNone();
 
-    UFUNCTION(BlueprintCallable, Category = "Voice")
-    void VoiceTransmitToNone();  // 송신 중지
-
-    UFUNCTION(BlueprintCallable, Category = "Voice")
-    void DebugVoiceStatus();
 private:
-    // 보이스 관련
+    bool bLoginInProgress = false;
+    FDelegateHandle LoginCompleteHandle;
+
+    void HandleLoginComplete(int32, bool bOk, const FUniqueNetId& Id, const FString& Err);
+    void CacheVoiceChatUser();
+
+    // 근접 보이스
     void StartProximityVoice();
     void UpdateProximityVoice();
     static float CalcProxVolume01(float Dist, float MinD, float MaxD);
@@ -90,12 +75,13 @@ private:
     float ProxMaxDist = 2000.f;
 
     IVoiceChatUser* VoiceChatUser = nullptr;
-    void CacheVoiceChatUser();
 
-    // ============ 채널 이름 저장 ============
-    FString LobbyChannelName;         // 로비 채널
-    FString PublicGameChannelName;    // 게임 내 전체 채널
-    FString MafiaGameChannelName;     // 게임 내 마피아 채널
+    // 채널 이름
+    FString LobbyChannelName;
+    FString PublicGameChannelName;
+    FString MafiaGameChannelName;
 
+    void JoinLobbyChannel_Local(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken);
+    void JoinGameChannel_Local(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken);
     void OnVoiceChannelJoined(const FString& ChannelName, const FVoiceChatResult& Result);
 };
