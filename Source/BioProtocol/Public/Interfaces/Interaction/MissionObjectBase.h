@@ -96,18 +96,18 @@ public:
 
 	/** 작업 시작 */
 	UFUNCTION(BlueprintCallable, Category = "Mission Object")
-	void StartWork(ADXPlayerCharacter* Worker);
+	virtual void StartWork(ADXPlayerCharacter* Worker);
 
 	/** 작업 취소 */
 	UFUNCTION(BlueprintCallable, Category = "Mission Object")
-	void CancelWork();
+	virtual void CancelWork();
 
 	/** 작업 완료 */
 	UFUNCTION(BlueprintCallable, Category = "Mission Object")
-	void CompleteWork();
+	virtual void CompleteWork();
 
 	/** 진행도 업데이트 */
-	void UpdateProgress(float DeltaTime);
+	virtual void UpdateProgress(float DeltaTime);
 
 	//==========================================
 	// INTERACTION INTERFACE
