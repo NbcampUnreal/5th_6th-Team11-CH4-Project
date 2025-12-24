@@ -26,19 +26,21 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UCharacterMovementComponent> OwnerCharacterMovementComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	FVector Velocity;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float GroundSpeed;	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	uint8 bShouldMove : 1;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	uint8 bIsFalling : 1;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	uint8 bIsRunning : 1;	
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	uint8 bIsCrouch : 1;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	uint8 bIsGun:1;
 };
