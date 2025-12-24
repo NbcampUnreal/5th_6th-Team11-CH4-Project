@@ -7,7 +7,7 @@
 #include "Components/TextBlock.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/Character.h"
-#include "Character/StaffStatusComponent.h"
+#include "Components/WidgetSwitcher.h"
 
 void UBioPlayerHUD::NativeConstruct()
 {
@@ -23,18 +23,10 @@ void UBioPlayerHUD::NativeConstruct()
 	if (ItemSlot_1) Slots.Add(ItemSlot_1);
 	if (ItemSlot_2) Slots.Add(ItemSlot_2);
 
-	UStaffStatusComponent* StatusComp =
-		OwnerCharacter->FindComponentByClass<UStaffStatusComponent>();
-
-	if (StatusComp)
+	if (RoleSpecificContainer)
 	{
-	//스테미나추가필요
-		StatusComp->OnHPChanged.AddDynamic(
-			this, &UBioPlayerHUD::UpdateHealth);
-
-		UpdateHealth(StatusComp->GetCurrentHP());
+		RoleSpecificContainer->SetActiveWidgetIndex(0);
 	}
-
 }
 
 void UBioPlayerHUD::UpdateHealth(float CurrentHP)
@@ -42,8 +34,7 @@ void UBioPlayerHUD::UpdateHealth(float CurrentHP)
 	if (HealthBar)
 	{
 		float Percent = FMath::Clamp(CurrentHP / MaxHP, 0.0f, 1.0f);
-		HealthBar->SetPercent(Percent);	
-
+		HealthBar->SetPercent(Percent);
 	}
 	if (HealthText)
 	{
@@ -52,18 +43,44 @@ void UBioPlayerHUD::UpdateHealth(float CurrentHP)
 	}
 }
 
-void UBioPlayerHUD::UpdateRoleText(FString NewRole)
-{
-	if (RoleText)
-	{
-		RoleText->SetText(FText::FromString(NewRole));
-	}
-}
-
 void UBioPlayerHUD::UpdateItemSlot(int32 SlotIndex, UTexture2D* Icon)
 {
 	if (Slots.IsValidIndex(SlotIndex) && Slots[SlotIndex])
 	{
 		Slots[SlotIndex]->UpdateSlot(Icon);
+	}
+}
+
+void UBioPlayerHUD::UpdateHUDState(EBioPlayerRole Role, EBioGamePhase CurrentPhase, bool bIsTransformed)
+{
+	if (!RoleSpecificContainer) return;
+
+	if (Role == EBioPlayerRole::Staff || Role == EBioPlayerRole::None || CurrentPhase == EBioGamePhase::Lobby)
+	{
+		RoleSpecificContainer->SetActiveWidgetIndex(0);
+		return;
+	}
+
+	if (Role == EBioPlayerRole::Cleaner)
+	{
+		if (CurrentPhase == EBioGamePhase::Day)
+		{
+			RoleSpecificContainer->SetActiveWidgetIndex(1);
+		}
+		else if (CurrentPhase == EBioGamePhase::Night)
+		{
+			if (bIsTransformed)
+			{
+				RoleSpecificContainer->SetActiveWidgetIndex(3);
+			}
+			else
+			{
+				RoleSpecificContainer->SetActiveWidgetIndex(2);
+			}
+		}
+		else
+		{
+			RoleSpecificContainer->SetActiveWidgetIndex(0);
+		}
 	}
 }
