@@ -7,6 +7,7 @@
 #include "Components/TextBlock.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/Character.h"
+#include "Character/StaffStatusComponent.h"
 
 void UBioPlayerHUD::NativeConstruct()
 {
@@ -21,6 +22,19 @@ void UBioPlayerHUD::NativeConstruct()
 	if (ItemSlot_0) Slots.Add(ItemSlot_0);
 	if (ItemSlot_1) Slots.Add(ItemSlot_1);
 	if (ItemSlot_2) Slots.Add(ItemSlot_2);
+
+	UStaffStatusComponent* StatusComp =
+		OwnerCharacter->FindComponentByClass<UStaffStatusComponent>();
+
+	if (StatusComp)
+	{
+	//스테미나추가필요
+		StatusComp->OnHPChanged.AddDynamic(
+			this, &UBioPlayerHUD::UpdateHealth);
+
+		UpdateHealth(StatusComp->GetCurrentHP());
+	}
+
 }
 
 void UBioPlayerHUD::UpdateHealth(float CurrentHP)
@@ -28,7 +42,8 @@ void UBioPlayerHUD::UpdateHealth(float CurrentHP)
 	if (HealthBar)
 	{
 		float Percent = FMath::Clamp(CurrentHP / MaxHP, 0.0f, 1.0f);
-		HealthBar->SetPercent(Percent);
+		HealthBar->SetPercent(Percent);	
+
 	}
 	if (HealthText)
 	{

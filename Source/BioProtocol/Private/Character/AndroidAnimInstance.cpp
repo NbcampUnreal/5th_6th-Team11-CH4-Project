@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "AndroidAnimInstance.h"
-#include "AndroidCharacter.h"
+#include "Character/AndroidAnimInstance.h"
+#include "Character/AndroidCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/Engine.h"
 

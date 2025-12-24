@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "StaffAnimInstance.h"
-#include "StaffCharacter.h"
+#include "Character/StaffAnimInstance.h"
+#include "Character/StaffCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/Engine.h"
 
@@ -35,4 +35,6 @@ void UStaffAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	bIsFalling = OwnerCharacterMovementComponent->IsFalling();
 
 	bIsCrouch = OwnerCharacterMovementComponent->IsCrouching();
+
+	bIsGun = OwnerCharacter->IsGunEquipped();
 }
