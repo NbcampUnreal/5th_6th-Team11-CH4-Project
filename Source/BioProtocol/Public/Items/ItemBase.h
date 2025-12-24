@@ -88,7 +88,7 @@ public:
 
 	/** 아이템 사용 (자식 클래스에서 오버라이드) */
 	UFUNCTION(BlueprintCallable, Category = "Item")
-	virtual void Use(class ADXPlayerCharacter* Character);
+	virtual void Use(class AStaffCharacter* Character);
 
 	//==========================================
 	// GETTERS

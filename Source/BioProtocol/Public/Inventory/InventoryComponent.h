@@ -10,7 +10,7 @@
 
 class UItemBase;
 class AEquippableItem;
-class ADXPlayerCharacter;
+class AStaffCharacter;
 
 //==========================================
 // ENUMS
@@ -302,7 +302,7 @@ protected:
 private:
 	/** 소유 캐릭터 캐시 */
 	UPROPERTY()
-	ADXPlayerCharacter* OwnerCharacter;
+	AStaffCharacter* OwnerCharacter;
 	void CheckWeightLimit();
 	void SwapSlots(int32 Slot1, int32 Slot2);
 };

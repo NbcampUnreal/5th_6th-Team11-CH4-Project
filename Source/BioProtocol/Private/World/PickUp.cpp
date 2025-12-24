@@ -6,6 +6,7 @@
 #include "BioProtocol/Public/Equippable/EquippableItem.h"
 #include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
+#include "Character/StaffCharacter.h"
 
 APickUp::APickUp()
 {
@@ -174,7 +175,7 @@ void APickUp::EndInteract_Implementation()
 }
 
 
-void APickUp::Interact_Implementation(ADXPlayerCharacter* PlayerCharacter)
+void APickUp::Interact_Implementation(AStaffCharacter* PlayerCharacter)
 {
 	if (PlayerCharacter)
 	{
@@ -187,13 +188,13 @@ FInteractableData APickUp::GetInteractableData_Implementation() const
 	return InstanceInteractableData;
 }
 
-bool APickUp::CanInteract_Implementation(ADXPlayerCharacter* PlayerCharacter) const
+bool APickUp::CanInteract_Implementation(AStaffCharacter* PlayerCharacter) const
 {
 	// 아이템 참조가 유효하고, 상호작용 가능 상태인지 확인
 	return ItemReference != nullptr && InstanceInteractableData.bCanInteract;
 }
 
-void APickUp::TakePickup(const ADXPlayerCharacter* Taker)
+void APickUp::TakePickup(const AStaffCharacter* Taker)
 {
 	if (!Taker || !ItemReference || IsPendingKillPending())
 	{
@@ -249,7 +250,7 @@ void APickUp::TakePickup(const ADXPlayerCharacter* Taker)
 // 5. 인벤토리 공간 확인
 //==========================================
 
-void AChest::Interact_Implementation(ADXPlayerCharacter* Player)
+void AChest::Interact_Implementation(AStaffCharacter* Player)
 {
 	if (!Player)
 	{
@@ -290,7 +291,7 @@ void AChest::Interact_Implementation(ADXPlayerCharacter* Player)
 
 
 /* 미션 오브젝트에서 사용
-void AMissionObjectBase::Interact_Implementation(ADXPlayerCharacter* Player)
+void AMissionObjectBase::Interact_Implementation(AStaffCharacter* Player)
 {
 	// 플레이어가 필요한 도구를 가지고 있는지 확인
 	if (!Player->HasRequiredTool(RequiredToolID))

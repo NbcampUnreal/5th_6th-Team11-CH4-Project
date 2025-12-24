@@ -9,7 +9,7 @@
 #include "SupplyStation.generated.h"
 
 class UStaticMeshComponent;
-class ADXPlayerCharacter;
+class AStaffCharacter;
 class AEquippableTool_Welder;
 
 /**
@@ -54,7 +54,7 @@ public:
 
 	/** 현재 충전 중인 플레이어 */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Supply Station|State")
-	ADXPlayerCharacter* ChargingPlayer;
+	AStaffCharacter* ChargingPlayer;
 
 	//==========================================
 	// VFX & AUDIO
@@ -84,7 +84,7 @@ public:
 
 	/** 충전 시작 */
 	UFUNCTION(BlueprintCallable, Category = "Supply Station")
-	void StartCharging(ADXPlayerCharacter* Player);
+	void StartCharging(AStaffCharacter* Player);
 
 	/** 충전 완료 */
 	UFUNCTION(BlueprintCallable, Category = "Supply Station")
@@ -102,9 +102,9 @@ public:
 	virtual void EndFocus_Implementation() override;
 	virtual void BeginInteract_Implementation() override;
 	virtual void EndInteract_Implementation() override;
-	virtual void Interact_Implementation(ADXPlayerCharacter* PlayerCharacter) override;
+	virtual void Interact_Implementation(AStaffCharacter* PlayerCharacter) override;
 	virtual FInteractableData GetInteractableData_Implementation() const override;
-	virtual bool CanInteract_Implementation(ADXPlayerCharacter* PlayerCharacter) const override;
+	virtual bool CanInteract_Implementation(AStaffCharacter* PlayerCharacter) const override;
 
 protected:
 	/** 충전 이펙트 시작 */
@@ -121,7 +121,7 @@ protected:
 	//==========================================
 
 	UFUNCTION(Server, Reliable)
-	void ServerStartCharging(ADXPlayerCharacter* Player);
+	void ServerStartCharging(AStaffCharacter* Player);
 
 	UFUNCTION(Server, Reliable)
 	void ServerCompleteCharging();
