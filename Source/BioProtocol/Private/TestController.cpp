@@ -249,8 +249,11 @@ void ATestController::UpdateProximityVoice()
 		return;
 	}
 
-	// ✅ PUBLIC 채널 (Positional) - 3D 위치만 업데이트
-	// EVoiceChatChannelType::Positional이 자동으로 거리별 감쇠 처리
+	// ✅ 내 팀 확인
+	ATESTPlayerState* MyPS = GetPlayerState<ATESTPlayerState>();
+	const bool bIAmMafia = (MyPS && MyPS->VoiceTeam == EVoiceTeam::Mafia);
+
+	// ✅ PUBLIC 채널 (Positional) - 3D 위치 + 거리별 볼륨
 	if (!PublicGameChannelName.IsEmpty())
 	{
 		for (TActorIterator<APawn> It(World); It; ++It)
@@ -263,9 +266,14 @@ void ATestController::UpdateProximityVoice()
 			if (!OtherPS || OtherPS->EOSPlayerName.IsEmpty())
 				continue;
 
-			// ✅ Speaker 위치만 업데이트 (볼륨은 EOS가 자동 처리)
+			// ✅ 거리 계산
 			FVector SpeakerLoc = OtherPawn->GetActorLocation();
+			float Distance = FVector::Dist(ListenerLoc, SpeakerLoc);
 
+			// ✅ 거리별 볼륨 계산
+			float Volume = CalcProxVolume01(Distance, ProxMinDist, ProxMaxDist);
+
+			// ✅ 3D 위치 업데이트 (공간 오디오)
 			VoiceChatUser->Set3DPosition(
 				PublicGameChannelName,
 				SpeakerLoc,
@@ -274,15 +282,18 @@ void ATestController::UpdateProximityVoice()
 				ListenerUp
 			);
 
-			UE_LOG(LogTemp, VeryVerbose,
-				TEXT("[Voice][Positional] PUBLIC channel - Player=%s updated 3D position"),
-				*OtherPS->EOSPlayerName);
+			// ✅ 볼륨 직접 설정 (거리 제어)
+			VoiceChatUser->SetPlayerVolume(OtherPS->EOSPlayerName, Volume);
+
+			// ✅ 테스트용 로그 (거리 & 볼륨 확인)
+			UE_LOG(LogTemp, Log,
+				TEXT("[Voice][Proximity] Player=%s Dist=%.0fcm (%.1fm) Vol=%.2f"),
+				*OtherPS->EOSPlayerName, Distance, Distance / 100.f, Volume);
 		}
 	}
 
-	// ✅ MAFIA 채널 (NonPositional) - 아무것도 안 함!
-	// EVoiceChatChannelType::NonPositional이 거리 무관하게 자동 처리
-	// 별도 처리 불필요
+	// ✅ MAFIA 채널 (NonPositional) - 아무것도 안 함
+	// 거리 무관하게 자동으로 일정한 볼륨 유지
 }
 
 float ATestController::CalcProxVolume01(float Dist, float MinD, float MaxD)
