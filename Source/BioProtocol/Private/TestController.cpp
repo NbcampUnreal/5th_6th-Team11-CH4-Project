@@ -266,6 +266,8 @@ void ATestController::UpdateProximityVoice()
 			if (!OtherPS || OtherPS->EOSPlayerName.IsEmpty())
 				continue;
 
+			const bool bOtherIsMafia = (OtherPS->VoiceTeam == EVoiceTeam::Mafia);
+
 			// ✅ 거리 계산
 			FVector SpeakerLoc = OtherPawn->GetActorLocation();
 			float Distance = FVector::Dist(ListenerLoc, SpeakerLoc);
@@ -282,18 +284,23 @@ void ATestController::UpdateProximityVoice()
 				ListenerUp
 			);
 
-			// ✅ 볼륨 직접 설정 (거리 제어)
+			// ✅ CRITICAL: 마피아끼리는 항상 최대 볼륨 유지
+			if (bIAmMafia && bOtherIsMafia)
+			{
+				Volume = 1.0f;  // 마피아끼리는 거리 무관
+				UE_LOG(LogTemp, VeryVerbose,
+					TEXT("[Voice][Proximity] MAFIA override: Player=%s Vol=1.0 (ignore distance)"),
+					*OtherPS->EOSPlayerName);
+			}
+
+			// ✅ 볼륨 설정
 			VoiceChatUser->SetPlayerVolume(OtherPS->EOSPlayerName, Volume);
 
-			// ✅ 테스트용 로그 (거리 & 볼륨 확인)
 			UE_LOG(LogTemp, Log,
-				TEXT("[Voice][Proximity] Player=%s Dist=%.0fcm (%.1fm) Vol=%.2f"),
-				*OtherPS->EOSPlayerName, Distance, Distance / 100.f, Volume);
+				TEXT("[Voice][Proximity] Player=%s IsMafia=%d Dist=%.0fcm Vol=%.2f"),
+				*OtherPS->EOSPlayerName, bOtherIsMafia ? 1 : 0, Distance, Volume);
 		}
 	}
-
-	// ✅ MAFIA 채널 (NonPositional) - 아무것도 안 함
-	// 거리 무관하게 자동으로 일정한 볼륨 유지
 }
 
 float ATestController::CalcProxVolume01(float Dist, float MinD, float MaxD)
