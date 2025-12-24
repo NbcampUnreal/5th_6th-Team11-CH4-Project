@@ -619,8 +619,14 @@ void ADXPlayerCharacter::DropCurrentItem()
 	CurrentEquippedItem = nullptr;
 	CurrentSlot = 0;
 
-	// TODO: 인벤토리에서도 아이템 제거
-	// Inventory->RemoveItem(ItemReference);
+	// 인벤토리에서도 아이템 제거
+	if (UInventoryComponent* InventoryComp = GetInventory())
+	{
+		if (CurrentEquippedItem->ItemReference)
+		{
+			InventoryComp->RemoveItem(CurrentEquippedItem->ItemReference);
+		}
+	}
 
 }
 

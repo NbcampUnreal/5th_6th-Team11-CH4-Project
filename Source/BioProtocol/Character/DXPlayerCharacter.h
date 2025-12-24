@@ -54,6 +54,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UInventoryComponent* Inventory;  // <- 하나만 유지
 
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	UInventoryComponent* GetInventoryComponent() const { return Inventory; }
+
 	//==========================================
 	// EQUIPMENT
 	//==========================================
