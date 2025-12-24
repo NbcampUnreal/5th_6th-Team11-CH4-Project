@@ -23,6 +23,8 @@ public:
 
 	void SendPlayerToJail(AController* PlayerToJail);
 
+	void CheckWinConditions();
+
 protected:
 	FVector JailLocation;
 
@@ -35,7 +37,6 @@ protected:
 	float TimeCounter = 0.0f;
 	void AssignRoles();
 	void UpdateJailTimers(float DeltaTime);
-	void CheckWinConditions();
 
 	UPROPERTY()
 	ABioGameState* BioGameState;

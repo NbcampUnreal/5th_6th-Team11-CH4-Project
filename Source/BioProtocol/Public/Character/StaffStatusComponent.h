@@ -1,21 +1,17 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Game/BioProtocolTypes.h"
 #include "StaffStatusComponent.generated.h"
-
-UENUM(BlueprintType)
-enum class ECharacterLifeState : uint8
-{
-	Alive UMETA(DisplayName = "Alive"),
-	Dead  UMETA(DisplayName = "Dead")
-};
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHPChanged, float, NewHP);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStaminaChanged, float, NewStamina);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStatusChanged, EBioPlayerStatus, NewStatus);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTransformChanged, bool, bIsTransformed);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class BIOPROTOCOL_API UStaffStatusComponent : public UActorComponent
@@ -44,9 +40,6 @@ public:
 	float Attack = 20.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")
-	float Defense = 5.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")
 	float MoveSpeed = 600.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")
@@ -61,10 +54,10 @@ public:
 	float JumpStamina = 20.f;
 
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentHP, BlueprintReadOnly) 
-		float CurrentHP;
+	float CurrentHP;
 
-		UPROPERTY(Replicated, BlueprintReadOnly)
-		float CurrentStamina;
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	float CurrentStamina;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	float CurrentMoveSpeed;
@@ -77,7 +70,15 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Status")
 	FOnHPChanged OnHPChanged;
+
+	UPROPERTY(BlueprintAssignable, Category = "Status")
 	FOnStaminaChanged OnStaminaChanged;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnStatusChanged OnStatusChanged;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnTransformChanged OnTransformChanged;
 
 public:
 	void ApplyBaseStatus();
@@ -86,8 +87,14 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	UPROPERTY(ReplicatedUsing = OnRep_LifeState, BlueprintReadOnly, Category = "Status")
-	ECharacterLifeState LifeState = ECharacterLifeState::Alive;
+	UPROPERTY(ReplicatedUsing = OnRep_PlayerStatus, BlueprintReadOnly, Category = "Status")
+	EBioPlayerStatus PlayerStatus = EBioPlayerStatus::Alive;
+
+	UPROPERTY(ReplicatedUsing = OnRep_IsTransformed, BlueprintReadOnly, Category = "Status")
+	bool bIsTransformed = false;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Status")
+	float JailTimer = 0.0f;
 
 	void StartConsumeStamina();
 	void StopConsumeStamina();
@@ -103,14 +110,24 @@ public:
 
 	FTimerHandle TimerHandle_ConsumeStamina;
 	FTimerHandle TimerHandle_RegenStamina;
-	UFUNCTION()
-	void OnRep_LifeState();
+	FTimerHandle TimerHandle_Jail;
 	UFUNCTION()
 	void OnRep_CurrentHP();
 	UFUNCTION()
 	void OnRep_CurrentStamina();
+	UFUNCTION()
+	void OnRep_PlayerStatus();
+	UFUNCTION()
+	void OnRep_IsTransformed();
 	void SetRunable() {	bIsRunable = true;};
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetTransform(bool bNewState);
 	
+	void JailTimerTick();
+	void SetJailed();
+	void SetDead();
+	void SetRevived();
 
 	float GetCurrentHP() { return CurrentHP; }
 

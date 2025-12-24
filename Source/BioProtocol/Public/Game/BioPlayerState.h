@@ -22,46 +22,14 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_GameRole, BlueprintReadOnly, Category = "Bio|Role")
 	EBioPlayerRole GameRole;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Bio|Stat")
-	float CurrentHP;
-
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Bio|Stat")
-	float MaxHP;
-
-	UPROPERTY(ReplicatedUsing = OnRep_Status, BlueprintReadOnly, Category = "Bio|Status")
-	EBioPlayerStatus Status;
-
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Bio|Status")
-	float JailTimer;
-
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Bio|Appearance")
 	int32 ColorIndex;
 
-	UPROPERTY(ReplicatedUsing = OnRep_IsTransformed, BlueprintReadOnly, Category = "Bio|State")
-	bool bIsTransformed;
-
-	UPROPERTY(BlueprintAssignable)
-	FOnPlayerTransformChanged OnTransformChanged;
-
 	UPROPERTY(BlueprintAssignable, Category = "Bio|Event")
 	FOnPlayerRoleChanged OnRoleChanged;
-
-	UFUNCTION(Server, Reliable, BlueprintCallable)
-	void ServerSetTransform(bool bNewState);
-
-	void ApplyDamage(float DamageAmount);
-
-	void SetPlayerStatus(EBioPlayerStatus NewStatus);
-
-
 
 protected:
 	UFUNCTION()
 	void OnRep_GameRole();
 
-	UFUNCTION()
-	void OnRep_Status();
-
-	UFUNCTION()
-	void OnRep_IsTransformed();
 };

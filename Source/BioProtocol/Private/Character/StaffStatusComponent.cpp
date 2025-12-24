@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Character/StaffStatusComponent.h"
@@ -6,6 +6,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include <Character/StaffCharacter.h>
 #include <Character/MyPlayerController.h>
+#include "Game/BioGameMode.h"
 #include "MyGameModeBase.h"
 
 // Sets default values for this component's properties
@@ -23,8 +24,9 @@ void UStaffStatusComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(UStaffStatusComponent, CurrentHP);
 	DOREPLIFETIME(UStaffStatusComponent, CurrentMoveSpeed);
 	DOREPLIFETIME(UStaffStatusComponent, CurrentAttack);
-	DOREPLIFETIME(UStaffStatusComponent, LifeState);
 	DOREPLIFETIME(UStaffStatusComponent, CurrentStamina);
+	DOREPLIFETIME(UStaffStatusComponent, PlayerStatus);
+	DOREPLIFETIME(UStaffStatusComponent, bIsTransformed);
 	DOREPLIFETIME(UStaffStatusComponent, bIsRunable);
 }
 
@@ -197,18 +199,6 @@ void UStaffStatusComponent::ConsumeJumpStamina()
 	}
 }
 
-void UStaffStatusComponent::OnRep_LifeState()
-{
-	if (LifeState == ECharacterLifeState::Dead)
-	{
-		if (AStaffCharacter* OwnerChar = Cast<AStaffCharacter>(GetOwner()))
-		{
-			OwnerChar->OnDeath();
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Dead"));
-		}
-	}
-}
-
 void UStaffStatusComponent::OnRep_CurrentHP()
 {
 	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow,
@@ -223,13 +213,21 @@ void UStaffStatusComponent::OnRep_CurrentStamina()
 	OnStaminaChanged.Broadcast(CurrentStamina);
 }
 
+void UStaffStatusComponent::OnRep_PlayerStatus() 
+{ 
+	OnStatusChanged.Broadcast(PlayerStatus); 
+}
+void UStaffStatusComponent::OnRep_IsTransformed() 
+{ 
+	OnTransformChanged.Broadcast(bIsTransformed); 
+}
+
 void UStaffStatusComponent::ApplyDamage(float Damage)
 {
 	if (!GetOwner()->HasAuthority()) return;
-	if (LifeState == ECharacterLifeState::Dead) return;
+	if (PlayerStatus == EBioPlayerStatus::Dead) return;
 
-	const float FinalDamage = FMath::Max(Damage - Defense, 1.f);
-	CurrentHP -= FinalDamage;
+	CurrentHP -= Damage;
 
 	UE_LOG(LogTemp, Warning, TEXT("%s - CurrentHP: %f (Server)"), *GetOwner()->GetName(), CurrentHP);
 
@@ -238,27 +236,102 @@ void UStaffStatusComponent::ApplyDamage(float Damage)
 	if (CurrentHP <= 0.f)
 	{
 		CurrentHP = 0.f;
-		LifeState = ECharacterLifeState::Dead;
+		PlayerStatus = EBioPlayerStatus::Jailed;
 
-		if (ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner()))
-		{
-			OwnerCharacter->GetCharacterMovement()->DisableMovement();
-
-			if (APlayerController* PC = Cast<APlayerController>(OwnerCharacter->GetController()))
-			{
-				/*	if (AMyPlayerController* MyPC = Cast<AMyPlayerController>(PC))
-					{
-						MyPC->ClientStartSpectate();
-					}*/
-				AMyGameModeBase* GM = Cast<AMyGameModeBase>(GetWorld()->GetAuthGameMode());
-				if (GM)
-				{
-					GM->OnPlayerKilled(PC);
-				}
-			}
-		}
-
-
+		SetJailed();
 	}
 }
 
+void UStaffStatusComponent::SetJailed()
+{
+	if (!GetOwner()->HasAuthority()) return;
+	if (PlayerStatus != EBioPlayerStatus::Alive) return;
+
+	PlayerStatus = EBioPlayerStatus::Jailed;
+	JailTimer = 60.0f;
+	OnRep_PlayerStatus();
+
+	GetWorld()->GetTimerManager().SetTimer(
+		TimerHandle_Jail,
+		this,
+		&UStaffStatusComponent::JailTimerTick,
+		1.0f,
+		true
+	);
+
+	UE_LOG(LogTemp, Warning, TEXT("[StaffStatus] Player Jailed. Timer Started."));
+
+	if (ABioGameMode* GM = Cast<ABioGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		GM->SendPlayerToJail(Cast<AController>(Cast<APawn>(GetOwner())->GetController()));
+	}
+}
+
+void UStaffStatusComponent::ServerSetTransform_Implementation(bool bNewState)
+{
+	bIsTransformed = bNewState;
+
+	if (bIsTransformed)
+	{
+		MaxHP = 200.f;
+		CurrentHP = MaxHP;
+	}
+	else
+	{
+		MaxHP = 100.f;
+		CurrentHP = FMath::Min(CurrentHP, MaxHP);
+	}
+
+	OnRep_IsTransformed();
+}
+
+void UStaffStatusComponent::JailTimerTick()
+{
+	JailTimer -= 1.0f;
+
+	if (JailTimer <= 0.0f)
+	{
+		JailTimer = 0.0f;
+		GetWorld()->GetTimerManager().ClearTimer(TimerHandle_Jail);
+		SetDead();
+	}
+}
+
+void UStaffStatusComponent::SetDead()
+{
+	if (!GetOwner()->HasAuthority()) return;
+
+	if (PlayerStatus == EBioPlayerStatus::Dead) return;
+
+	GetWorld()->GetTimerManager().ClearTimer(TimerHandle_Jail);
+
+	PlayerStatus = EBioPlayerStatus::Dead;
+	CurrentHP = 0.0f;
+	OnRep_PlayerStatus();
+
+	UE_LOG(LogTemp, Error, TEXT("[StaffStatus] Player INCINERATED (Dead)."));
+
+	if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
+	{
+		OwnerChar->GetCharacterMovement()->DisableMovement();
+	}
+
+	if (ABioGameMode* GM = Cast<ABioGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		GM->CheckWinConditions();
+	}
+}
+
+void UStaffStatusComponent::SetRevived()
+{
+	if (!GetOwner()->HasAuthority()) return;
+
+	GetWorld()->GetTimerManager().ClearTimer(TimerHandle_Jail);
+
+	PlayerStatus = EBioPlayerStatus::Alive;
+	JailTimer = 0.0f;
+	CurrentHP = MaxHP * 0.3f;
+	OnRep_PlayerStatus();
+
+	UE_LOG(LogTemp, Log, TEXT("[StaffStatus] Player Revived!"));
+}

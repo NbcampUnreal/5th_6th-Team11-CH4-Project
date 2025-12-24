@@ -6,6 +6,7 @@
 #include "Game/BioPlayerState.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
+#include "Character/StaffStatusComponent.h"
 
 ABioGameMode::ABioGameMode()
 {
@@ -72,17 +73,11 @@ void ABioGameMode::AssignRoles()
 		if (i < TargetCleanerNum)
 		{
 			BioPS->GameRole = EBioPlayerRole::Cleaner;
-			BioPS->MaxHP = 100.0f;
-			BioPS->CurrentHP = BioPS->MaxHP;
-
 			UE_LOG(LogTemp, Log, TEXT("-> Player [%s] assigned as CLEANER"), *BioPS->GetPlayerName());
 		}
 		else
 		{
 			BioPS->GameRole = EBioPlayerRole::Staff;
-			BioPS->MaxHP = 100.0f;
-			BioPS->CurrentHP = BioPS->MaxHP;
-
 			UE_LOG(LogTemp, Log, TEXT("-> Player [%s] assigned as STAFF"), *BioPS->GetPlayerName());
 		}
 	}
@@ -129,24 +124,13 @@ void ABioGameMode::UpdateJailTimers(float DeltaTime)
 {
 	for (APlayerState* PS : GameState->PlayerArray)
 	{
-		ABioPlayerState* BioPS = Cast<ABioPlayerState>(PS);
-		if (BioPS && BioPS->Status == EBioPlayerStatus::Jailed)
+		APawn* Pawn = PS->GetPawn();
+		if (!Pawn) continue;
+
+		UStaffStatusComponent* StatusComp = Pawn->FindComponentByClass<UStaffStatusComponent>();
+		if (StatusComp && StatusComp->PlayerStatus == EBioPlayerStatus::Jailed)
 		{
-			BioPS->JailTimer -= DeltaTime;
 
-			if (BioPS->JailTimer <= 0.0f)
-			{
-				BioPS->SetPlayerStatus(EBioPlayerStatus::Dead);
-
-				APawn* Pawn = BioPS->GetPawn();
-				if (Pawn)
-				{
-					Pawn->Destroy();
-				}
-
-				UE_LOG(LogTemp, Log, TEXT("%s has been Incinerated."), *BioPS->GetPlayerName());
-				CheckWinConditions();
-			}
 		}
 	}
 }
@@ -165,23 +149,37 @@ void ABioGameMode::SendPlayerToJail(AController* PlayerToJail)
 
 void ABioGameMode::CheckWinConditions()
 {
-	bool bAnyStaffAlive = false;
+	bool bAnyStaffSurviving = false;
 
 	for (APlayerState* PS : GameState->PlayerArray)
 	{
 		ABioPlayerState* BioPS = Cast<ABioPlayerState>(PS);
-		if (BioPS && BioPS->GameRole == EBioPlayerRole::Staff)
+		if (!BioPS) continue;
+
+		if (BioPS->GameRole == EBioPlayerRole::Staff)
 		{
-			if (BioPS->Status == EBioPlayerStatus::Alive || BioPS->Status == EBioPlayerStatus::Jailed)
+			APawn* Pawn = PS->GetPawn();
+			UStaffStatusComponent* StatusComp = Pawn ? Pawn->FindComponentByClass<UStaffStatusComponent>() : nullptr;
+
+			if (StatusComp)
 			{
-				bAnyStaffAlive = true;
-				break;
+				if (StatusComp->PlayerStatus == EBioPlayerStatus::Alive ||
+					StatusComp->PlayerStatus == EBioPlayerStatus::Jailed)
+				{
+					bAnyStaffSurviving = true;
+					break;
+				}
 			}
 		}
 	}
 
-	if (!bAnyStaffAlive)
+	if (!bAnyStaffSurviving)
 	{
-		BioGameState->SetGamePhase(EBioGamePhase::End);
+		UE_LOG(LogTemp, Error, TEXT("!!! CLEANER WINS !!! All Staff Incinerated."));
+
+		if (ABioGameState* BioGS = GetGameState<ABioGameState>())
+		{
+			BioGS->SetGamePhase(EBioGamePhase::End);
+		}
 	}
 }
