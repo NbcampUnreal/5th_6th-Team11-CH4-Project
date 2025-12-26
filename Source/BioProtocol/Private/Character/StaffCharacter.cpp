@@ -46,25 +46,25 @@ AStaffCharacter::AStaffCharacter()
 	FirstPersonMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FirstPersonMesh"));
 	FirstPersonMesh->SetupAttachment(FirstPersonCamera);
 
-	// º»ÀÎ¿¡°Ô¸¸ º¸ÀÌ±â
+	// ï¿½ï¿½ï¿½Î¿ï¿½ï¿½Ô¸ï¿½ ï¿½ï¿½ï¿½Ì±ï¿½
 	FirstPersonMesh->SetOnlyOwnerSee(true);
 	FirstPersonMesh->bCastDynamicShadow = false;
 	FirstPersonMesh->CastShadow = false;
 
-	// 3ÀÎÄª ¸Ş½¬´Â º»ÀÎ¿¡°Õ ¾È º¸ÀÌ°Ô
+	// 3ï¿½ï¿½Äª ï¿½Ş½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Î¿ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½Ì°ï¿½
 	GetMesh()->SetOwnerNoSee(true);
 
-	// ³ª¸ÓÁö ¿É¼Ç
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½É¼ï¿½
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 	GetCharacterMovement()->SetCrouchedHalfHeight(44.f);
 
 	Status = CreateDefaultSubobject<UStaffStatusComponent>(TEXT("StatusComponent"));
 
 	InteractionCheckFrequency = 0.1f;
-	//Ä³¸¯ÅÍÀÇ Å©±âº¸´Ù Á¶±İ ´õ ±æ°Ô??
+	//Ä³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Å©ï¿½âº¸ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½??
 	InteractionCheckDistance = 225.f;
 
-	//ÃÊ±âÈ­
+	//ï¿½Ê±ï¿½È­
 	CurrentEquippedItem = nullptr;
 }
 
@@ -134,10 +134,14 @@ void AStaffCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
 	EIC->BindAction(TestKillAction, ETriggerEvent::Started, this, &ThisClass::TestHit);
 
-	EIC->BindAction(TestPullLever, ETriggerEvent::Triggered, this, &ThisClass::BeginInteract);
-	EIC->BindAction(TestPullLever, ETriggerEvent::Completed, this, &ThisClass::EndInteract);
+	//EIC->BindAction(TestPullLever, ETriggerEvent::Triggered, this, &ThisClass::BeginInteract);
+	EIC->BindAction(TestPullLever, ETriggerEvent::Started, this, &ThisClass::InteractPressed);
+	//EIC->BindAction(TestPullLever, ETriggerEvent::Completed, this, &ThisClass::EndInteract);
+	EIC->BindAction(TestPullLever, ETriggerEvent::Completed, this, &ThisClass::InteractReleased);
 
 	EIC->BindAction(TestItem1, ETriggerEvent::Started, this, &ThisClass::EquipSlot1);
+	EIC->BindAction(TestItem2, ETriggerEvent::Started, this, &ThisClass::EquipSlot2);
+	EIC->BindAction(TestItem3, ETriggerEvent::Started, this, &ThisClass::EquipSlot3);
 
 }
 
@@ -326,7 +330,7 @@ void AStaffCharacter::ServerPullLever_Internal()
 	AController* C = GetController();
 	if (!C)
 		return;
-	//ktodo:·¹¹ö°ü·Ã(°ÔÀÌÁö Â÷´Â°Å°°Àº°Å) Ãß°¡ÇÊ¿ä
+	//ktodo:ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Â°Å°ï¿½ï¿½ï¿½ï¿½ï¿½) ï¿½ß°ï¿½ï¿½Ê¿ï¿½
 	//UE_LOG(LogTemp, Warning, TEXT("test"));
 	if (!GetWorld()->GetTimerManager().IsTimerActive(GaugeTimerHandle))
 	{
@@ -378,7 +382,7 @@ void AStaffCharacter::ReleaseLever()
 	bHoldingLever = false;
 
 
-	//¶¿¶¼ ¿ø·¡ °¢µµ·Î µ¹¸®±â
+	//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	FRotator CurrentRot = Controller->GetControlRotation();
 	CurrentRot.Yaw = LeverBaseYaw;
 	Controller->SetControlRotation(CurrentRot);
@@ -511,7 +515,7 @@ float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 
 void AStaffCharacter::TestHit()
 {
-	// ¼­¹ö¿¡ ¿äÃ»
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ã»
 	Server_TestHit();
 }
 
@@ -593,23 +597,23 @@ void AStaffCharacter::PerformInteractionCheck()
 	const FVector TraceStart{ GetPawnViewLocation()};
 	const FVector TraceEnd{ TraceStart + (GetViewRotation().Vector() * InteractionCheckDistance) };
 
-	//¸ñ µÚ¿¡¼­ ¶óÀÎÆ®·¹ÀÌ½º°¡ ¹ß»ıµÇÁö ¾Êµµ·Ï º¤ÅÍÀÇ ³»ÀûÀ¸·Î °è»ê
+	//ï¿½ï¿½ ï¿½Ú¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ï¿½Ì½ï¿½ï¿½ï¿½ ï¿½ß»ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Êµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
 	float LookDirection = FVector::DotProduct(GetActorForwardVector(), GetViewRotation().Vector());
 
-	//ÆùÀÌ ¹Ù¶óº¸´Â ¹æÇâÀÌ¶û °°À» °æ¿ì- ¾ç¼ö
+	//ï¿½ï¿½ï¿½ï¿½ ï¿½Ù¶óº¸´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ì¶ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½- ï¿½ï¿½ï¿½
 	if (LookDirection > 0)
 	{
-		//½ÃÀÛ, ³¡, »¡°­, Áö¼Ó¼± À¯Áö ÇÒ¸», ¼ö¸í, ±íÀÌ ¿ì¼± ¼øÀ§, ¼± µÎ²²
+		//ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½Ó¼ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ò¸ï¿½, ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ ï¿½ì¼± ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ ï¿½Î²ï¿½
 		DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 1.f, 0, 2.f);
 
 		FCollisionQueryParams QueryParams;
 		QueryParams.AddIgnoredActor(this);
-		//¶óÀÎÆ®·¹ÀÌ½ºÀÇ °á°ú¸¦ ´ãÀ» Hit Á¤º¸
+		//ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ï¿½Ì½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Hit ï¿½ï¿½ï¿½ï¿½
 		FHitResult TraceHit;
 
 		if (GetWorld()->LineTraceSingleByChannel(TraceHit, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
 		{
-			//È÷Æ®¸¦ Ã£Àº ÈÄ ¾×ÅÍ°¡ ÀÎÅÍÆäÀÌ½º¸¦ ±¸ÇöÇÏ´ÂÁö È®ÀÎ
+			//ï¿½ï¿½Æ®ï¿½ï¿½ Ã£ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½Í°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ï¿½ï¿½ È®ï¿½ï¿½
 			if (TraceHit.GetActor()->GetClass()->ImplementsInterface(UInteractionInterface::StaticClass()))
 			{
 				const float Distance = (TraceStart - TraceHit.ImpactPoint).Size();
@@ -630,13 +634,14 @@ void AStaffCharacter::PerformInteractionCheck()
 	NoInteractableFound();
 }
 
+/*
 void AStaffCharacter::NoInteractableFound()
 {
 	if (IsInteracting())
 	{
 		GetWorldTimerManager().ClearTimer(TimerHandle_Interaction);
 	}
-	// ÇÈ¾÷ ±â´ÉÀÇ °æ¿ì ¹«±â ½½·Ô ¼ö·® Á¦ÇÑ ÀÖÀ» ¶§ »ç¿ë
+	// ï¿½È¾ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½
 	if (InteractionData.CurrentInteractable)
 	{
 		TargetInteractable->EndFocus(); 
@@ -644,11 +649,35 @@ void AStaffCharacter::NoInteractableFound()
 
 	//Hide interaction widget on the HUD
 
-	//ÃÊ±âÈ­
+	//ï¿½Ê±ï¿½È­
 	InteractionData.CurrentInteractable = nullptr;
 	TargetInteractable = nullptr;
 }
+	*/
 
+	void AStaffCharacter::NoInteractableFound()
+{
+    if (IsInteracting())
+    {
+        GetWorldTimerManager().ClearTimer(TimerHandle_Interaction);
+    }
+
+    // ì´ì „ í¬ì»¤ìŠ¤ í•´ì œ
+    if (InteractionData.CurrentInteractable)
+    {
+        if (InteractionData.CurrentInteractable->Implements<UInteractionInterface>())
+        {
+            IInteractionInterface::Execute_EndFocus(InteractionData.CurrentInteractable);
+        }
+    }
+
+    // ì´ˆê¸°í™”
+    InteractionData.CurrentInteractable = nullptr;
+    TargetInteractable.SetObject(nullptr);
+    TargetInteractable.SetInterface(nullptr);
+}
+
+/*
 void AStaffCharacter::BeginInteract()
 {
 	// verify nothig has changed with the interactavle state since beginning interaction
@@ -658,14 +687,14 @@ void AStaffCharacter::BeginInteract()
 	{
 		TargetInteractable->BeginInteract();
 
-		//Áö¼Ó½Ã°£ÀÌ °ÅÀÇ 0ÀÎÁö
+		//ï¿½ï¿½ï¿½Ó½Ã°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ 0ï¿½ï¿½ï¿½ï¿½
 		if (FMath::IsNearlyZero(TargetInteractable->InteractableData.InteractionDuration, 0.1f))
 		{
 			Interact();
 		}
 		else
 		{
-			//Áö¼Ó½Ã°£ÀÌ °ÅÀÇ 0ÀÌ ¾Æ´Ï¶ó¸é Å¸ÀÌ¸Ó¸¦ ½ÃÀÛÇÏ°í ³¡³ª¸é »óÈ£ÀÛ¿ëÀ» ÇÔ
+			//ï¿½ï¿½ï¿½Ó½Ã°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ 0ï¿½ï¿½ ï¿½Æ´Ï¶ï¿½ï¿½ Å¸ï¿½Ì¸Ó¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È£ï¿½Û¿ï¿½ï¿½ï¿½ ï¿½ï¿½
 			GetWorldTimerManager().SetTimer(TimerHandle_Interaction,
 				this,
 				&AStaffCharacter::Interact,
@@ -674,8 +703,44 @@ void AStaffCharacter::BeginInteract()
 			);
 		}
 	}
+}
+	*/
+void AStaffCharacter::BeginInteract()
+{
+    // ìƒí˜¸ì‘ìš© ê°€ëŠ¥ ì—¬ë¶€ ì¬í™•ì¸
+    PerformInteractionCheck();
 
+    if (!InteractionData.CurrentInteractable)
+    {
+        return;
+    }
 
+    if (!TargetInteractable.GetInterface())
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Player] TargetInteractable interface is null!"));
+        return;
+    }
+
+    // BeginInteract í˜¸ì¶œ
+    TargetInteractable->BeginInteract();
+
+    // ìƒí˜¸ì‘ìš© ì§€ì† ì‹œê°„ í™•ì¸
+    FInteractableData Data = TargetInteractable->GetInteractableData();
+    
+    if (FMath::IsNearlyZero(Data.InteractionDuration, 0.1f))
+    {
+        Interact();
+    }
+    else
+    {
+        GetWorldTimerManager().SetTimer(
+            TimerHandle_Interaction,
+            this,
+            &AStaffCharacter::Interact,
+            Data.InteractionDuration,
+            false
+        );
+    }
 }
 
 void AStaffCharacter::EquipItem(AEquippableItem* Item)
@@ -692,20 +757,20 @@ void AStaffCharacter::EquipItem(AEquippableItem* Item)
 		return;
 	}
 
-	// ÀÌ¹Ì ÀåÂøµÈ ¾ÆÀÌÅÛÀÌ ÀÖÀ¸¸é ¸ÕÀú ÇØÁ¦
+	// ï¿½Ì¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	if (CurrentEquippedItem)
 	{
 		UnequipCurrentItem();
 	}
 
-	// ¾ÆÀÌÅÛ ÃÊ±âÈ­ (¾ÆÁ÷ ¾È µÇ¾î ÀÖ´Ù¸é)
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­ (ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ç¾ï¿½ ï¿½Ö´Ù¸ï¿½)
 	if (!Item->OwningCharacter)
 	{
-		// TODO: ItemBase µ¥ÀÌÅÍ ÇÊ¿ä ½Ã »ı¼º
+		// TODO: ItemBase ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¿ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 		Item->Initialize(nullptr, this);
 	}
 
-	// ¾ÆÀÌÅÛ ÀåÂø
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	Item->Equip();
 	CurrentEquippedItem = Item;
 
@@ -746,15 +811,15 @@ void AStaffCharacter::DropCurrentItem()
 		return;
 	}
 
-	// ¾ÆÀÌÅÛ ºĞ¸®
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ğ¸ï¿½
 	CurrentEquippedItem->Detach();
 
-	// ¾ÕÀ¸·Î ´øÁö±â
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	FVector ThrowDirection = GetActorForwardVector();
 	FVector ThrowLocation = GetActorLocation() + (ThrowDirection * 100.0f);
 	CurrentEquippedItem->SetActorLocation(ThrowLocation);
 
-	// ¹°¸® È°¼ºÈ­ (´øÁö±â È¿°ú)
+	// ï¿½ï¿½ï¿½ï¿½ È°ï¿½ï¿½È­ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È¿ï¿½ï¿½)
 	if (CurrentEquippedItem->ItemMesh)
 	{
 		CurrentEquippedItem->ItemMesh->SetSimulatePhysics(true);
@@ -763,11 +828,11 @@ void AStaffCharacter::DropCurrentItem()
 
 	UE_LOG(LogTemp, Log, TEXT("[Player] Dropped item: %s"), *CurrentEquippedItem->GetName());
 
-	// ÂüÁ¶ Á¦°Å
+	// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	CurrentEquippedItem = nullptr;
 	CurrentSlot = 0;
 
-	// ÀÎº¥Åä¸®¿¡¼­µµ ¾ÆÀÌÅÛ Á¦°Å
+	// ï¿½Îºï¿½ï¿½ä¸®ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	if (UInventoryComponent* InventoryComp = GetInventory())
 	{
 		if (CurrentEquippedItem->ItemReference)
@@ -786,22 +851,22 @@ void AStaffCharacter::UseEquippedItem()
 		return;
 	}
 
-	// ¾ÆÀÌÅÛÀÌ »ç¿ë °¡´ÉÇÑÁö È®ÀÎ
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È®ï¿½ï¿½
 	if (!CurrentEquippedItem->CanUse())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[Player] Item cannot be used"));
 		return;
 	}
 
-	// ÅëÇÕ ¹æ½Ä: ¸ğµç ¾ÆÀÌÅÛÀº Use() ÇÔ¼ö¸¦ °¡Áö°í ÀÖÀ½
+	// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½: ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Use() ï¿½Ô¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	CurrentEquippedItem->Use();
 
 	UE_LOG(LogTemp, Log, TEXT("[Player] Used item: %s"), *CurrentEquippedItem->GetName());
 
-	// ===== °³º° Å¸ÀÔ Ã¼Å© ¹æ½Ä (¼±ÅÃ»çÇ×) =====
-	// Æ¯Á¤ Å¸ÀÔº°·Î ´Ù¸¥ Ã³¸®°¡ ÇÊ¿äÇÑ °æ¿ì¿¡¸¸ »ç¿ë
+	// ===== ï¿½ï¿½ï¿½ï¿½ Å¸ï¿½ï¿½ Ã¼Å© ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½) =====
+	// Æ¯ï¿½ï¿½ Å¸ï¿½Ôºï¿½ï¿½ï¿½ ï¿½Ù¸ï¿½ Ã³ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¿ï¿½ï¿½ï¿½ ï¿½ï¿½ì¿¡ï¿½ï¿½ ï¿½ï¿½ï¿½
 
-	// µµ±¸ (Tools)
+	// ï¿½ï¿½ï¿½ï¿½ (Tools)
 	if (AEquippableTool_Wrench* Wrench = Cast<AEquippableTool_Wrench>(CurrentEquippedItem))
 	{
 		Wrench->Use();
@@ -814,17 +879,17 @@ void AStaffCharacter::UseEquippedItem()
 	{
 		Battery->Use();
 	}
-	// ¹«±â (Weapons)
+	// ï¿½ï¿½ï¿½ï¿½ (Weapons)
 	else if (AEquippableWeapon_* Weapon = Cast<AEquippableWeapon_>(CurrentEquippedItem))
 	{
-		Weapon->Attack();  // ¹«±â´Â °ø°İ
+		Weapon->Attack();  // ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	}
-	// À¯Æ¿¸®Æ¼ (Utilities)
+	// ï¿½ï¿½Æ¿ï¿½ï¿½Æ¼ (Utilities)
 	else if (AEquippableUtility* Utility = Cast<AEquippableUtility>(CurrentEquippedItem))
 	{
 		Utility->UseUtility();
 	}
-	// ±âº» Ã³¸®
+	// ï¿½âº» Ã³ï¿½ï¿½
 	else
 	{
 		CurrentEquippedItem->Use();
@@ -850,7 +915,7 @@ void AStaffCharacter::ReloadWeapon()
 		return;
 	}
 
-	// ¹«±âÀÎÁö È®ÀÎ
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È®ï¿½ï¿½
 	AEquippableWeapon_* Weapon = Cast<AEquippableWeapon_>(CurrentEquippedItem);
 	if (Weapon)
 	{
@@ -869,19 +934,19 @@ void AStaffCharacter::SwitchToSlot(int32 SlotNumber)
 		return;
 	}
 
-	// ÇöÀç °°Àº ½½·ÔÀÌ¸é ¹«½Ã
+	// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½ï¿½
 	if (CurrentSlot == SlotNumber && CurrentEquippedItem)
 	{
 		return;
 	}
 
-	// ÇöÀç ¾ÆÀÌÅÛ ÇØÁ¦
+	// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	if (CurrentEquippedItem)
 	{
 		Inventory->UnequipCurrentItem();
 	}
 
-	// »õ ½½·ÔÀÇ ¾ÆÀÌÅÛ ÀåÂø
+	// ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	UItemBase* ItemInSlot = Inventory->GetItemInSlot(SlotNumber);
 	if (ItemInSlot)
 	{
@@ -915,51 +980,18 @@ void AStaffCharacter::EquipSlot3()
 
 void AStaffCharacter::InteractPressed()
 {
-	if (CurrentInteractable)
+	if (InteractionData.CurrentInteractable)
 	{
-		// »óÈ£ÀÛ¿ë ½ÃÀÛ
-		IInteractionInterface* Interactable = Cast<IInteractionInterface>(CurrentInteractable);
-		if (Interactable)
-		{
-			Interactable->Execute_BeginInteract(CurrentInteractable);
-
-			// »óÈ£ÀÛ¿ë µ¥ÀÌÅÍ °¡Á®¿À±â
-			FInteractableData Data = Interactable->Execute_GetInteractableData(CurrentInteractable);
-
-			// Áï½Ã ½ÇÇà (DurationÀÌ 0ÀÌ¸é)
-			if (Data.InteractionDuration <= 0.0f)
-			{
-				Interactable->Execute_Interact(CurrentInteractable, this);
-			}
-			else
-			{
-				// Å¸ÀÌ¸Ó·Î Áö¿¬ ½ÇÇà
-				GetWorldTimerManager().SetTimer(
-					InteractionTimerHandle,
-					[this, Interactable]()
-					{
-						Interactable->Execute_Interact(CurrentInteractable, this);
-					},
-					Data.InteractionDuration,
-					false
-				);
-			}
-		}
+		BeginInteract();
 	}
 }
 
 void AStaffCharacter::InteractReleased()
 {
-	// EÅ°¸¦ ¶¼¸é »óÈ£ÀÛ¿ë Ãë¼Ò
-	if (CurrentInteractable)
+	// EÅ°ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È£ï¿½Û¿ï¿½ ï¿½ï¿½ï¿½
+	if (InteractionData.CurrentInteractable)
 	{
-		GetWorldTimerManager().ClearTimer(InteractionTimerHandle);
-
-		IInteractionInterface* Interactable = Cast<IInteractionInterface>(CurrentInteractable);
-		if (Interactable)
-		{
-			Interactable->Execute_EndInteract(CurrentInteractable);
-		}
+		EndInteract();
 	}
 }
 
@@ -970,14 +1002,14 @@ void AStaffCharacter::DropItemFromInventory(UItemBase* ItemToDrop, int32 Quantit
 		return;
 	}
 
-	// ¼­¹ö¿¡¼­ ½ÇÇà
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	if (!HasAuthority())
 	{
-		// ServerDropItem RPC È£Ãâ
+		// ServerDropItem RPC È£ï¿½ï¿½
 		return;
 	}
 
-	// ÀÎº¥Åä¸®¿¡¼­ Á¦°Å
+	// ï¿½Îºï¿½ï¿½ä¸®ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	if (QuantityToDrop >= ItemToDrop->Quantity)
 	{
 		Inventory->RemoveItem(ItemToDrop);
@@ -987,7 +1019,7 @@ void AStaffCharacter::DropItemFromInventory(UItemBase* ItemToDrop, int32 Quantit
 		Inventory->RemoveItemByQuantity(ItemToDrop, QuantityToDrop);
 	}
 
-	// ¿ùµå¿¡ APickUp ½ºÆù
+	// ï¿½ï¿½ï¿½å¿¡ APickUp ï¿½ï¿½ï¿½ï¿½
 	FVector DropLocation = GetActorLocation() + (GetActorForwardVector() * 100.0f);
 
 	FActorSpawnParameters SpawnParams;
@@ -1004,7 +1036,7 @@ void AStaffCharacter::DropItemFromInventory(UItemBase* ItemToDrop, int32 Quantit
 	{
 		DroppedPickup->InitializeDrop(ItemToDrop, QuantityToDrop);
 
-		// ¹°¸® È°¼ºÈ­ (´øÁö±â È¿°ú)
+		// ï¿½ï¿½ï¿½ï¿½ È°ï¿½ï¿½È­ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È¿ï¿½ï¿½)
 		if (DroppedPickup->PickUpMesh)
 		{
 			DroppedPickup->PickUpMesh->SetSimulatePhysics(true);
@@ -1031,7 +1063,7 @@ void AStaffCharacter::GiveStartingItems()
 		return;
 	}
 
-	// ·»Ä¡ Áö±Ş
+	// ï¿½ï¿½Ä¡ ï¿½ï¿½ï¿½ï¿½
 	UItemBase* Wrench = CreateItemFromDataTable(FName("Wrench"), 1);
 	if (Wrench)
 	{
@@ -1040,18 +1072,19 @@ void AStaffCharacter::GiveStartingItems()
 	}
 }
 
+/*
 void AStaffCharacter::FoundInteractable(AActor* NewInteractable)
 {
-	//½Ã°£ Á¦ÇÑ »óÈ£ÀÛ¿ë µµÁß¿¡ »õ·Î¿î °´Ã¼¸¦ ¹ß°ßÇÔ
+	//ï¿½Ã°ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È£ï¿½Û¿ï¿½ ï¿½ï¿½ï¿½ß¿ï¿½ ï¿½ï¿½ï¿½Î¿ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½ß°ï¿½ï¿½ï¿½
 	if (IsInteracting())
 	{
 		EndInteract();
 	}
-	//µ¥ÀÌÅÍ¿¡ ÀÌ¹Ì »óÈ£ÀÛ¿ë °¡´ÉÇÑ °´Ã¼°¡ ÀÖ´Ù¸é ÇöÀç °´Ã¼·Î ¼³Á¤ÇÔ´Ù
+	//ï¿½ï¿½ï¿½ï¿½ï¿½Í¿ï¿½ ï¿½Ì¹ï¿½ ï¿½ï¿½È£ï¿½Û¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½Ö´Ù¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ô´ï¿½
 	if (InteractionData.CurrentInteractable)
 	{
 		TargetInteractable = InteractionData.CurrentInteractable;
-		//¾×ÅÍ¿¡¼­ ½Ã¼±ÀÌ ¹ş¾î³µÀ» ¶§ ¾Ë¸®±â-À§Á¬²ô±â/ ÇÏÀÌ¶óÀÌÆ® µî
+		//ï¿½ï¿½ï¿½Í¿ï¿½ï¿½ï¿½ ï¿½Ã¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½î³µï¿½ï¿½ ï¿½ï¿½ ï¿½Ë¸ï¿½ï¿½ï¿½-ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½/ ï¿½ï¿½ï¿½Ì¶ï¿½ï¿½ï¿½Æ® ï¿½ï¿½
 		TargetInteractable->EndFocus();
 	}
 
@@ -1060,6 +1093,56 @@ void AStaffCharacter::FoundInteractable(AActor* NewInteractable)
 
 	TargetInteractable->BeginFocus();
 }
+	*/
+
+	void AStaffCharacter::FoundInteractable(AActor* NewInteractable)
+{
+    if (!NewInteractable)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Player] NewInteractable is null!"));
+        return;
+    }
+
+    // Interface í™•ì¸
+    if (!NewInteractable->Implements<UInteractionInterface>())
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Player] Actor does not implement IInteractionInterface: %s"), 
+            *NewInteractable->GetName());
+        return;
+    }
+
+    // ì‹œê°„ ì œí•œ ìƒí˜¸ì‘ìš© ë„ì¤‘ì— ìƒˆë¡œìš´ ê°ì²´ë¥¼ ë°œê²¬í•¨
+    if (IsInteracting())
+    {
+        EndInteract();
+    }
+
+    // ì´ì „ ì˜¤ë¸Œì íŠ¸ í¬ì»¤ìŠ¤ í•´ì œ
+    if (InteractionData.CurrentInteractable && InteractionData.CurrentInteractable != NewInteractable)
+    {
+        if (InteractionData.CurrentInteractable->Implements<UInteractionInterface>())
+        {
+            IInteractionInterface::Execute_EndFocus(InteractionData.CurrentInteractable);
+        }
+    }
+
+    // ìƒˆ ì˜¤ë¸Œì íŠ¸ ì„¤ì •
+    InteractionData.CurrentInteractable = NewInteractable;
+    TargetInteractable.SetObject(NewInteractable);  
+    TargetInteractable.SetInterface(Cast<IInteractionInterface>(NewInteractable));  
+
+    // BeginFocus í˜¸ì¶œ
+    if (TargetInteractable.GetInterface())
+    {
+        TargetInteractable->BeginFocus();
+        UE_LOG(LogTemp, Log, TEXT("[Player] Found interactable: %s"), *NewInteractable->GetName());
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Player] Failed to get interface from: %s"), *NewInteractable->GetName());
+    }
+}
+
 
 void AStaffCharacter::PlayToolUseMontage(UAnimMontage* Montage)
 {
@@ -1075,6 +1158,7 @@ void AStaffCharacter::PlayToolUseMontage(UAnimMontage* Montage)
 	}
 }
 
+/*
 void AStaffCharacter::EndInteract()
 {
 	GetWorldTimerManager().ClearTimer(TimerHandle_Interaction);
@@ -1084,7 +1168,20 @@ void AStaffCharacter::EndInteract()
 		TargetInteractable->EndInteract();
 	}
 }
+	*/
 
+	
+void AStaffCharacter::EndInteract()
+{
+    GetWorldTimerManager().ClearTimer(TimerHandle_Interaction);
+
+    if (TargetInteractable.GetInterface())
+    {
+        TargetInteractable->EndInteract();
+    }
+}
+
+/*
 void AStaffCharacter::Interact()
 {
 	GetWorldTimerManager().ClearTimer(TimerHandle_Interaction);
@@ -1093,6 +1190,21 @@ void AStaffCharacter::Interact()
 	{
 		IInteractionInterface::Execute_Interact(TargetInteractable.GetObject(), this);
 	}
+} */
+
+void AStaffCharacter::Interact()
+{
+    GetWorldTimerManager().ClearTimer(TimerHandle_Interaction);
+
+    if (TargetInteractable.GetInterface())
+    {
+        IInteractionInterface::Execute_Interact(TargetInteractable.GetObject(), this);
+        UE_LOG(LogTemp, Log, TEXT("[Player] Interact executed"));
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Player] Cannot interact - interface is null"));
+    }
 }
 
 UItemBase* AStaffCharacter::CreateItemFromDataTable(FName ItemID, int32 Quantity)
@@ -1115,7 +1227,7 @@ UItemBase* AStaffCharacter::CreateItemFromDataTable(FName ItemID, int32 Quantity
 		return nullptr;
 	}
 
-	// µ¥ÀÌÅÍ º¹»ç
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	NewItem->ItemID = ItemData->ItemID;
 	NewItem->ItemType = ItemData->ItemType;
 	NewItem->ItemQuality = ItemData->ItemQuality;
@@ -1162,7 +1274,7 @@ void AStaffCharacter::ServerDropCurrentItem_Implementation()
 {
 	if (CurrentEquippedItem && Inventory)
 	{
-		// ÇöÀç ÀåÂøµÈ ¾ÆÀÌÅÛÀÇ ItemReference Ã£±â
+		// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ItemReference Ã£ï¿½ï¿½
 		UItemBase* ItemToDrop = CurrentEquippedItem->ItemReference;
 		if (ItemToDrop)
 		{
@@ -1202,20 +1314,20 @@ void AStaffCharacter::Die()
 
 	UE_LOG(LogTemp, Log, TEXT("[Player] Died"));
 
-	//// »ç¸Á Ã³¸®
-	//// 1. Ä³¸¯ÅÍ ºñÈ°¼ºÈ­
+	//// ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½
+	//// 1. Ä³ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È°ï¿½ï¿½È­
 	//GetCharacterMovement()->DisableMovement();
 
-	//// 2. Ãæµ¹ ºñÈ°¼ºÈ­
+	//// 2. ï¿½æµ¹ ï¿½ï¿½È°ï¿½ï¿½È­
 	//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	// 3. ÇöÀç ÀåÂø ¾ÆÀÌÅÛ µå·Ó
+	// 3. ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
 	if (CurrentEquippedItem)
 	{
 		DropCurrentItem();
 	}
 
-	// 4. ÀÎº¥Åä¸® ¾ÆÀÌÅÛ ¸ğµÎ µå·Ó (¼±ÅÃ»çÇ×)
+	// 4. ï¿½Îºï¿½ï¿½ä¸® ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½)
 	if (Inventory)
 	{
 		const TArray<UItemBase*>& AllItems = Inventory->GetAllItems();
@@ -1228,10 +1340,10 @@ void AStaffCharacter::Die()
 		}
 	}
 
-	// 5. TODO: »ç¸Á ¾Ö´Ï¸ŞÀÌ¼Ç Àç»ı
-	// 6. TODO: ¸®½ºÆù Å¸ÀÌ¸Ó ½ÃÀÛ
+	// 5. TODO: ï¿½ï¿½ï¿½ ï¿½Ö´Ï¸ï¿½ï¿½Ì¼ï¿½ ï¿½ï¿½ï¿½
+	// 6. TODO: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Å¸ï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½ï¿½
 
-	// µ¨¸®°ÔÀÌÆ® ºê·ÎµåÄ³½ºÆ®
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½Îµï¿½Ä³ï¿½ï¿½Æ®
 	//OnHealthChanged.Broadcast(0.0f, MaxHealth);
 }
 
