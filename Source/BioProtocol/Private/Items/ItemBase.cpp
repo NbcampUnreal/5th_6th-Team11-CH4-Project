@@ -76,7 +76,7 @@ UItemBase* UItemBase::CreateItemCopy() const
 	return ItemCopy;
 }
 
-void UItemBase::Use(ADXPlayerCharacter* Character)
+void UItemBase::Use(AStaffCharacter* Character)
 {
 	// 기본 구현: 아무것도 하지 않음
 	// 자식 클래스에서 오버라이드해서 사용

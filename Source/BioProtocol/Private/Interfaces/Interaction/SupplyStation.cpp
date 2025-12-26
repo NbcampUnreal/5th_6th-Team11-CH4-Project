@@ -11,6 +11,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
+#include "Character/StaffCharacter.h"
 
 ASupplyStation::ASupplyStation()
 {
@@ -88,7 +89,7 @@ void ASupplyStation::EndInteract_Implementation()
 	}
 }
 
-void ASupplyStation::Interact_Implementation(ADXPlayerCharacter* PlayerCharacter)
+void ASupplyStation::Interact_Implementation(AStaffCharacter* PlayerCharacter)
 {
 	if (!PlayerCharacter || !HasAuthority())
 	{
@@ -103,7 +104,7 @@ FInteractableData ASupplyStation::GetInteractableData_Implementation() const
 	return InstanceInteractableData;
 }
 
-bool ASupplyStation::CanInteract_Implementation(ADXPlayerCharacter* PlayerCharacter) const
+bool ASupplyStation::CanInteract_Implementation(AStaffCharacter* PlayerCharacter) const
 {
 	if (!PlayerCharacter || bIsCharging)
 	{
@@ -132,7 +133,7 @@ bool ASupplyStation::CanInteract_Implementation(ADXPlayerCharacter* PlayerCharac
 // CHARGING FUNCTIONS
 //==========================================
 
-void ASupplyStation::StartCharging(ADXPlayerCharacter* Player)
+void ASupplyStation::StartCharging(AStaffCharacter* Player)
 {
 	if (!HasAuthority())
 	{
@@ -177,7 +178,7 @@ void ASupplyStation::StartCharging(ADXPlayerCharacter* Player)
 		true
 	);
 
-	UE_LOG(LogTemp, Log, TEXT("[SupplyStation] Started charging for %s"), *Player->GetName());
+	/*UE_LOG(LogTemp, Log, TEXT("[SupplyStation] Started charging for %s"), *Player->GetName());*/
 }
 
 void ASupplyStation::ProcessCharging()
@@ -300,7 +301,7 @@ void ASupplyStation::StopChargingEffects()
 // SERVER RPC
 //==========================================
 
-void ASupplyStation::ServerStartCharging_Implementation(ADXPlayerCharacter* Player)
+void ASupplyStation::ServerStartCharging_Implementation(AStaffCharacter* Player)
 {
 	StartCharging(Player);
 }

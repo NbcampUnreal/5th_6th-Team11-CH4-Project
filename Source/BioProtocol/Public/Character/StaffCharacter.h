@@ -13,6 +13,24 @@ class USpringArmComponent;
 class UInputMappingContext;
 class UInputAction;
 class UMaterialInterface;
+class UInventoryComponent;
+class AEquippableItem;
+class UItemBase;
+class IInteractionInterface;
+
+USTRUCT()
+struct FInteractionData
+{
+	GENERATED_USTRUCT_BODY()
+
+	FInteractionData() : CurrentInteractable(nullptr), LastInteractionCheckTime(0.f) {}
+
+	UPROPERTY()
+	AActor* CurrentInteractable;
+
+	UPROPERTY()
+	float LastInteractionCheckTime;
+};
 
 UCLASS()
 class BIOPROTOCOL_API AStaffCharacter : public ACharacter
@@ -40,6 +58,7 @@ public:
 
 public:
 	bool IsGunEquipped() const { return bIsGunEquipped; };
+	void PlayMeleeAttackMontage(UAnimMontage* Montage);
 
 protected:
 
@@ -48,7 +67,7 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	UCameraComponent* FirstPersonCamera;
-	
+
 private:
 	void HandleMoveInput(const FInputActionValue& InValue);
 
@@ -92,15 +111,24 @@ protected:
 
 	//아이템 먹는키눌렀는데 이게 아이템인지 레버인지 검사후 레버면 PullLever 호출하는 방식으로 바뀌면 폐지
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
-	TObjectPtr<UInputAction> TestPullLever; 
+	TObjectPtr<UInputAction> TestPullLever;
 
 	//item이나 inventory클래스안에 아이템 꺼내기 입력 따로있으면 폐지
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
-	TObjectPtr<UInputAction> TestItem1;
+	TObjectPtr<UInputAction> Item1;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
+	TObjectPtr<UInputAction> Item2;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
+	TObjectPtr<UInputAction> Item3;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	UInputAction* DropItemAction;
 
 protected:
 	//레버당기기 시작(아니면 상호작용오래하면서 시야각 제한필요 할때 호출)
-	virtual void PullLever();	
+	virtual void PullLever();
 
 	//레버 떼기
 	void ReleaseLever();
@@ -114,7 +142,7 @@ protected:
 	//실제 레버당기는 동안 작업할꺼 작업할 함수
 	virtual void ServerPullLever_Internal();
 	void TestUpdateLeverGauge(); //게이지 차는거 테스트용(실제 레버작용하는 오브젝트에 쓸껏)
-	float TestGuage=0;//테스트게이지
+	float TestGuage = 0;//테스트게이지
 
 	void TestItemSlot1();
 
@@ -155,7 +183,6 @@ private:
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastRPCMeleeAttack();
 
-	void PlayMeleeAttackMontage();
 
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 
@@ -164,7 +191,7 @@ private:
 
 	//테스트용 함수(현재 피격테스트(Server_TestHit()))
 	void TestHit();
-	
+
 	UFUNCTION(Server, Reliable)
 	void Server_TestHit();
 
@@ -195,7 +222,162 @@ protected:
 	//플레이어 구분용 메테리얼
 	TArray<UMaterialInterface*>mat;
 
-	protected:
-		UPROPERTY(Replicated)
-		bool bIsGunEquipped;
+protected:
+	UPROPERTY(Replicated)
+	bool bIsGunEquipped;
+
+	///////////////////////////////////////////인벤,아이템관련
+public:
+	void Die();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UInventoryComponent* Inventory;  // <- 하나만 유지
+
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	UInventoryComponent* GetInventoryComponent() const { return Inventory; }
+	UFUNCTION(BlueprintCallable, Category = "Animation")
+	void PlayToolUseMontage(UAnimMontage* Montage);
+	//==========================================
+	// EQUIPMENT
+	//==========================================
+
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentEquippedItem, BlueprintReadOnly, Category = "Equipment")
+	AEquippableItem* CurrentEquippedItem;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Equipment")
+	int32 CurrentSlot;
+
+	UFUNCTION(BlueprintPure, Category = "Equipment")
+	AEquippableItem* GetCurrentEquippedItem() const { return CurrentEquippedItem; }
+
+	UFUNCTION(BlueprintPure, Category = "Equipment")
+	UInventoryComponent* GetInventory() const { return Inventory; }  // <- 인라인 구현으로 간단하게
+
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
+	void EquipItem(AEquippableItem* Item);
+
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
+	void UnequipCurrentItem();
+
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
+	void DropCurrentItem();
+
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
+	void UseEquippedItem();
+
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
+	void StopUsingEquippedItem();
+
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
+	void ReloadWeapon();
+	//==========================================
+	// SLOTS
+	//==========================================
+
+	UFUNCTION(BlueprintCallable, Category = "Slots")
+	void EquipSlot1();
+
+	UFUNCTION(BlueprintCallable, Category = "Slots")
+	void EquipSlot2();
+
+	UFUNCTION(BlueprintCallable, Category = "Slots")
+	void EquipSlot3();
+
+	UFUNCTION(BlueprintCallable, Category = "Slots")
+	void SwitchToSlot(int32 SlotNumber);
+
+	//==========================================
+	// INTERACTION
+	//==========================================
+
+	/** 현재 상호작용 중인지 확인 */
+	FORCEINLINE bool IsInteracting() const
+	{
+		return GetWorldTimerManager().IsTimerActive(TimerHandle_Interaction);
+	}
+
+	UPROPERTY(BlueprintReadOnly, Category = "Interaction")
+	AActor* CurrentInteractable;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
+	float InteractionRange;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
+	float InteractionCheckFrequency;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
+	float InteractionCheckDistance;
+
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	void InteractPressed();
+
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	void InteractReleased();
+
+	//==========================================
+	// ITEMS
+	//==========================================
+
+	UFUNCTION(BlueprintCallable, Category = "Items")
+	void DropItemFromInventory(UItemBase* ItemToDrop, int32 QuantityToDrop);
+
+	UFUNCTION(BlueprintCallable, Category = "Items")
+	bool HasRequiredTool(FName ToolID);
+
+	UFUNCTION(BlueprintCallable, Category = "Items")
+	void GiveStartingItems();
+
+	UPROPERTY(EditDefaultsOnly, Category = "Items")
+	UDataTable* ItemDataTable;
+
+	//==========================================
+	// INTERACTION INTERNAL
+	//==========================================
+
+	TScriptInterface<IInteractionInterface> TargetInteractable;
+	FTimerHandle TimerHandle_Interaction;
+	FTimerHandle InteractionTimerHandle;
+	FInteractionData InteractionData;
+
+	void PerformInteractionCheck();
+	void FoundInteractable(AActor* NewInteractable);
+	void NoInteractableFound();
+	void BeginInteract();
+	void EndInteract();
+	void Interact();
+
+	//==========================================
+	// HELPER FUNCTIONS
+	//==========================================
+
+	UItemBase* CreateItemFromDataTable(FName ItemID, int32 Quantity = 1);
+
+	//==========================================
+	// SERVER RPC
+	//==========================================
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerEquipItem(AEquippableItem* Item);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerUnequipItem();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerDropItem();
+
+	UFUNCTION(Server, Reliable)
+	void ServerDropCurrentItem();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerUseItem();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerStopUsingItem();
+
+	//==========================================
+	// REPLICATION CALLBACKS
+	//==========================================
+
+	UFUNCTION()
+	void OnRep_CurrentEquippedItem();
 };

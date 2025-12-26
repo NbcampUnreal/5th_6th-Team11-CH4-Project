@@ -8,7 +8,7 @@
 #include "MissionObjectBase.generated.h"
 
 class UStaticMeshComponent;
-class ADXPlayerCharacter;
+class AStaffCharacter;
 class AEquippableItem;
 
 /**
@@ -56,7 +56,7 @@ public:
 
 	/** 현재 작업 중인 플레이어 */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Mission Object|State")
-	ADXPlayerCharacter* CurrentWorker;
+	AStaffCharacter* CurrentWorker;
 
 	/** 진행도 (0.0 ~ 1.0) */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Mission Object|State")
@@ -96,7 +96,7 @@ public:
 
 	/** 작업 시작 */
 	UFUNCTION(BlueprintCallable, Category = "Mission Object")
-	void StartWork(ADXPlayerCharacter* Worker);
+	void StartWork(AStaffCharacter* Worker);
 
 	/** 작업 취소 */
 	UFUNCTION(BlueprintCallable, Category = "Mission Object")
@@ -117,9 +117,9 @@ public:
 	virtual void EndFocus_Implementation() override;
 	virtual void BeginInteract_Implementation() override;
 	virtual void EndInteract_Implementation() override;
-	virtual void Interact_Implementation(ADXPlayerCharacter* PlayerCharacter) override;
+	virtual void Interact_Implementation(AStaffCharacter* PlayerCharacter) override;
 	virtual FInteractableData GetInteractableData_Implementation() const override;
-	virtual bool CanInteract_Implementation(ADXPlayerCharacter* PlayerCharacter) const override;
+	virtual bool CanInteract_Implementation(AStaffCharacter* PlayerCharacter) const override;
 
 	//==========================================
 	// EVENTS
@@ -145,14 +145,14 @@ protected:
 	void StopWorkEffects();
 
 	/** 플레이어가 필요한 도구를 가지고 있는지 확인 */
-	bool HasRequiredTool(ADXPlayerCharacter* Player) const;
+	bool HasRequiredTool(AStaffCharacter* Player) const;
 
 	//==========================================
 	// SERVER RPC
 	//==========================================
 
 	UFUNCTION(Server, Reliable)
-	void ServerStartWork(ADXPlayerCharacter* Worker);
+	void ServerStartWork(AStaffCharacter* Worker);
 
 	UFUNCTION(Server, Reliable)
 	void ServerCancelWork();
