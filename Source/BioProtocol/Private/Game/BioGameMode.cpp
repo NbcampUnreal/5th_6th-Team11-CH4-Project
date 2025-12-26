@@ -4,11 +4,16 @@
 #include "Game/BioGameMode.h"
 #include "Game/BioGameState.h"
 #include "Game/BioPlayerState.h"
+#include "Character/BioPlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "Character/StaffStatusComponent.h"
 #include <Character/ThirdSpectatorPawn.h>
 #include <Character/StaffCharacter.h>
+#include "HttpModule.h"
+#include "Interfaces/IHttpResponse.h"
+#include "Json.h"
+#include "JsonUtilities.h"
 
 ABioGameMode::ABioGameMode()
 {
@@ -32,6 +37,9 @@ void ABioGameMode::StartPlay()
 	}
 
 	JailLocation = FVector(0, 0, 0);
+
+	FTimerHandle TimerHandle;
+	GetWorldTimerManager().SetTimer(TimerHandle, this, &ABioGameMode::CreateGameVoiceChannels, 2.0f, false);
 }
 
 void ABioGameMode::PostLogin(APlayerController* NewPlayer)
@@ -184,6 +192,99 @@ void ABioGameMode::CheckWinConditions()
 			BioGS->SetGamePhase(EBioGamePhase::End);
 		}
 	}
+}
+
+void ABioGameMode::CreateGameVoiceChannels()
+{
+	TArray<APlayerController*> AllPlayers;
+	TArray<APlayerController*> CleanerPlayers;
+
+	for (auto It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PC = It->Get();
+		if (!PC) continue;
+
+		ABioPlayerState* PS = PC->GetPlayerState<ABioPlayerState>();
+		if (!PS || PS->EOSPlayerName.IsEmpty())
+		{
+			FTimerHandle RetryTimer;
+			GetWorldTimerManager().SetTimer(RetryTimer, this, &ABioGameMode::CreateGameVoiceChannels, 1.0f, false);
+			return;
+		}
+
+		AllPlayers.Add(PC);
+		if (PS->GameRole == EBioPlayerRole::Cleaner)
+		{
+			CleanerPlayers.Add(PC);
+		}
+	}
+
+	CreatePublicChannel(AllPlayers);
+
+	if (CleanerPlayers.Num() > 0)
+	{
+		CreateRoleBasedChannel(EBioPlayerRole::Cleaner, CleanerPlayers);
+	}
+}
+
+void ABioGameMode::CreatePublicChannel(const TArray<APlayerController*>& Players)
+{
+	FString ChannelName = FString::Printf(TEXT("Game_Public_%s"), *FGuid::NewGuid().ToString());
+	RequestCreateChannel(ChannelName, Players, true);
+}
+
+void ABioGameMode::CreateRoleBasedChannel(EBioPlayerRole BioRole, const TArray<APlayerController*>& Players)
+{
+	FString ChannelName = FString::Printf(TEXT("Game_Cleaner_%s"), *FGuid::NewGuid().ToString());
+	RequestCreateChannel(ChannelName, Players, false);
+}
+
+void ABioGameMode::RequestCreateChannel(const FString& ChannelName, const TArray<APlayerController*>& Players, bool bIs3D)
+{
+	if (Players.Num() == 0) return;
+
+	ABioPlayerState* FirstPS = Players[0]->GetPlayerState<ABioPlayerState>();
+
+	TSharedRef<IHttpRequest> Request = FHttpModule::Get().CreateRequest();
+	Request->SetURL(TrustedServerUrl + TEXT("/voice/create-channel"));
+	Request->SetVerb(TEXT("POST"));
+	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+
+	TSharedPtr<FJsonObject> JsonObj = MakeShareable(new FJsonObject);
+	JsonObj->SetStringField(TEXT("channelName"), ChannelName);
+	JsonObj->SetStringField(TEXT("productUserId"), FirstPS->EOSPlayerName);
+	JsonObj->SetStringField(TEXT("roomId"), ChannelName);
+
+	FString RequestBody;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&RequestBody);
+	FJsonSerializer::Serialize(JsonObj.ToSharedRef(), Writer);
+	Request->SetContentAsString(RequestBody);
+
+	Request->OnProcessRequestComplete().BindLambda(
+		[this, Players, ChannelName](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
+		{
+			if (!bSuccess || !Res.IsValid()) return;
+
+			TSharedPtr<FJsonObject> JsonRes;
+			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Res->GetContentAsString());
+			if (!FJsonSerializer::Deserialize(Reader, JsonRes) || !JsonRes->GetBoolField(TEXT("success"))) return;
+
+			FString BaseUrl = JsonRes->GetStringField(TEXT("clientBaseUrl"));
+			FString FirstToken = JsonRes->GetStringField(TEXT("participantToken"));
+
+			if (ABioPlayerController* PC = Cast<ABioPlayerController>(Players[0]))
+			{
+				PC->Client_JoinGameChannel(ChannelName, BaseUrl, FirstToken);
+			}
+
+			for (int32 i = 1; i < Players.Num(); ++i)
+			{
+
+			}
+		}
+	);
+
+	Request->ProcessRequest();
 }
 
 void ABioGameMode::SetPlayerSpectating(AController* VictimController)

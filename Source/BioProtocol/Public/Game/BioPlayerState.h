@@ -17,6 +17,7 @@ class BIOPROTOCOL_API ABioPlayerState : public APlayerState
 	
 public:
 	ABioPlayerState();
+	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	UPROPERTY(ReplicatedUsing = OnRep_GameRole, BlueprintReadOnly, Category = "Bio|Role")
@@ -27,6 +28,14 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Bio|Event")
 	FOnPlayerRoleChanged OnRoleChanged;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "EOS")
+	FString EOSPlayerName;
+
+	void TryInitEOSPlayerName();
+
+	UFUNCTION(Server, Reliable)
+	void Server_SetEOSPlayerName(const FString& InName);
 
 protected:
 	UFUNCTION()

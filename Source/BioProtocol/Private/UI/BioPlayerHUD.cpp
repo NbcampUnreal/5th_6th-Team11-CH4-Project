@@ -8,6 +8,7 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/Character.h"
 #include "Components/WidgetSwitcher.h"
+#include "Components/Border.h"
 
 void UBioPlayerHUD::NativeConstruct()
 {
@@ -46,6 +47,8 @@ void UBioPlayerHUD::UpdateHealth(float CurrentHP)
 void UBioPlayerHUD::UpdateStaminaBar(float NewStamina)
 {
 	if (!StaminaBar) return;
+	
+	UE_LOG(LogTemp, Error, TEXT("%f"), NewStamina);
 
 	float Percent = FMath::Clamp(NewStamina / MaxSP, 0.0f, 1.0f);
 	StaminaBar->SetPercent(Percent);
@@ -91,5 +94,44 @@ void UBioPlayerHUD::UpdateHUDState(EBioPlayerRole Role, EBioGamePhase CurrentPha
 		{
 			RoleSpecificContainer->SetActiveWidgetIndex(0);
 		}
+	}
+}
+
+void UBioPlayerHUD::SelectItemSlot(int32 SlotIndex)
+{
+	if (SlotHighlight_1) SlotHighlight_1->SetVisibility(ESlateVisibility::Hidden);
+	if (SlotHighlight_2) SlotHighlight_2->SetVisibility(ESlateVisibility::Hidden);
+	if (SlotHighlight_3) SlotHighlight_3->SetVisibility(ESlateVisibility::Hidden);
+
+	switch (SlotIndex)
+	{
+	case 1:
+		if (SlotHighlight_1) SlotHighlight_1->SetVisibility(ESlateVisibility::Visible);
+		break;
+	case 2:
+		if (SlotHighlight_2) SlotHighlight_2->SetVisibility(ESlateVisibility::Visible);
+		break;
+	case 3:
+		if (SlotHighlight_3) SlotHighlight_3->SetVisibility(ESlateVisibility::Visible);
+		break;
+	default:
+		break;
+	}
+}
+
+void UBioPlayerHUD::UpdateAmmoText(int32 CurrentAmmo, int32 MaxAmmo)
+{
+	if (AmmoText)
+	{
+		FString AmmoStr = FString::Printf(TEXT("%d / %d"), CurrentAmmo, MaxAmmo);
+		AmmoText->SetText(FText::FromString(AmmoStr));
+	}
+}
+
+void UBioPlayerHUD::SetAmmoUIVisibility(bool bIsVisible)
+{
+	if (AmmoText)
+	{
+		AmmoText->SetVisibility(bIsVisible ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
 	}
 }

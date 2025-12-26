@@ -13,6 +13,7 @@ class UTextBlock;
 class UItemSlotWidget;
 class UTexture2D;
 class UWidgetSwitcher;
+class UBorder;
 
 UCLASS()
 class BIOPROTOCOL_API UBioPlayerHUD : public UUserWidget
@@ -33,6 +34,15 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void UpdateItemSlot(int32 SlotIndex, UTexture2D* Icon);
+
+	UFUNCTION(BlueprintCallable)
+	void SelectItemSlot(int32 SlotIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void UpdateAmmoText(int32 CurrentAmmo, int32 MaxAmmo);
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void SetAmmoUIVisibility(bool bIsVisible);
 
 
 protected:
@@ -66,4 +76,16 @@ protected:
 	float MaxSP = 100.0f;
 
 	TWeakObjectPtr<ACharacter> OwnerCharacter;
+
+	UPROPERTY(meta = (BindWidget))
+	UBorder* SlotHighlight_1;
+
+	UPROPERTY(meta = (BindWidget))
+	UBorder* SlotHighlight_2;
+
+	UPROPERTY(meta = (BindWidget))
+	UBorder* SlotHighlight_3;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* AmmoText;
 };

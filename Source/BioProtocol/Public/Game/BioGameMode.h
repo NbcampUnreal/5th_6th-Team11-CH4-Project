@@ -4,7 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "Game/BioProtocolTypes.h"
+#include "Http.h"
 #include "BioGameMode.generated.h"
+
 
 class ABioGameState;
 class ABioPlayerState;
@@ -46,4 +49,13 @@ protected:
 
 	UPROPERTY()
 	ABioGameState* BioGameState;
+
+private:
+	FString TrustedServerUrl = TEXT("http://127.0.0.1:3000");
+
+	void CreateGameVoiceChannels();
+	void CreateRoleBasedChannel(EBioPlayerRole Role, const TArray<APlayerController*>& Players);
+	void CreatePublicChannel(const TArray<APlayerController*>& Players);
+
+	void RequestCreateChannel(const FString& ChannelName, const TArray<APlayerController*>& Players, bool bIs3D);
 };
