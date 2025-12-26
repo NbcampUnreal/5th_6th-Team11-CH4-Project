@@ -5,6 +5,7 @@
 #include "BioProtocol/Character/DXPlayerCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h" 
 #include "Net/UnrealNetwork.h"
+#include "Character/StaffCharacter.h"
 
 UInventoryComponent::UInventoryComponent()
 {
@@ -30,7 +31,7 @@ void UInventoryComponent::BeginPlay()
 	Super::BeginPlay();
 
 	// 소유 캐릭터 캐싱
-	OwnerCharacter = Cast<ADXPlayerCharacter>(GetOwner());
+	OwnerCharacter = Cast<AStaffCharacter>(GetOwner());
 }
 
 void UInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

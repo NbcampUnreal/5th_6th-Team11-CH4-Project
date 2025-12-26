@@ -3,6 +3,7 @@
 #include "BioProtocol/Character/DXPlayerCharacter.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Character/StaffCharacter.h"
 
 AEquippableItem::AEquippableItem()
 {
@@ -130,7 +131,7 @@ void AEquippableItem::PlayUseAnimation()
 // INITIALIZATION
 // ========================================
 
-void AEquippableItem::Initialize(UItemBase* InItemReference, ADXPlayerCharacter* InOwner)
+void AEquippableItem::Initialize(UItemBase* InItemReference, AStaffCharacter* InOwner)
 {
 	if (!InItemReference || !InOwner)
 	{

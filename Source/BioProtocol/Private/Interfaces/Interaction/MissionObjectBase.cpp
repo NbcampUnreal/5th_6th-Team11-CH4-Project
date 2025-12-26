@@ -11,6 +11,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
+#include "Character/StaffCharacter.h"
 
 // Sets default values
 AMissionObjectBase::AMissionObjectBase()
@@ -98,7 +99,7 @@ void AMissionObjectBase::EndInteract_Implementation()
 	}
 }
 
-void AMissionObjectBase::Interact_Implementation(ADXPlayerCharacter* PlayerCharacter)
+void AMissionObjectBase::Interact_Implementation(AStaffCharacter* PlayerCharacter)
 {
 	if (!PlayerCharacter || !HasAuthority())
 	{
@@ -113,7 +114,7 @@ FInteractableData AMissionObjectBase::GetInteractableData_Implementation() const
 	return InstanceInteractableData;
 }
 
-bool AMissionObjectBase::CanInteract_Implementation(ADXPlayerCharacter* PlayerCharacter) const
+bool AMissionObjectBase::CanInteract_Implementation(AStaffCharacter* PlayerCharacter) const
 {
 	if (!PlayerCharacter || bIsCompleted || bInProgress)
 	{
@@ -133,7 +134,7 @@ bool AMissionObjectBase::CanInteract_Implementation(ADXPlayerCharacter* PlayerCh
 // WORK FUNCTIONS
 //==========================================
 
-void AMissionObjectBase::StartWork(ADXPlayerCharacter* Worker)
+void AMissionObjectBase::StartWork(AStaffCharacter* Worker)
 {
 	if (!HasAuthority())
 	{
@@ -171,7 +172,7 @@ void AMissionObjectBase::StartWork(ADXPlayerCharacter* Worker)
 		true
 	);
 
-	UE_LOG(LogTemp, Log, TEXT("[MissionObject] Work started by %s"), *Worker->GetName());
+//	UE_LOG(LogTemp, Log, TEXT("[MissionObject] Work started by %s"), *Worker->GetName());
 }
 
 void AMissionObjectBase::CancelWork()
@@ -299,7 +300,7 @@ void AMissionObjectBase::StopWorkEffects()
 	}
 }
 
-bool AMissionObjectBase::HasRequiredTool(ADXPlayerCharacter* Player) const
+bool AMissionObjectBase::HasRequiredTool(AStaffCharacter* Player) const
 {
 	if (!Player || RequiredToolID.IsNone())
 	{
@@ -320,7 +321,7 @@ bool AMissionObjectBase::HasRequiredTool(ADXPlayerCharacter* Player) const
 // SERVER RPC
 //==========================================
 
-void AMissionObjectBase::ServerStartWork_Implementation(ADXPlayerCharacter* Worker)
+void AMissionObjectBase::ServerStartWork_Implementation(AStaffCharacter* Worker)
 {
 	StartWork(Worker);
 }

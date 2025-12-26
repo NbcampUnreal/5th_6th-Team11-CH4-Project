@@ -7,6 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Character/StaffCharacter.h"
 
 AEquippableWeapon_Pipe::AEquippableWeapon_Pipe()
 {
@@ -92,5 +93,5 @@ void AEquippableWeapon_Pipe::PlayMeleeAnimation()
 	if (!OwningCharacter || !PipeMeleeMontage)
 		return;
 
-	OwningCharacter->PlayMeleeMontage(PipeMeleeMontage);
+	OwningCharacter->PlayMeleeAttackMontage(PipeMeleeMontage);
 }

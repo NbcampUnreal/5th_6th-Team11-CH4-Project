@@ -6,7 +6,7 @@
 #include "EquippableItem.generated.h"
 
 class UItemBase;
-class ADXPlayerCharacter;
+class AStaffCharacter;
 class USkeletalMeshComponent;
 
 /**
@@ -42,7 +42,7 @@ public:
 
 	/** 현재 이 아이템을 소유한 캐릭터 */
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Equippable | Owner")
-	ADXPlayerCharacter* OwningCharacter;
+	AStaffCharacter* OwningCharacter;
 
 	/** 장착 상태 여부 */
 	UPROPERTY(ReplicatedUsing = OnRep_IsEquipped, VisibleAnywhere, BlueprintReadOnly, Category = "Equippable | State")
@@ -80,7 +80,7 @@ public:
 	 * @param InItemReference - 인벤토리 아이템 데이터
 	 * @param InOwner - 소유할 캐릭터
 	 */
-	void Initialize(UItemBase* InItemReference, ADXPlayerCharacter* InOwner);
+	void Initialize(UItemBase* InItemReference, AStaffCharacter* InOwner);
 
 	/**
 	 * 캐릭터의 특정 소켓에 아이템 부착

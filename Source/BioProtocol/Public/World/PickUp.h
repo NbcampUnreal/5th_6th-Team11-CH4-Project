@@ -9,7 +9,7 @@
 
 class UItemBase;
 class UDataTable;
-class ADXPlayerCharacter;
+class AStaffCharacter;
 
 UCLASS()
 class BIOPROTOCOL_API APickUp : public AActor, public IInteractionInterface
@@ -72,7 +72,7 @@ public:
 	FORCEINLINE void UpdateInteractableData();
 
 	/** 플레이어가 아이템을 습득 */
-	void TakePickup(const ADXPlayerCharacter* Taker);
+	void TakePickup(const AStaffCharacter* Taker);
 
 	//==========================================
 	// INTERACTION INTERFACE
@@ -82,9 +82,9 @@ public:
 	virtual void EndFocus_Implementation() override;
 	virtual void BeginInteract_Implementation() override;
 	virtual void EndInteract_Implementation() override;
-	virtual void Interact_Implementation(ADXPlayerCharacter* PlayerCharacter) override;
+	virtual void Interact_Implementation(AStaffCharacter* PlayerCharacter) override;
 	virtual FInteractableData GetInteractableData_Implementation() const override;
-	virtual bool CanInteract_Implementation(ADXPlayerCharacter* PlayerCharacter) const override;
+	virtual bool CanInteract_Implementation(AStaffCharacter* PlayerCharacter) const override;
 
 protected:
 	virtual void BeginPlay() override;
@@ -101,7 +101,7 @@ class BIOPROTOCOL_API AChest : public APickUp
 	GENERATED_BODY()
 
 public:
-	virtual void Interact_Implementation(ADXPlayerCharacter* Player) override;
+	virtual void Interact_Implementation(AStaffCharacter* Player) override;
 
 	UPROPERTY(EditAnywhere, Category = "Chest")
 	TArray<UItemBase*> ChestItems;

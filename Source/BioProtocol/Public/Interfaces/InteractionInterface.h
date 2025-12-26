@@ -5,7 +5,7 @@
 #include "UObject/Interface.h"
 #include "InteractionInterface.generated.h"
 
-class ADXPlayerCharacter;
+class AStaffCharacter;
 
 //==========================================
 // ENUMS
@@ -145,8 +145,8 @@ public:
 	 * @param PlayerCharacter - 상호작용을 시도한 플레이어
 	 */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
-	void Interact(ADXPlayerCharacter* PlayerCharacter);
-	virtual void Interact_Implementation(ADXPlayerCharacter* PlayerCharacter) {}
+	void Interact(AStaffCharacter* PlayerCharacter);
+	virtual void Interact_Implementation(AStaffCharacter* PlayerCharacter) {}
 
 	//==========================================
 	// GETTERS
@@ -169,8 +169,8 @@ public:
 	 * @return 상호작용 가능하면 true
 	 */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
-	bool CanInteract(ADXPlayerCharacter* PlayerCharacter) const;
-	virtual bool CanInteract_Implementation(ADXPlayerCharacter* PlayerCharacter) const
+	bool CanInteract(AStaffCharacter* PlayerCharacter) const;
+	virtual bool CanInteract_Implementation(AStaffCharacter* PlayerCharacter) const
 	{
 		return InteractableData.bCanInteract;
 	}
