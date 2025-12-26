@@ -98,6 +98,18 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
 	TObjectPtr<UInputAction> TestItem1;
 
+<<<<<<< Updated upstream
+=======
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
+	TObjectPtr<UInputAction> TestItem2;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
+	TObjectPtr<UInputAction> TestItem3;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	UInputAction* DropItemAction;
+
+>>>>>>> Stashed changes
 protected:
 	//레버당기기 시작(아니면 상호작용오래하면서 시야각 제한필요 할때 호출)
 	virtual void PullLever();	
