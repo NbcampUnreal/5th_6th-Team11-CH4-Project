@@ -21,6 +21,8 @@ UStaffStatusComponent::UStaffStatusComponent()
 
 void UStaffStatusComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps); 
+
 	DOREPLIFETIME(UStaffStatusComponent, CurrentHP);
 	DOREPLIFETIME(UStaffStatusComponent, CurrentMoveSpeed);
 	DOREPLIFETIME(UStaffStatusComponent, CurrentAttack);
@@ -74,7 +76,7 @@ void UStaffStatusComponent::StartConsumeStamina()
 	if (GetWorld()->GetTimerManager().IsTimerActive(TimerHandle_ConsumeStamina))
 		return;
 
-	StopRegenStamina(); 
+	StopRegenStamina();
 
 	GetWorld()->GetTimerManager().SetTimer(
 		TimerHandle_ConsumeStamina,
@@ -213,13 +215,13 @@ void UStaffStatusComponent::OnRep_CurrentStamina()
 	OnStaminaChanged.Broadcast(CurrentStamina);
 }
 
-void UStaffStatusComponent::OnRep_PlayerStatus() 
-{ 
-	OnStatusChanged.Broadcast(PlayerStatus); 
+void UStaffStatusComponent::OnRep_PlayerStatus()
+{
+	OnStatusChanged.Broadcast(PlayerStatus);
 }
-void UStaffStatusComponent::OnRep_IsTransformed() 
-{ 
-	OnTransformChanged.Broadcast(bIsTransformed); 
+void UStaffStatusComponent::OnRep_IsTransformed()
+{
+	OnTransformChanged.Broadcast(bIsTransformed);
 }
 
 void UStaffStatusComponent::ApplyDamage(float Damage)
@@ -229,16 +231,15 @@ void UStaffStatusComponent::ApplyDamage(float Damage)
 
 	CurrentHP -= Damage;
 
-	UE_LOG(LogTemp, Warning, TEXT("%s - CurrentHP: %f (Server)"), *GetOwner()->GetName(), CurrentHP);
+	//UE_LOG(LogTemp, Warning, TEXT("%s - CurrentHP: %f (Server)"), *GetOwner()->GetName(), CurrentHP);
 
-	OnHPChanged.Broadcast(CurrentHP); 
+	OnHPChanged.Broadcast(CurrentHP);
 
 	if (CurrentHP <= 0.f)
 	{
 		CurrentHP = 0.f;
-		PlayerStatus = EBioPlayerStatus::Jailed;
-
 		SetJailed();
+		PlayerStatus = EBioPlayerStatus::Jailed;
 	}
 }
 
@@ -311,14 +312,23 @@ void UStaffStatusComponent::SetDead()
 
 	UE_LOG(LogTemp, Error, TEXT("[StaffStatus] Player INCINERATED (Dead)."));
 
-	if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
-	{
-		OwnerChar->GetCharacterMovement()->DisableMovement();
-	}
-
 	if (ABioGameMode* GM = Cast<ABioGameMode>(GetWorld()->GetAuthGameMode()))
 	{
 		GM->CheckWinConditions();
+	}
+
+	if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
+	{
+		OwnerChar->GetCharacterMovement()->DisableMovement();
+
+		if (APlayerController* PC = Cast<APlayerController>(OwnerChar->GetController()))
+		{
+			ABioGameMode* GM = Cast<ABioGameMode>(GetWorld()->GetAuthGameMode());
+			if (GM)
+			{
+				GM->SetPlayerSpectating(PC);
+			}
+		}
 	}
 }
 

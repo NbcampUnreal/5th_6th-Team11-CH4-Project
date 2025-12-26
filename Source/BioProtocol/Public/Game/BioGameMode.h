@@ -8,6 +8,7 @@
 
 class ABioGameState;
 class ABioPlayerState;
+class AThirdSpectatorPawn;
 
 UCLASS()
 class BIOPROTOCOL_API ABioGameMode : public AGameModeBase
@@ -23,6 +24,12 @@ public:
 
 	void SendPlayerToJail(AController* PlayerToJail);
 	void CheckWinConditions();
+
+	void SetPlayerSpectating(AController* VictimController);
+
+	//biogamemode BP에서 BP_ThirdSpectatorPawn추가 필요
+	UPROPERTY(EditDefaultsOnly, Category = "Spectator")
+	TSubclassOf<AThirdSpectatorPawn> SpectatorPawnClass;
 
 protected:
 	FVector JailLocation;

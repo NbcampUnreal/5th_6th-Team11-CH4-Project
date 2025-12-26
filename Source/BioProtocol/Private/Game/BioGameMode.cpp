@@ -7,6 +7,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "Character/StaffStatusComponent.h"
+#include <Character/ThirdSpectatorPawn.h>
+#include <Character/StaffCharacter.h>
 
 ABioGameMode::ABioGameMode()
 {
@@ -182,4 +184,45 @@ void ABioGameMode::CheckWinConditions()
 			BioGS->SetGamePhase(EBioGamePhase::End);
 		}
 	}
+}
+
+void ABioGameMode::SetPlayerSpectating(AController* VictimController)
+{
+	if (!VictimController) return;
+
+	APawn* KilledPawn = VictimController->GetPawn();
+	if (KilledPawn)
+	{
+		KilledPawn->Destroy();
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = VictimController;
+
+	FVector SpawnLoc = KilledPawn ? KilledPawn->GetActorLocation() : FVector::ZeroVector;
+	FRotator SpawnRot = FRotator::ZeroRotator;
+
+	AThirdSpectatorPawn* Spectator = GetWorld()->SpawnActor<AThirdSpectatorPawn>(
+		SpectatorPawnClass,
+		SpawnLoc,
+		SpawnRot,
+		SpawnParams
+	);
+
+	if (Spectator)
+	{
+		VictimController->Possess(Spectator);
+
+		VictimController->SetControlRotation(Spectator->GetActorRotation());
+
+		if (APlayerController* PC = Cast<APlayerController>(VictimController))
+		{
+
+			PC->SetInputMode(FInputModeGameOnly());
+			PC->bShowMouseCursor = false;
+		}
+
+		Spectator->SpectateNextPlayer();
+	}
+
 }
