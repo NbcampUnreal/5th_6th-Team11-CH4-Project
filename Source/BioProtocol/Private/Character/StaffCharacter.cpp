@@ -139,9 +139,9 @@ void AStaffCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	//EIC->BindAction(TestPullLever, ETriggerEvent::Completed, this, &ThisClass::EndInteract);
 	EIC->BindAction(TestPullLever, ETriggerEvent::Completed, this, &ThisClass::InteractReleased);
 
-	EIC->BindAction(TestItem1, ETriggerEvent::Started, this, &ThisClass::EquipSlot1);
-	EIC->BindAction(TestItem2, ETriggerEvent::Started, this, &ThisClass::EquipSlot2);
-	EIC->BindAction(TestItem3, ETriggerEvent::Started, this, &ThisClass::EquipSlot3);
+	EIC->BindAction(Item1, ETriggerEvent::Started, this, &ThisClass::EquipSlot1);
+	EIC->BindAction(Item2, ETriggerEvent::Started, this, &ThisClass::EquipSlot2);
+	EIC->BindAction(Item3, ETriggerEvent::Started, this, &ThisClass::EquipSlot3);
 
 }
 
