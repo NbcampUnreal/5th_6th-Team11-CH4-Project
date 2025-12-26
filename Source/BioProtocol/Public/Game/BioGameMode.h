@@ -22,7 +22,6 @@ public:
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
 	void SendPlayerToJail(AController* PlayerToJail);
-
 	void CheckWinConditions();
 
 protected:

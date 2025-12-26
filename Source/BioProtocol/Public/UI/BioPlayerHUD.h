@@ -25,6 +25,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void UpdateHealth(float CurrentHP);
 
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void UpdateStaminaBar(float NewStamina);
+
 	UFUNCTION(BlueprintCallable)
 	void UpdateHUDState(EBioPlayerRole Role, EBioGamePhase CurrentPhase, bool bIsTransformed);
 
@@ -38,6 +41,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* HealthText;
+
+	UPROPERTY(meta = (BindWidget))
+	UProgressBar* StaminaBar;
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* RoleText;
@@ -57,6 +63,7 @@ protected:
 	TArray<UItemSlotWidget*> Slots;
 
 	float MaxHP = 100.0f;
+	float MaxSP = 100.0f;
 
 	TWeakObjectPtr<ACharacter> OwnerCharacter;
 };
