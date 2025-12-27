@@ -13,6 +13,7 @@ class BIOPROTOCOL_API ATestController : public APlayerController
     GENERATED_BODY()
 
 public:
+    ATestController();
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 

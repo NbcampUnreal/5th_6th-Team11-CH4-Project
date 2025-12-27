@@ -5,37 +5,45 @@
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
 #include "TESTPlayerState.h"
+#include "Game/BioProtocolTypes.h"
 #include "MyTestGameInstance.generated.h"
 
-/**
- * 
- */
+
+
 UCLASS()
 class BIOPROTOCOL_API UMyTestGameInstance : public UGameInstance
 {
     GENERATED_BODY()
 
 public:
-    // 플레이어 ID별 팀 저장
-    TMap<FString, EVoiceTeam> PlayerTeamMap;
+    TMap<FString, EBioPlayerRole> PlayerRoleMap;
 
-    // 팀 저장
-    void SavePlayerTeam(const FString& PlayerID, EVoiceTeam Team)
+    // 역할 저장
+    void SavePlayerRole(const FString& PlayerID, EBioPlayerRole Role)
     {
-        PlayerTeamMap.Add(PlayerID, Team);
-        UE_LOG(LogTemp, Warning, TEXT("[GameInstance] Saved %s → %s"),
-            *PlayerID, Team == EVoiceTeam::Mafia ? TEXT("MAFIA") : TEXT("CITIZEN"));
+        PlayerRoleMap.Add(PlayerID, Role);
+
+        FString RoleText;
+        switch (Role)
+        {
+        case EBioPlayerRole::None: RoleText = TEXT("NONE"); break;
+        case EBioPlayerRole::Staff: RoleText = TEXT("STAFF"); break;
+        case EBioPlayerRole::Cleaner: RoleText = TEXT("CLEANER"); break;
+        default: RoleText = TEXT("UNKNOWN"); break;
+        }
+
+        UE_LOG(LogTemp, Warning, TEXT("[GameInstance] Saved %s → %s"), *PlayerID, *RoleText);
     }
 
-    // 팀 불러오기
-    EVoiceTeam GetPlayerTeam(const FString& PlayerID, bool& bFound)
+    // 역할 불러오기
+    EBioPlayerRole GetPlayerRole(const FString& PlayerID, bool& bFound)
     {
-        if (EVoiceTeam* Team = PlayerTeamMap.Find(PlayerID))
+        if (EBioPlayerRole* Role = PlayerRoleMap.Find(PlayerID))
         {
             bFound = true;
-            return *Team;
+            return *Role;
         }
         bFound = false;
-        return EVoiceTeam::Citizen;
+        return EBioPlayerRole::None;
     }
 };

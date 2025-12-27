@@ -1,7 +1,9 @@
 ﻿#include "TestController.h"
 #include "VoiceChat.h"
 #include "../Session/SessionSubsystem.h"
+#include "Game/BioPlayerState.h"
 #include "TESTPlayerState.h"
+#include "Game/BioProtocolTypes.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSubsystemUtils.h"
 #include "Interfaces/OnlineIdentityInterface.h"
@@ -12,9 +14,46 @@
 #include "EOSVoiceChat.h"
 #include "EOSVoiceChatTypes.h"
 
+ATestController::ATestController()
+{
+    bReplicates = true;
+    UE_LOG(LogTemp, Error, TEXT("🔧 TestController Constructor - bReplicates: %s"),
+        bReplicates ? TEXT("TRUE") : TEXT("FALSE"));
+}
+
 void ATestController::BeginPlay()
 {
     Super::BeginPlay();
+
+    UE_LOG(LogTemp, Error, TEXT("🔧 TestController BeginPlay - Authority: %s, LocalController: %s"),
+        HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"),
+        IsLocalController() ? TEXT("YES") : TEXT("NO"));
+
+    // PlayerState 확인
+    ABioPlayerState* PS = GetPlayerState<ABioPlayerState>();
+    if (PS)
+    {
+        UE_LOG(LogTemp, Error, TEXT("🔧 BioPlayerState Found: %s, Role: %d"),
+            *PS->GetName(), (int32)PS->GameRole);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("🔧 BioPlayerState NOT FOUND - Will retry"));
+
+        FTimerHandle RetryTimer;
+        GetWorldTimerManager().SetTimer(RetryTimer, [this]()
+            {
+                ABioPlayerState* RetryPS = GetPlayerState<ABioPlayerState>();
+                if (RetryPS)
+                {
+                    UE_LOG(LogTemp, Error, TEXT("🔧 BioPlayerState Found (Retry): %s"), *RetryPS->GetName());
+                }
+                else
+                {
+                    UE_LOG(LogTemp, Error, TEXT("🔧 BioPlayerState STILL NOT FOUND!"));
+                }
+            }, 1.0f, false);
+    }
 
     if (IsLocalController())
     {
@@ -156,31 +195,62 @@ void ATestController::HandleLoginComplete(int32, bool bOk, const FUniqueNetId& I
 
 void ATestController::Server_StartGameSession_Implementation()
 {
+    UE_LOG(LogTemp, Error, TEXT("🔴 SERVER RPC: Server_StartGameSession_Implementation CALLED"));
+
     if (!HasAuthority())
+    {
+        UE_LOG(LogTemp, Error, TEXT("🔴 ERROR: Server_StartGameSession has NO Authority!"));
         return;
+    }
+
+    UE_LOG(LogTemp, Error, TEXT("🔴 Server has Authority, getting GameInstance..."));
 
     UGameInstance* GI = GetGameInstance();
     if (!GI)
+    {
+        UE_LOG(LogTemp, Error, TEXT("🔴 ERROR: GameInstance is NULL!"));
         return;
+    }
+
+    UE_LOG(LogTemp, Error, TEXT("🔴 GameInstance found, getting SessionSubsystem..."));
 
     USessionSubsystem* SessionSub = GI->GetSubsystem<USessionSubsystem>();
     if (SessionSub)
     {
+        UE_LOG(LogTemp, Error, TEXT("🔴 SessionSubsystem found, calling StartGameSession"));
         SessionSub->StartGameSession();
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("🔴 ERROR: SessionSubsystem is NULL!"));
     }
 }
 
 void ATestController::Server_SetReady_Implementation()
 {
+    UE_LOG(LogTemp, Error, TEXT("🟢 SERVER RPC: Server_SetReady_Implementation CALLED"));
+
     if (!HasAuthority())
     {
+        UE_LOG(LogTemp, Error, TEXT("🟢 ERROR: Server_SetReady has NO Authority!"));
         return;
     }
 
-    ATESTPlayerState* PS = GetPlayerState<ATESTPlayerState>();
+    UE_LOG(LogTemp, Error, TEXT("🟢 Server has Authority, getting PlayerState..."));
+
+    ABioPlayerState* PS = GetPlayerState<ABioPlayerState>();
     if (PS)
     {
-        PS->bisReady = !PS->bisReady;
+        UE_LOG(LogTemp, Error, TEXT("🟢 PlayerState found: %s"), *PS->GetName());
+        UE_LOG(LogTemp, Error, TEXT("🟢 Current bIsReady: %s"), PS->bIsReady ? TEXT("TRUE") : TEXT("FALSE"));
+
+        PS->bIsReady = !PS->bIsReady;
+
+        UE_LOG(LogTemp, Error, TEXT("🟢 New bIsReady: %s"), PS->bIsReady ? TEXT("TRUE") : TEXT("FALSE"));
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("🟢 ERROR: PlayerState is NULL!"));
     }
 }
 
@@ -223,8 +293,8 @@ void ATestController::UpdateProximityVoice()
         return;
     }
 
-    ATESTPlayerState* MyPS = GetPlayerState<ATESTPlayerState>();
-    const bool bIAmMafia = (MyPS && MyPS->VoiceTeam == EVoiceTeam::Mafia);
+    ABioPlayerState* MyPS = GetPlayerState<ABioPlayerState>();
+    const bool bIAmCleaner = (MyPS && MyPS->GameRole == EBioPlayerRole::Cleaner);
 
     for (TActorIterator<APawn> It(World); It; ++It)
     {
@@ -232,11 +302,11 @@ void ATestController::UpdateProximityVoice()
         if (!OtherPawn || OtherPawn == GetPawn())
             continue;
 
-        ATESTPlayerState* OtherPS = Cast<ATESTPlayerState>(OtherPawn->GetPlayerState());
+        ABioPlayerState* OtherPS = Cast<ABioPlayerState>(OtherPawn->GetPlayerState());
         if (!OtherPS || OtherPS->EOSPlayerName.IsEmpty())
             continue;
 
-        const bool bOtherIsMafia = (OtherPS->VoiceTeam == EVoiceTeam::Mafia);
+        const bool bOtherIsCleaner = (OtherPS->GameRole == EBioPlayerRole::Cleaner);
 
         FVector SpeakerLoc = OtherPawn->GetActorLocation();
         float Distance = FVector::Dist(ListenerLoc, SpeakerLoc);
@@ -246,7 +316,7 @@ void ATestController::UpdateProximityVoice()
         VoiceChatUser->Set3DPosition(PublicGameChannelName, SpeakerLoc, ListenerLoc, ListenerForward, ListenerUp);
 
         // 마피아끼리는 항상 최대 볼륨
-        if (bIAmMafia && bOtherIsMafia)
+        if (bIAmCleaner && bOtherIsCleaner)
         {
             Volume = 1.0f;
         }
@@ -266,13 +336,23 @@ float ATestController::CalcProxVolume01(float Dist, float MinD, float MaxD)
 
 void ATestController::Server_SetEOSPlayerName_Implementation(const FString& InEOSPlayerName)
 {
-    if (!HasAuthority())
-        return;
+    UE_LOG(LogTemp, Error, TEXT("🟡 SERVER RPC: Server_SetEOSPlayerName_Implementation CALLED - Name: %s"), *InEOSPlayerName);
 
-    ATESTPlayerState* PS = GetPlayerState<ATESTPlayerState>();
+    if (!HasAuthority())
+    {
+        UE_LOG(LogTemp, Error, TEXT("🟡 ERROR: Server_SetEOSPlayerName has NO Authority!"));
+        return;
+    }
+
+    ABioPlayerState* PS = GetPlayerState<ABioPlayerState>();
     if (PS)
     {
+        UE_LOG(LogTemp, Error, TEXT("🟡 PlayerState found, setting EOS name"));
         PS->Server_SetEOSPlayerName(InEOSPlayerName);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("🟡 ERROR: PlayerState is NULL!"));
     }
 }
 
