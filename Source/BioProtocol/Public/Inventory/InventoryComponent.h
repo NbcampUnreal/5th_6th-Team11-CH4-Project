@@ -243,7 +243,7 @@ protected:
 	UItemBase* FindStackableItem(UItemBase* ItemToAdd) const;
 
 	/** 새 아이템 슬롯 추가 */
-	FItemAddResult AddNewItem(UItemBase* ItemToAdd, int32 RequestedQuantity);
+	FItemAddResult AddNewItem(UItemBase* ItemToAdd, int32 Quantity);
 
 	/** 기존 스택에 추가 */
 	int32 AddToExistingStack(UItemBase* ExistingItem, int32 QuantityToAdd);

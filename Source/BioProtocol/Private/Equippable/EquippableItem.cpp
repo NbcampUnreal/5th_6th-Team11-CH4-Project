@@ -1,6 +1,6 @@
 #include "BioProtocol/Public/Equippable/EquippableItem.h"
 #include "BioProtocol/Public/Items/ItemBase.h"
-#include "BioProtocol/Character/DXPlayerCharacter.h"
+#include "BioProtocol/Public/Character/StaffCharacter.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Character/StaffCharacter.h"
@@ -39,6 +39,49 @@ AEquippableItem::AEquippableItem()
 void AEquippableItem::BeginPlay()
 {
 	Super::BeginPlay();
+
+	const FName RowToUse = (ItemRowName.IsNone() ? ItemID : ItemRowName);
+
+	if (ItemDataTable && !RowToUse.IsNone())
+	{
+		static const FString Context(TEXT("EquippableItem_LoadItemData"));
+
+		if (const FItemData* Row = ItemDataTable->FindRow<FItemData>(RowToUse, Context, true))
+		{
+			// 1) 월드에 떨어져 있을 때 사용할 스태틱 메시
+			if (Row->AssetData.Mesh)
+			{
+				StaticMeshComp->SetStaticMesh(Row->AssetData.Mesh);
+				StaticMeshComp->SetVisibility(true);
+				ItemMesh->SetVisibility(false);
+			}
+
+			// 2) 손에 들었을 때 사용할 스켈레탈 메시
+			if (Row->AssetData.SkeletalMesh)
+			{
+				ItemMesh->SetSkeletalMesh(Row->AssetData.SkeletalMesh);
+				ItemMesh->SetVisibility(true);
+				StaticMeshComp->SetVisibility(false);
+			}
+
+			// 3) (선택) 아이템 이름/설명 등은 UItemBase나 UI 쪽에서 사용
+			// 예: 로그로 확인
+			UE_LOG(LogTemp, Log, TEXT("EquippableItem '%s' loaded: %s"),
+				*GetName(),
+				*Row->TextData.Name.ToString());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("AEquippableItem: Row '%s' not found in DataTable '%s'"),
+				*RowToUse.ToString(),
+				*ItemDataTable->GetName());
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Verbose, TEXT("AEquippableItem: ItemDataTable or ItemID/ItemRowName not set on %s"),
+			*GetName());
+	}
 }
 
 void AEquippableItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -64,14 +107,11 @@ void AEquippableItem::Use()
 		return;
 	}
 
-	bIsInUse = true;
-	/*
 	if (!CanUse())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[Item] Cannot use: %s"), *GetName());
 		return;
 	}
-	*/
 
 	bIsInUse = true;
 	UE_LOG(LogTemp, Log, TEXT("[Item] Base Use called: %s"), *GetName());
@@ -113,7 +153,7 @@ void AEquippableItem::PlayUseAnimation()
 	}
 
 	// 2. 이 아이템을 들고 있는 캐릭터 가져오기 (OwningCharacter 같은 멤버를 두고 있다면 그걸 사용)
-	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
+	AStaffCharacter* OwnerCharacter = Cast<AStaffCharacter>(OwningCharacter ? OwningCharacter : GetOwner());
 	if (!OwnerCharacter)
 	{
 		return;
@@ -141,6 +181,7 @@ void AEquippableItem::Initialize(UItemBase* InItemReference, AStaffCharacter* In
 
 	ItemReference = InItemReference;
 	OwningCharacter = InOwner;
+	SetOwner(InOwner);
 
 	// 1. 스태틱 메쉬 사용 (예: StaticMeshComponent가 있을 때)
 	if (StaticMeshComp && ItemReference->AssetData.Mesh)
@@ -297,6 +338,7 @@ void AEquippableItem::PerformAttachment(FName SocketName)
 	CurrentAttachedSocket = SocketName;
 
 	ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ItemMesh->SetSimulatePhysics(false);
 
 	UE_LOG(LogTemp, Log, TEXT("[EquippableItem] Attached %s to socket: %s"),
 		*GetName(), *SocketName.ToString());

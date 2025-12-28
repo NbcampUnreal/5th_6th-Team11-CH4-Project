@@ -1,6 +1,5 @@
-
 #include "Equippable/EquippableWeapon/EquippableWeapon_Shotgun.h"
-#include "BioProtocol/Character/DXPlayerCharacter.h"
+#include "BioProtocol/Public/Character/StaffCharacter.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -8,119 +7,143 @@
 
 AEquippableWeapon_Shotgun::AEquippableWeapon_Shotgun()
 {
-	// 샷건 스탯
-	Damage = 80.0f;    // 높은 데미지
-	Range = 1000.0f;   // 10미터 (짧은 사거리)
-	FireRate = 1.0f;   // 초당 1발
-	bIsMeleeWeapon = false;
-	bInfiniteAmmo = false;
-	MaxAmmo = 6;
+    // 샷건 스탯
+    Damage = 80.0f;    // 전체 한 발 기준 총 데미지
+    Range = 1000.0f;  // 10m
+    FireRate = 1.0f;     // 초당 1발
+    bIsMeleeWeapon = false;
+    bInfiniteAmmo = false;
+    MaxAmmo = 6;
+    CurrentAmmo = MaxAmmo;
 
-	// 산탄 설정
-	PelletCount = 8;      // 8발의 산탄
-	SpreadAngle = 5.0f;   // 5도 확산
+    // 산탄 설정
+    PelletCount = 8;         // 8발의 산탄
+    SpreadAngle = 5.0f;      // 5도 확산
 
-	ImpactParticle = nullptr;
+    ImpactParticle = nullptr;
 }
 
 void AEquippableWeapon_Shotgun::ProcessAttack()
 {
-	if (!OwningCharacter)
-	{
-		return;
-	}
+    // AEquippableWeapon_::Attack()에서 서버에서만 호출된다는 가정
+    if (!OwningCharacter)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Shotgun] No OwningCharacter on ProcessAttack: %s"), *GetName());
+        return;
+    }
 
-	UCameraComponent* Camera = OwningCharacter->FindComponentByClass<UCameraComponent>();
-	if (!Camera)
-	{
-		return;
-	}
+    // 1. 카메라 가져오기 (1인칭 기준)
+    UCameraComponent* Camera = OwningCharacter->FindComponentByClass<UCameraComponent>();
+    if (!Camera)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Shotgun] No CameraComponent on owner: %s"), *OwningCharacter->GetName());
+        return;
+    }
 
-	FVector Start = Camera->GetComponentLocation();
-	FVector Forward = Camera->GetForwardVector();
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        return;
+    }
 
-	// 산탄별로 LineTrace 실행
-	TSet<AActor*> HitActors;  // 중복 데미지 방지
+    const FVector CameraLocation = Camera->GetComponentLocation();
+    const FVector CameraForward = Camera->GetForwardVector();
 
-	for (int32 i = 0; i < PelletCount; ++i)
-	{
-		// 랜덤 확산 적용
-		FVector RandomSpread = UKismetMathLibrary::RandomUnitVectorInConeInDegrees(
-			Forward,
-			SpreadAngle
-		);
+    // 중복 타겟에 중복 데미지 들어가는 것 방지용
+    TMap<AActor*, float> AccumulatedDamagePerActor;
 
-		FVector End = Start + (RandomSpread * Range);
+    for (int32 i = 0; i < PelletCount; ++i)
+    {
+        // 2. 랜덤 확산 방향 계산
+        const FVector PelletDir = UKismetMathLibrary::RandomUnitVectorInConeInDegrees(
+            CameraForward,
+            SpreadAngle
+        );
 
-		// LineTrace
-		FHitResult HitResult;
-		FCollisionQueryParams QueryParams;
-		QueryParams.AddIgnoredActor(this);
-		QueryParams.AddIgnoredActor(OwningCharacter);
-		QueryParams.bTraceComplex = true;
+        const FVector TraceStart = CameraLocation;
+        const FVector TraceEnd = TraceStart + PelletDir * Range;
 
-		bool bHit = GetWorld()->LineTraceSingleByChannel(
-			HitResult,
-			Start,
-			End,
-			ECC_Visibility,
-			QueryParams
-		);
+        // 3. 라인트레이스
+        FHitResult HitResult;
+        FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(ShotgunTrace), false, this);
+        QueryParams.AddIgnoredActor(this);
+        QueryParams.AddIgnoredActor(OwningCharacter);
+        QueryParams.bTraceComplex = true;
 
-		// 디버그 라인
-		DrawDebugLine(
-			GetWorld(),
-			Start,
-			bHit ? HitResult.Location : End,
-			bHit ? FColor::Red : FColor::Orange,
-			false,
-			0.5f,
-			0,
-			0.5f
-		);
+        const bool bHit = World->LineTraceSingleByChannel(
+            HitResult,
+            TraceStart,
+            TraceEnd,
+            ECC_Visibility,
+            QueryParams
+        );
 
-		if (bHit)
-		{
-			AActor* HitActor = HitResult.GetActor();
+        // 디버그 라인
+        DrawDebugLine(
+            World,
+            TraceStart,
+            bHit ? HitResult.Location : TraceEnd,
+            bHit ? FColor::Red : FColor::Orange,
+            false,
+            0.5f,
+            0,
+            0.5f
+        );
 
-			// 데미지 적용 (서버에서만, 중복 방지)
-			if (HasAuthority() && HitActor && !HitActors.Contains(HitActor))
-			{
-				HitActors.Add(HitActor);
+        if (!bHit)
+        {
+            continue;
+        }
 
-				// 각 산탄은 전체 데미지를 나눠서 적용
-				float PelletDamage = Damage / static_cast<float>(PelletCount);
+        AActor* HitActor = HitResult.GetActor();
+        if (!HitActor)
+        {
+            continue;
+        }
 
-				UGameplayStatics::ApplyPointDamage(
-					HitActor,
-					PelletDamage,
-					RandomSpread,
-					HitResult,
-					OwningCharacter->GetController(),
-					this,
-					UDamageType::StaticClass()
-				);
+        // 4. 데미지 누적 (PelletDamage 합산 방식)
+        const float PelletDamage = Damage / static_cast<float>(PelletCount);
 
-				UE_LOG(LogTemp, Log, TEXT("[Shotgun] Pellet hit: %s for %.1f damage"),
-					*HitActor->GetName(), PelletDamage);
-			}
+        float& AccDamage = AccumulatedDamagePerActor.FindOrAdd(HitActor);
+        AccDamage += PelletDamage;
 
-			// 히트 이펙트
-			if (ImpactParticle)
-			{
-				UGameplayStatics::SpawnEmitterAtLocation(
-					GetWorld(),
-					ImpactParticle,
-					HitResult.Location,
-					HitResult.Normal.Rotation()
-				);
-			}
-		}
-	}
+        // 5. 히트 이펙트(파티클)
+        if (ImpactParticle)
+        {
+            UGameplayStatics::SpawnEmitterAtLocation(
+                World,
+                ImpactParticle,
+                HitResult.Location,
+                HitResult.Normal.Rotation()
+            );
+        }
+    }
 
-	// 총 데미지 로그
-	if (HasAuthority() && HitActors.Num() > 0)
-	{
-		UE_LOG(LogTemp, Log, TEXT("[Shotgun] Total targets hit: %d"), HitActors.Num());
-	}
+    // 6. 서버에서 누적 데미지 적용
+    if (HasAuthority())
+    {
+        for (const TPair<AActor*, float>& Pair : AccumulatedDamagePerActor)
+        {
+            AActor* DamagedActor = Pair.Key;
+            const float TotalDamage = Pair.Value;
+
+            UGameplayStatics::ApplyPointDamage(
+                DamagedActor,
+                TotalDamage,
+                (DamagedActor->GetActorLocation() - OwningCharacter->GetActorLocation()).GetSafeNormal(),
+                FHitResult(), // 정확한 Hit 정보가 필요하면 위에서 저장한 마지막 HitResult를 같이 넘겨도 됨
+                OwningCharacter->GetController(),
+                this,
+                UDamageType::StaticClass()
+            );
+
+            UE_LOG(LogTemp, Log, TEXT("[Shotgun] Hit %s for %.1f total damage"),
+                *DamagedActor->GetName(), TotalDamage);
+        }
+
+        if (AccumulatedDamagePerActor.Num() > 0)
+        {
+            UE_LOG(LogTemp, Log, TEXT("[Shotgun] Total targets hit: %d"), AccumulatedDamagePerActor.Num());
+        }
+    }
 }

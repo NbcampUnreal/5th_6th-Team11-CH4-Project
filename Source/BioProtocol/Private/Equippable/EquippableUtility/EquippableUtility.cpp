@@ -1,6 +1,6 @@
 // EquippableUtility.cpp
 #include "BioProtocol/Public/Equippable/EquippableUtility/EquippableUtility.h"
-#include "BioProtocol/Character/DXPlayerCharacter.h"
+#include "BioProtocol/Public/Character/StaffCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 

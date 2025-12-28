@@ -51,6 +51,7 @@ void UInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 
 FItemAddResult UInventoryComponent::HandleAddItem(UItemBase* ItemToAdd)
 {
+
 	if (!ItemToAdd)
 	{
 		return FItemAddResult::AddedNone(FText::FromString("Invalid item"));
@@ -114,32 +115,105 @@ FItemAddResult UInventoryComponent::HandleAddItem(UItemBase* ItemToAdd)
 	return AddNewItem(ItemToAdd, ItemToAdd->Quantity);
 }
 
-FItemAddResult UInventoryComponent::AddNewItem(UItemBase* ItemToAdd, int32 RequestedQuantity)
+FItemAddResult UInventoryComponent::AddNewItem(UItemBase* ItemToAdd, int32 Quantity)
 {
-	if (IsInventoryFull())
+	if (!ItemToAdd)
 	{
-		return FItemAddResult::AddedNone(FText::FromString("Inventory full"));
+		return FItemAddResult::AddedNone(FText::FromString("Invalid item"));
 	}
 
-	// 인벤토리에 추가
-	InventoryItems.Add(ItemToAdd);
-	ItemToAdd->SetQuantity(RequestedQuantity);
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	UE_LOG(LogTemp, Warning, TEXT("[Inventory] AddNewItem called"));
+	UE_LOG(LogTemp, Warning, TEXT("[Inventory] Item: %s"),
+		*ItemToAdd->TextData.Name.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("[Inventory] ItemType: %s"),
+		*UEnum::GetValueAsString(ItemToAdd->ItemType));
+	UE_LOG(LogTemp, Warning, TEXT("[Inventory] Quantity: %d"), Quantity);
 
-	// 슬롯 자동 배치
-	AutoAssignToSlot(ItemToAdd);
+	// ========================================
+	// 타입별로 정해진 슬롯에 할당
+	// ========================================
 
-	// 무게 재계산
+	UItemBase** TargetSlot = nullptr;
+	int32 SlotNumber = 0;
+	FString SlotName;
+
+	switch (ItemToAdd->ItemType)
+	{
+	case EItemType::Weapon:
+		if (Slot1_Weapon)
+		{
+			UE_LOG(LogTemp, Error, TEXT("[Inventory] Weapon slot is already occupied by: %s"),
+				*Slot1_Weapon->TextData.Name.ToString());
+			return FItemAddResult::AddedNone(FText::FromString("Weapon slot is full"));
+		}
+		TargetSlot = &Slot1_Weapon;
+		SlotNumber = 1;
+		SlotName = TEXT("Weapon");
+		break;
+
+	case EItemType::Tool:
+		if (Slot2_Tool)
+		{
+			UE_LOG(LogTemp, Error, TEXT("[Inventory] Tool slot is already occupied by: %s"),
+				*Slot2_Tool->TextData.Name.ToString());
+			return FItemAddResult::AddedNone(FText::FromString("Tool slot is full"));
+		}
+		TargetSlot = &Slot2_Tool;
+		SlotNumber = 2;
+		SlotName = TEXT("Tool");
+		break;
+
+	case EItemType::Utility:
+	case EItemType::Consumable:
+		if (Slot3_Utility)
+		{
+			UE_LOG(LogTemp, Error, TEXT("[Inventory] Utility slot is already occupied by: %s"),
+				*Slot3_Utility->TextData.Name.ToString());
+			return FItemAddResult::AddedNone(FText::FromString("Utility slot is full"));
+		}
+		TargetSlot = &Slot3_Utility;
+		SlotNumber = 3;
+		SlotName = TEXT("Utility");
+		break;
+
+	default:
+		UE_LOG(LogTemp, Error, TEXT("[Inventory] Unknown item type: %s"),
+			*UEnum::GetValueAsString(ItemToAdd->ItemType));
+		return FItemAddResult::AddedNone(FText::FromString("Unknown item type"));
+	}
+
+	// ========================================
+	// 슬롯에 할당
+	// ========================================
+	*TargetSlot = ItemToAdd;
+
+	UE_LOG(LogTemp, Warning, TEXT("[Inventory] ? Auto-assigned to Slot %d (%s): %s"),
+		SlotNumber, *SlotName, *ItemToAdd->TextData.Name.ToString());
+
+	// ========================================
+	// 무게 계산
+	// ========================================
 	CalculateTotalWeight();
 
+	// ========================================
 	// 이벤트 브로드캐스트
-	OnItemAdded.Broadcast(ItemToAdd, RequestedQuantity);
+	// ========================================
+	OnItemAdded.Broadcast(ItemToAdd, Quantity);
 	OnInventoryUpdated.Broadcast();
 
-	UE_LOG(LogTemp, Log, TEXT("[Inventory] Added new item: %s x%d"),
-		*ItemToAdd->TextData.Name.ToString(), RequestedQuantity);
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
 
-	return FItemAddResult::AddedAll(RequestedQuantity,
-		FText::Format(FText::FromString("Added {0}"), ItemToAdd->TextData.Name));
+	// ========================================
+	// 성공 리턴
+	// ========================================
+	FString ResultMessage = FString::Printf(TEXT("Added %s to Slot %d"),
+		*ItemToAdd->TextData.Name.ToString(), SlotNumber);
+
+	return FItemAddResult::AddedAll(
+		Quantity,  // ← 파라미터로 받은 Quantity 사용!
+		FText::FromString(ResultMessage)
+	);
 }
 
 int32 UInventoryComponent::AddToExistingStack(UItemBase* ExistingItem, int32 QuantityToAdd)

@@ -3,11 +3,10 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
-#include "BioProtocol/Public/Equippable/EquippableItem.h"
 #include "ItemDataStructs.generated.h"
 
 class AActor;
-//class AEquippableItem;
+class AEquippableItem;
 
 //==========================================
 // ENUMS
@@ -215,7 +214,7 @@ struct FItemData : public FTableRowBase
         , Category(EItemCategory::Work)
         , ItemType(EItemType::Tool)
         , ItemQuality(EItemQuality::Common)
-       // , ItemClass(nullptr)
+        , ItemClass(nullptr)
         , EffectRowID(NAME_None)
     { }
 };
