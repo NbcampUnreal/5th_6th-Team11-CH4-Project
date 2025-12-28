@@ -15,7 +15,7 @@ class BIOPROTOCOL_API AMyGameModeBase : public AGameModeBase
 {
 	GENERATED_BODY()
 public:
-	virtual void SetPlayerSpectating(AController* VictimController);
+	virtual void OnPlayerKilled(AController* VictimController);
 	virtual void RestartPlayer(AController* NewPlayer) override;
 	UPROPERTY(EditDefaultsOnly, Category = "Spectator")
 	TSubclassOf<AThirdSpectatorPawn> SpectatorPawnClass;

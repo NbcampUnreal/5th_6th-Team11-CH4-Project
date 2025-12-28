@@ -1,3 +1,0 @@
-& "D:\Unreal Engine\UE_5.5\Engine\Binaries\Win64\unrealeditor.exe" `
-  "C:\Users\MIN\Documents\Unreal Projects\5th_6th-Team11-CH4-Project\BioProtocol.uproject" `
-  "/Game/Level/Lobby?listen" -server -log -port=7777

@@ -30,21 +30,8 @@
 			"Enabled": true
 		},
 		{
-		  "Name": "EOSVoiceChat",
-		  "Enabled": true
-		},
-		{
-			"Name": "Fab",
-			"Enabled": false
-		},
-		{
-			"Name": "FabLauncher",
-			"Enabled": false,
-			"SupportedTargetPlatforms": [
-				"Win64",
-				"Mac",
-				"Linux"
-			]
+			"Name": "OnlineSubsystemSteam",
+			"Enabled": true
 		}
 	]
 }

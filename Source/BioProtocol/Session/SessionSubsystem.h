@@ -22,12 +22,7 @@ struct FSessionInfo
     UPROPERTY(BlueprintReadOnly)
     int32 PingInMs = 0;
 
-    UPROPERTY(BlueprintReadOnly)
-    FString ServerIp;
-
-    UPROPERTY(BlueprintReadOnly)
-    int32 ServerPort = 0;
-
+    // 어떤 SearchResults 인덱스인지
     int32 SearchResultIndex = INDEX_NONE;
 };
 
@@ -42,21 +37,25 @@ enum class EJoinResultBP : uint8
     UnknownError
 };
 
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSessionSearchUpdated, const TArray<FSessionInfo>&, Sessions);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnJoinSessionFinished, EJoinResultBP, Result);
 
 UCLASS()
 class BIOPROTOCOL_API USessionSubsystem : public UGameInstanceSubsystem
 {
-    GENERATED_BODY()
-
+	GENERATED_BODY()
+	
 public:
+    // 세션 생성
     UFUNCTION(BlueprintCallable, Category = "Session")
-    void CreateLobbyForDedicated(const FString& ServerIp, int32 ServerPort, int32 PublicConnections = 4);
+    void CreateGameSession(int32 PublicConnections = 4, bool bIsLAN = true);
 
+    // 세션 검색
     UFUNCTION(BlueprintCallable, Category = "Session")
-    void FindGameSessions(int32 MaxResults = 100, bool bIsLAN = false);
+    void FindGameSessions(int32 MaxResults = 100, bool bIsLAN = true);
 
+    // 세션 참가 추후에 인덱스로 들어가게 수정
     UFUNCTION(BlueprintCallable, Category = "Session")
     void JoinFoundSession(int32 index);
 
@@ -72,22 +71,24 @@ public:
     UFUNCTION(BlueprintCallable)
     const TArray<FSessionInfo>& GetLastSessionInfos() const { return LastSessionInfos; }
 
+
 protected:
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
     virtual void Deinitialize() override;
 
-private:
     IOnlineSessionPtr GetSessionInterface() const;
-    void TravelToDedicatedFromLobby(const FName& LobbySessionName);
 
+private:
     IOnlineSessionPtr SessionInterface;
     TSharedPtr<FOnlineSessionSearch> SessionSearch;
     TArray<FSessionInfo> LastSessionInfos;
 
+    // 델리게이트 핸들
     FDelegateHandle OnCreateSessionCompleteHandle;
     FDelegateHandle OnFindSessionsCompleteHandle;
     FDelegateHandle OnJoinSessionCompleteHandle;
 
+    // 콜백
     void HandleCreateSessionComplete(FName SessionName, bool bWasSuccessful);
     void HandleFindSessionsComplete(bool bWasSuccessful);
     void HandleJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);

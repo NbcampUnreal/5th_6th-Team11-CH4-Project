@@ -1,19 +1,13 @@
-// ItemDataStructs.h
+
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
-#include "BioProtocol/Public/Equippable/EquippableItem.h"
 #include "ItemDataStructs.generated.h"
 
 class AActor;
-//class AEquippableItem;
 
-//==========================================
-// ENUMS
-//==========================================
-
-// 아이템 희귀도
+//아이템 희귀도
 UENUM(BlueprintType)
 enum class EItemRarity : uint8
 {
@@ -22,7 +16,7 @@ enum class EItemRarity : uint8
     High   UMETA(DisplayName = "High")     // 상
 };
 
-// 아이템 카테고리 (무기 / 업무 / 유틸리티)
+// 아이템 종류 - 무기 / 업무 / 유틸리티
 UENUM(BlueprintType)
 enum class EItemCategory : uint8
 {
@@ -31,357 +25,174 @@ enum class EItemCategory : uint8
     Utility  UMETA(DisplayName = "Utility")    // 유틸리티(소모품 등)
 };
 
-// 아이템 타입 (툴/무기/유틸/소모품)
-UENUM(BlueprintType)
-enum class EItemType : uint8
-{
-    Tool,
-    Weapon,
-    Utility,
-    Consumable
-};
-
-UENUM(BlueprintType)
-enum class EItemQuality : uint8
-{
-    Common,
-    Uncommon,
-    Rare,
-    Epic
-};
-
-//==========================================
-// BASIC STRUCTS - 숫자 데이터
-//==========================================
-
 USTRUCT(BlueprintType)
 struct FItemNumericData
 {
-    GENERATED_BODY()
+    GENERATED_BODY();
 
-    /** 아이템 무게 (인벤토리/이동속도) */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    //아이템 무게 (인벤토리/이동속도)
+    UPROPERTY(EditAnywhere)
     float Weight;
 
-    /** 최대 스택 개수 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    //최대 스택 개수
+    UPROPERTY(EditAnywhere)
     int32 MaxStackSize;
 
-    /** 스택 가능 여부 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    //스택 가능 여부
+    UPROPERTY(EditAnywhere)
     bool bIsStackable;
-
-    /** 내구도 (용접기용) */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float Durability;
-
-    /** 최대 내구도 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float MaxDurability;
-
-    /** 이동속도 감소 비율 (0.0 ~ 1.0) - 배터리는 0.5 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float MovementSpeedModifier;
-
-    FItemNumericData()
-        : Weight(1.0f)
-        , MaxStackSize(1)
-        , bIsStackable(false)
-        , Durability(100.0f)
-        , MaxDurability(100.0f)
-        , MovementSpeedModifier(1.0f)
-    {
-    }
 };
 
-//==========================================
-// TEXT DATA - UI에 표시할 텍스트
-//==========================================
-
-USTRUCT(BlueprintType)
-struct FItemTextData
-{
-    GENERATED_BODY()
-
-    /** 화면에 표시될 이름 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FText Name;
-
-    /** 아이템 설명 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FText Description;
-
-    /** 상호작용 텍스트 (예: "줍기", "사용하기") */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FText InteractionText;
-
-    /** 사용 방법 설명 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FText UsageText;
-
-    FItemTextData()
-        : Name(FText::FromString("Item"))
-        , Description(FText::FromString("No Description"))
-        , InteractionText(FText::FromString("Pick Up"))
-        , UsageText(FText::FromString(""))
-    {
-    }
-};
-
-//==========================================
-// ASSET DATA - 메시, 아이콘 등
-//==========================================
-
-USTRUCT(BlueprintType)
-struct FItemAssetData
-{
-    GENERATED_BODY()
-
-    /** 아이템 아이콘 (UI용) */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    UTexture2D* Icon;
-
-    /** 월드에 떨어질 때 사용할 스태틱 메시 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    UStaticMesh* Mesh;
-
-    /** 장착했을 때 사용할 스켈레탈 메시 (손에 들 때) */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    USkeletalMesh* SkeletalMesh;
-
-    FItemAssetData()
-        : Icon(nullptr)
-        , Mesh(nullptr)
-        , SkeletalMesh(nullptr)
-    {
-    }
-};
-
-//==========================================
-// MAIN ITEM DATA - 공통 아이템 데이터
-//==========================================
-
+// 공통 아이템 데이터 (아이템 1개 = 이 Row 1줄)
+// 인벤토리, 드랍 테이블, UI 등에서 공통으로 사용하는 정보
 USTRUCT(BlueprintType)
 struct FItemData : public FTableRowBase
 {
-    GENERATED_BODY()
+    GENERATED_BODY();
 
-    /** 내부 ID (Key) - DataTable의 RowName과 일치 */
+    // 내부 ID (Key) - CSV/DataTable에서 RowName과 함께 사용
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FName ItemID;
+    FName ItemID;              // 예: "Pipe", "Pistol", "HealKit"
 
-    /** 화면에 보여줄 이름 */
+    // 화면에 보여줄 이름
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FText DisplayName;
+    FText DisplayName;         // 예: 쇠파이프, 권총, 회복키트
 
-    /** 아이템 희귀도(등급) */
+    // 아이템 희귀도(등급)
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    EItemRarity Rarity;
+    EItemRarity Rarity;        // 하 / 중 / 상
 
-    /** 아이템 카테고리 */
+    // 아이템 카테고리
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    EItemCategory Category;
+    EItemCategory Category;    // Weapon / Work / Utility
 
+    // 실제로 스폰할 액터 클래스 (월드에 떨어지는 아이템 액터 등)
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    EItemType ItemType;
+    TSubclassOf<AActor> ItemClass;
 
+    // 이 아이템이 가진 효과 데이터 RowID (없으면 NAME_None)
+    // 예: 회복키트, 신호 교란기 등
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    EItemQuality ItemQuality;
+    FName EffectRowID;         // FItemEffectData의 RowName과 매칭
 
-    // 실제로 스폰할 장착 가능한 액터 클래스
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    TSubclassOf<AEquippableItem> ItemClass; 
-
-    /** 이 아이템이 가진 효과 데이터 RowID */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FName EffectRowID;
-
-    /** 숫자 데이터 */
+    // 공용 숫자 데이터 묶음
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     FItemNumericData NumericData;
 
-    /** 텍스트 데이터 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FItemTextData TextData;
+    UPROPERTY(EditAnywhere)
+    UTexture2D* Icon;
 
-    /** 에셋 데이터 (아이콘, 메시) */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FItemAssetData AssetData;
-
-    FItemData()
-        : ItemID(NAME_None)
-        , DisplayName(FText::FromString("Item"))
-        , Rarity(EItemRarity::Low)
-        , Category(EItemCategory::Work)
-        , ItemType(EItemType::Tool)
-        , ItemQuality(EItemQuality::Common)
-       // , ItemClass(nullptr)
-        , EffectRowID(NAME_None)
-    { }
+    UPROPERTY(EditAnywhere)
+    UStaticMesh* Mesh;
 };
 
-//==========================================
-// WEAPON DATA - 무기 전용 세부 데이터
-//==========================================
-
+// 무기 아이템용 세부 데이터 (무기 전용 테이블에 사용 가능)
 USTRUCT(BlueprintType)
 struct FWeaponData : public FTableRowBase
 {
-    GENERATED_BODY()
+    GENERATED_BODY();
 
-    /** FItemData의 ItemID와 매칭 */
+    // 공통 FItemData의 ItemID와 매칭
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FName ItemID;
+    FName ItemID;        // 예: "Pipe", "Pistol", "Shotgun"
 
-    /** 공격력 */
+    // 공격력
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float Damage;
 
-    /** 사거리 (근접이면 짧게, 총기는 길게) */
+    // 사거리 (근접이면 짧게, 총기는 길게 설정)
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float Range;
 
-    /** 장탄수 (근접 무기는 -1) */
+    // 장탄수 (근접 무기는 -1 또는 0으로 무제한 표현)
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     int32 MagazineSize;
-
-    /** 연사 속도 (초당 발사 수) */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float FireRate;
-
-    FWeaponData()
-        : ItemID(NAME_None)
-        , Damage(10.0f)
-        , Range(100.0f)
-        , MagazineSize(10)
-        , FireRate(1.0f)
-    {
-    }
 };
 
-//==========================================
-// WORK ITEM DATA - 업무 아이템 세부 데이터
-//==========================================
-
+// 업무(미션) 아이템용 세부 데이터
 USTRUCT(BlueprintType)
 struct FWorkItemData : public FTableRowBase
 {
-    GENERATED_BODY()
+    GENERATED_BODY();
 
-    /** FItemData의 ItemID와 매칭 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FName ItemID;
+    FName ItemID;          // 예: "Wrench", "Welder", "Battery"
 
-    /** 양손만 사용 가능 여부 (배터리) */
+    // 양손만 사용 가능 여부 (배터리 등)
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    bool bTwoHandOnly;
+    bool  bTwoHandOnly;    // true면 양손 사용, 인벤토리 수납 제한 등
 
-    /** 내구도(연료) 시스템 사용 여부 (용접기) */
+    // 내구도(연료) 시스템 사용 여부 (용접기 등)
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    bool bHasDurability;
+    bool  bHasDurability;  // true면 아래 MaxDurability 사용
 
-    /** 최대 내구도/연료량 */
+    // 최대 내구도 / 연료량
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float MaxDurability;
+    float MaxDurability;   // 예: Fuel 양
 
-    /** 이동 속도 배율 (배터리: 0.5f) */
+    // 이동 속도 배율 (배터리: 0.7f 등)
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float MoveSpeedMultiplier;
 
-    /** 사용/상호작용 시간 (E키 수리 시간) */
+    // 사용/상호작용 시간 (E키 수리, 충전 시간 등)
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float UseTime;
-
-    FWorkItemData()
-        : ItemID(NAME_None)
-        , bTwoHandOnly(false)
-        , bHasDurability(false)
-        , MaxDurability(100.0f)
-        , MoveSpeedMultiplier(1.0f)
-        , UseTime(1.0f)
-    {
-    }
 };
 
-//==========================================
-// UTILITY ITEM DATA - 유틸리티 아이템 세부 데이터
-//==========================================
-
+// 유틸리티(소모품) 아이템용 세부 데이터
 USTRUCT(BlueprintType)
 struct FUtilityItemData : public FTableRowBase
 {
-    GENERATED_BODY()
+    GENERATED_BODY();
 
-    /** FItemData의 ItemID와 매칭 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FName ItemID;
+    FName ItemID;          // 예: "HealKit", "AmmoPack", "SignalJammer"
 
-    /** 1회 사용 시 소모되는지 여부 */
+    // 1회 사용 시 소모되는지 여부
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    bool bConsumable;
+    bool  bConsumable;      // 회복키트, 탄약팩, 신호교란기: true
 
-    /** 효과 지속 시간 (초) - 신호교란기 10초 */
+    // 효과 지속 시간 (초) - 즉시 효과면 0 또는 짧은 값
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float Duration;
+    float Duration;         // 예: 신호 교란기 10초
 
-    /** 효과 범위 (AOE 반경, 미터) */
+    // 효과 범위 (AOE 반경, 미터 단위 가정)
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float Radius;
+    float Radius;           // 예: 신호 교란기 10m
 
-    /** 자기 자신에게 효과 적용 여부 */
+    // 자기 자신에게 효과가 적용되는지
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    bool bAffectsSelf;
+    bool  bAffectsSelf;     // 회복키트: true
 
-    /** 아군에게 효과 적용 여부 */
+    // 아군에게 효과가 적용되는지
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    bool bAffectsAlly;
+    bool  bAffectsAlly;     // 회복키트: true
 
-    /** AI에게 효과 적용 여부 */
+    // AI에게 효과가 적용되는지
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    bool bAffectsAI;
-
-    FUtilityItemData()
-        : ItemID(NAME_None)
-        , bConsumable(true)
-        , Duration(0.0f)
-        , Radius(0.0f)
-        , bAffectsSelf(true)
-        , bAffectsAlly(false)
-        , bAffectsAI(false)
-    {
-    }
+    bool  bAffectsAI;       // 신호 교란기: true
 };
 
-//==========================================
-// ITEM EFFECT DATA - 아이템 효과 데이터
-//==========================================
-
+// 아이템 효과 데이터 (지속적인 HP/스태미나/실드 변화를 정의)
+// 버프/디버프용 별도 DataTable로 관리 가능
 USTRUCT(BlueprintType)
 struct FItemEffectData : public FTableRowBase
 {
-    GENERATED_BODY()
+    GENERATED_BODY();
 
-    /** 효과 ID */
+    // 이 효과를 사용하는 아이템 또는 효과 ID
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FName EffectID;
+    FName EffectID;                // 예: "HealFull", "JammerDebuff"
 
-    /** 초당 체력 변화량 (+면 회복, -면 피해) */
+    // 초당 체력 변화량 (+면 회복, -면 피해)
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float HealthChangePerSecond;
+    float HealthChangePerSecond;   // 예: 10.0f
 
-    /** 초당 스태미나 변화량 */
+    // 초당 스태미나 변화량
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float StaminaChangePerSecond;
+    float StaminaChangePerSecond;  // 예: -5.0f
 
-    /** 초당 실드 변화량 */
+    // 초당 실드 변화량
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float ShieldChangePerSecond;
-
-    FItemEffectData()
-        : EffectID(NAME_None)
-        , HealthChangePerSecond(0.0f)
-        , StaminaChangePerSecond(0.0f)
-        , ShieldChangePerSecond(0.0f)
-    {
-    }
+    float ShieldChangePerSecond;   // 예: 3.0f
 };

@@ -2,10 +2,10 @@
 
 
 #include "MyGameModeBase.h"
-#include "Character/StaffCharacter.h"
-#include <Character/ThirdSpectatorPawn.h>
+#include "StaffCharacter.h"
+#include <ThirdSpectatorPawn.h>
 
-void AMyGameModeBase::SetPlayerSpectating(AController* VictimController)
+void AMyGameModeBase::OnPlayerKilled(AController* VictimController)
 {
     if (!VictimController) return;
 
