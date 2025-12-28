@@ -2,7 +2,7 @@
 
 
 #include "Equippable/EquippableWeapon/EquippableWeapon_Pipe.h"
-#include "BioProtocol/Character/DXPlayerCharacter.h"
+#include "BioProtocol/Public/Character/StaffCharacter.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"

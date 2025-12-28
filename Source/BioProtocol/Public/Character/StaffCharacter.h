@@ -381,4 +381,27 @@ public:
 	UFUNCTION()
 	void OnRep_CurrentEquippedItem();
 	void DropCurrentItemInput(const FInputActionValue& InValue);
+
+//==========================================
+// HEALTH
+//==========================================
+public:
+
+	UFUNCTION(BlueprintCallable, Category = "Health")
+	float GetHealth() const { return Health; }
+
+	UFUNCTION(BlueprintCallable, Category = "Health")
+	float GetMaxHealth() const { return MaxHealth; }
+
+	UFUNCTION(BlueprintCallable, Category = "Health")
+	void SetHealth(float NewHealth) { Health = FMath::Clamp(NewHealth, 0.f, MaxHealth); }
+
+protected:
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health")
+	float MaxHealth = 100.f;
+
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Health")
+	float Health = 100.f;
+
 };

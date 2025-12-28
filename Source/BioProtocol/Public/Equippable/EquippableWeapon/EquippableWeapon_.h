@@ -114,7 +114,7 @@ public:
 	bool bIsReloading;
 
 	/** 마지막 발사 시간 */
-	UPROPERTY()
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Weapon|State")
 	float LastAttackTime;
 
 	//==========================================

@@ -6,7 +6,7 @@
 #include "Delegates/DelegateCombinations.h"
 #include "EquippableUtility.generated.h"
 
-class ADXPlayerCharacter;
+class AStaffCharacter;
 
 //==========================================
 // EVENTS
