@@ -966,6 +966,7 @@ void AStaffCharacter::SwitchToSlot(int32 SlotNumber)
 void AStaffCharacter::EquipSlot1()
 {
 	SwitchToSlot(1);
+	TestItemSlot1();
 }
 
 void AStaffCharacter::EquipSlot2()
