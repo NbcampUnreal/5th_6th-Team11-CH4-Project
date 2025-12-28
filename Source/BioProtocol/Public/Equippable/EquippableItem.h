@@ -3,6 +3,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "BioProtocol/Public/World/ItemDataStructs.h"
 #include "EquippableItem.generated.h"
 
 class UItemBase;
@@ -31,6 +32,19 @@ public:
 	/** 아이템의 메시 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equippable | Components")
 	USkeletalMeshComponent* ItemMesh; // 손에 들었을 때 메쉬
+
+	//==========================================
+	// ITEM DATA (아이템 정의용)
+	//==========================================
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
+	UDataTable* ItemDataTable;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
+	FName ItemID;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
+	FName ItemRowName;
 
 	//==========================================
 	// VARIABLES

@@ -39,6 +39,45 @@ AEquippableItem::AEquippableItem()
 void AEquippableItem::BeginPlay()
 {
 	Super::BeginPlay();
+
+	const FName RowToUse = (ItemRowName.IsNone() ? ItemID : ItemRowName);
+
+	if (ItemDataTable && !RowToUse.IsNone())
+	{
+		static const FString Context(TEXT("EquippableItem_LoadItemData"));
+
+		if (const FItemData* Row = ItemDataTable->FindRow<FItemData>(RowToUse, Context, true))
+		{
+			// 1) 월드에 떨어져 있을 때 사용할 스태틱 메시
+			if (Row->AssetData.Mesh)
+			{
+				StaticMeshComp->SetStaticMesh(Row->AssetData.Mesh);
+			}
+
+			// 2) 손에 들었을 때 사용할 스켈레탈 메시
+			if (Row->AssetData.SkeletalMesh)
+			{
+				ItemMesh->SetSkeletalMesh(Row->AssetData.SkeletalMesh);
+			}
+
+			// 3) (선택) 아이템 이름/설명 등은 UItemBase나 UI 쪽에서 사용
+			// 예: 로그로 확인
+			UE_LOG(LogTemp, Log, TEXT("EquippableItem '%s' loaded: %s"),
+				*GetName(),
+				*Row->TextData.Name.ToString());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("AEquippableItem: Row '%s' not found in DataTable '%s'"),
+				*RowToUse.ToString(),
+				*ItemDataTable->GetName());
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Verbose, TEXT("AEquippableItem: ItemDataTable or ItemID/ItemRowName not set on %s"),
+			*GetName());
+	}
 }
 
 void AEquippableItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "BioProtocol/Public/Inventory/InventoryComponent.h"
+#include "Interfaces/InteractionInterface.h"
 #include "InputActionValue.h"
 #include "Net/UnrealNetwork.h"
 #include "StaffCharacter.generated.h"
@@ -124,7 +126,7 @@ protected:
 	TObjectPtr<UInputAction> TestItem3;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-	UInputAction* DropItemAction;
+	UInputAction* DropAction;
 
 protected:
 	//�������� ����(�ƴϸ� ��ȣ�ۿ�����ϸ鼭 �þ߰� �����ʿ� �Ҷ� ȣ��)
@@ -168,8 +170,8 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerUnCrouch();
 
-	void OnJump();
-	void OnStopJump();
+	void OnJump(const FInputActionValue& InValue);
+	void OnStopJump(const FInputActionValue& InValue);
 
 	UFUNCTION(Server, Reliable)
 	void ServerOnJump();
@@ -230,11 +232,12 @@ protected:
 public:
 	void Die();
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UInventoryComponent* Inventory;  // <- �ϳ��� ����
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", Replicated)
+	class UInventoryComponent* Inventory;  // <- �ϳ��� ����
 
-	UFUNCTION(BlueprintPure, Category = "Inventory")
-	UInventoryComponent* GetInventoryComponent() const { return Inventory; }
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	FORCEINLINE UInventoryComponent* GetInventory() const { return Inventory; }
+
 	UFUNCTION(BlueprintCallable, Category = "Animation")
 	void PlayToolUseMontage(UAnimMontage* Montage);
 	//==========================================
@@ -249,9 +252,6 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Equipment")
 	AEquippableItem* GetCurrentEquippedItem() const { return CurrentEquippedItem; }
-
-	UFUNCTION(BlueprintPure, Category = "Equipment")
-	UInventoryComponent* GetInventory() const { return Inventory; }  // <- �ζ��� �������� �����ϰ�
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	void EquipItem(AEquippableItem* Item);
@@ -275,13 +275,13 @@ public:
 	//==========================================
 
 	UFUNCTION(BlueprintCallable, Category = "Slots")
-	void EquipSlot1();
+	void EquipSlot1(const FInputActionValue& InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Slots")
-	void EquipSlot2();
+	void EquipSlot2(const FInputActionValue& InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Slots")
-	void EquipSlot3();
+	void EquipSlot3(const FInputActionValue& InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Slots")
 	void SwitchToSlot(int32 SlotNumber);
@@ -309,10 +309,10 @@ public:
 	float InteractionCheckDistance;
 
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
-	void InteractPressed();
+	void InteractPressed(const FInputActionValue& InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
-	void InteractReleased();
+	void InteractReleased(const FInputActionValue& InValue);
 
 	//==========================================
 	// ITEMS
@@ -365,7 +365,7 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerDropItem();
 
-	UFUNCTION(Server, Reliable)
+	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerDropCurrentItem();
 
 	UFUNCTION(Server, Reliable, WithValidation)
@@ -380,4 +380,5 @@ public:
 
 	UFUNCTION()
 	void OnRep_CurrentEquippedItem();
+	void DropCurrentItemInput(const FInputActionValue& InValue);
 };
