@@ -2,7 +2,7 @@
 
 
 #include "UI/LobbyMainWidget.h"
-#include "Components/ScrollBox.h"
+#include "Components/HorizontalBox.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "UI/LobbySlotWidget.h"
@@ -58,35 +58,43 @@ void ULobbyMainWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime
 			RefreshPlayerList();
 			LastPlayerCount = PlayerArray.Num();
 		}
-		else
-		{
-
-		}
 	}
 }
 
 void ULobbyMainWidget::RefreshPlayerList()
 {
-	if (!PlayerListScrollBox || !SlotWidgetClass) return;
 
-	PlayerListScrollBox->ClearChildren();
+	if (!PlayerListBox || !SlotWidgetClass) return;
+
+	PlayerListBox->ClearChildren();
 
 	AGameStateBase* GameState = UGameplayStatics::GetGameState(GetWorld());
 	if (GameState)
 	{
-		for (APlayerState* PS : GameState->PlayerArray)
+		TArray<APlayerState*> PlayerArray = GameState->PlayerArray;
+
+		for (int32 i = 0; i < PlayerArray.Num(); ++i)
 		{
-			ALobbyPlayerState* BioPS = Cast<ALobbyPlayerState>(PS);
+			ALobbyPlayerState* BioPS = Cast<ALobbyPlayerState>(PlayerArray[i]);
 			if (BioPS)
 			{
-				ULobbySlotWidget* NewSlotWidget = CreateWidget<ULobbySlotWidget>(this, SlotWidgetClass);
-				if (NewSlotWidget)
-				{
-					NewSlotWidget->UpdateSlot(BioPS);
-					PlayerListScrollBox->AddChild(NewSlotWidget);
-				}
+				AddPlayerSlot(BioPS, i);
 			}
 		}
+	}
+}
+
+void ULobbyMainWidget::AddPlayerSlot(ALobbyPlayerState* PlayerState, int32 SlotIndex)
+{
+	if (!SlotWidgetClass || !PlayerListBox) return;
+
+	ULobbySlotWidget* NewSlotWidget = CreateWidget<ULobbySlotWidget>(this, SlotWidgetClass);
+	if (NewSlotWidget)
+	{
+		//FString Nickname = PlayerState->GetNickname();
+		NewSlotWidget->Setup(PlayerState , SlotIndex);
+
+		PlayerListBox->AddChild(NewSlotWidget);
 	}
 }
 
@@ -100,7 +108,7 @@ void ULobbyMainWidget::OnReadyClicked()
 
 void ULobbyMainWidget::UpdateButtonText()
 {
-	if (LocalPlayerState.IsValid() && ReadyButtonText)
+	if (LocalPlayerState.IsValid() && ReadyButtonText && ToggleReadyButton)
 	{
 		bool bReady = LocalPlayerState->bIsReady;
 
@@ -120,6 +128,5 @@ void ULobbyMainWidget::UpdateButtonText()
 void ULobbyMainWidget::OnExitClicked()
 {
 	FName MainMenuLevelName = FName(TEXT("MainMenu"));
-
 	UGameplayStatics::OpenLevel(this, MainMenuLevelName);
 }

@@ -4,13 +4,15 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Game/BioProtocolTypes.h"
 #include "BioPlayerHUD.generated.h"
 
 class ACharacter;
 class UProgressBar;
 class UTextBlock;
-class UItemSlotWidget; // ★ 추가됨
+class UItemSlotWidget;
 class UTexture2D;
+class UWidgetSwitcher;
 
 UCLASS()
 class BIOPROTOCOL_API UBioPlayerHUD : public UUserWidget
@@ -24,10 +26,14 @@ public:
 	void UpdateHealth(float CurrentHP);
 
 	UFUNCTION(BlueprintCallable, Category = "HUD")
-	void UpdateRoleText(FString NewRole);
+	void UpdateStaminaBar(float NewStamina);
+
+	UFUNCTION(BlueprintCallable)
+	void UpdateHUDState(EBioPlayerRole Role, EBioGamePhase CurrentPhase, bool bIsTransformed);
 
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void UpdateItemSlot(int32 SlotIndex, UTexture2D* Icon);
+
 
 protected:
 	UPROPERTY(meta = (BindWidget))
@@ -35,6 +41,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* HealthText;
+
+	UPROPERTY(meta = (BindWidget))
+	UProgressBar* StaminaBar;
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* RoleText;
@@ -48,9 +57,13 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UItemSlotWidget* ItemSlot_2;
 
+	UPROPERTY(meta = (BindWidget))
+	UWidgetSwitcher* RoleSpecificContainer;
+
 	TArray<UItemSlotWidget*> Slots;
 
 	float MaxHP = 100.0f;
+	float MaxSP = 100.0f;
 
 	TWeakObjectPtr<ACharacter> OwnerCharacter;
 };

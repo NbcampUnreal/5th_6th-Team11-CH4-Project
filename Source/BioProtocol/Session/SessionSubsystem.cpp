@@ -1,47 +1,26 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "SessionSubsystem.h"
+﻿#include "SessionSubsystem.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
 #include "Online/OnlineSessionNames.h"
 #include "OnlineSubsystemUtils.h"
 #include "Interfaces/OnlineSessionInterface.h"
-#include "Engine/Engine.h"
-#include "GameFramework/PlayerController.h"
-#include "GameFramework/GameStateBase.h"
-
 
 void USessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
 
-    // OnlineSubsystem 가져오기 (Null, Steam, EOS 등)
-    if (IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get())
+    if (UWorld* World = GetWorld())
     {
-        SessionInterface = Subsystem->GetSessionInterface();
-
-        if (SessionInterface.IsValid())
+        if (IOnlineSubsystem* Subsystem = Online::GetSubsystem(World))
         {
-            UE_LOG(LogTemp, Log, TEXT("[SessionSubsystem] OnlineSubsystem: %s"),
-                *Subsystem->GetSubsystemName().ToString());
+            SessionInterface = GetSessionInterface();
         }
-        else
-        {
-            UE_LOG(LogTemp, Error, TEXT("[SessionSubsystem] SessionInterface is invalid"));
-        }
-    }
-    else
-    {
-        UE_LOG(LogTemp, Error, TEXT("[SessionSubsystem] No OnlineSubsystem found"));
     }
 }
 
 void USessionSubsystem::Deinitialize()
 {
-    // 필요 시 델리게이트 언바인드 등 정리
     SessionInterface.Reset();
-
     Super::Deinitialize();
 }
 
@@ -54,149 +33,144 @@ IOnlineSessionPtr USessionSubsystem::GetSessionInterface() const
     return nullptr;
 }
 
-
-
-// 세선 생성
-void USessionSubsystem::CreateGameSession(int32 PublicConnections, bool bIsLAN)
+void USessionSubsystem::CreateLobbyForDedicated(const FString& ServerIp, int32 ServerPort, int32 PublicConnections)
 {
-    if (!GetWorld() || !GetWorld()->GetAuthGameMode())
+    UWorld* World = GetWorld();
+    if (!World || !World->GetFirstPlayerController() || !World->GetFirstPlayerController()->IsLocalController())
     {
-        UE_LOG(LogTemp, Warning, TEXT("CreateGameSession called but not on server"));
+        UE_LOG(LogTemp, Error, TEXT("[Session] CreateLobby requires local controller"));
+        return;
+    }
+
+    IOnlineIdentityPtr Identity = Online::GetIdentityInterface(World);
+    if (!Identity.IsValid())
+    {
+        return;
+    }
+
+    const int32 LocalUserNum = 0;
+    if (Identity->GetLoginStatus(LocalUserNum) != ELoginStatus::LoggedIn || !Identity->GetUniquePlayerId(LocalUserNum).IsValid())
+    {
+        FTimerHandle Tmp;
+        World->GetTimerManager().SetTimer(Tmp, [this, ServerIp, ServerPort, PublicConnections]()
+            {
+                this->CreateLobbyForDedicated(ServerIp, ServerPort, PublicConnections);
+            }, 0.1f, false);
+        return;
+    }
+
+    if (IsRunningDedicatedServer())
+    {
         return;
     }
 
     SessionInterface = GetSessionInterface();
-
     if (!SessionInterface.IsValid())
     {
-        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] SessionInterface invalid in CreateGameSession"));
         return;
     }
 
-    // 기존 세션이 있으면 삭제
-    FNamedOnlineSession* ExistingSession = SessionInterface->GetNamedSession(NAME_GameSession);
-    if (ExistingSession != nullptr)
+    const FName LobbySessionName(TEXT("LobbySession"));
+
+    if (SessionInterface->GetNamedSession(LobbySessionName))
     {
-        UE_LOG(LogTemp, Log, TEXT("[SessionSubsystem] Destroy existing session before creating new one"));
-        SessionInterface->DestroySession(NAME_GameSession);
+        SessionInterface->DestroySession(LobbySessionName);
     }
 
-    // 델리게이트 바인딩
-    OnCreateSessionCompleteHandle =
-        SessionInterface->AddOnCreateSessionCompleteDelegate_Handle(
-            FOnCreateSessionCompleteDelegate::CreateUObject(
-                this, &USessionSubsystem::HandleCreateSessionComplete));
+    OnCreateSessionCompleteHandle = SessionInterface->AddOnCreateSessionCompleteDelegate_Handle(
+        FOnCreateSessionCompleteDelegate::CreateUObject(this, &USessionSubsystem::HandleCreateSessionComplete));
 
-    // 세션 설정
-    FOnlineSessionSettings SessionSettings;
-    SessionSettings.bIsLANMatch = bIsLAN;
-    SessionSettings.NumPublicConnections = PublicConnections;
-    SessionSettings.bShouldAdvertise = true; // FindSessions로 찾을 수 있도록 광고
-    SessionSettings.bAllowJoinInProgress = true;
+    FOnlineSessionSettings Settings;
+    Settings.bIsLANMatch = false;
+    Settings.bShouldAdvertise = true;
+    Settings.bAllowJoinInProgress = true;
+    Settings.bUseLobbiesIfAvailable = true;
+    Settings.bUseLobbiesVoiceChatIfAvailable = true;
+    Settings.bUsesPresence = true;
+    Settings.bAllowJoinViaPresence = true;
+    Settings.NumPublicConnections = PublicConnections;
 
-    SessionSettings.bAllowJoinViaPresence = false;
-    SessionSettings.bUsesPresence = false;
-    SessionSettings.bUseLobbiesIfAvailable = false; // EOS/Steam 등에서 Lobby 사용
+    Settings.Set(SEARCH_LOBBIES, true, EOnlineDataAdvertisementType::ViaOnlineService);
+    const FString ServerAddr = FString::Printf(TEXT("%s:%d"), *ServerIp, ServerPort);
+    Settings.Set(FName("SERVER_ADDR"), ServerAddr, EOnlineDataAdvertisementType::ViaOnlineService);
+    Settings.Set(FName("LOBBY_TAG"), FString("BIO"), EOnlineDataAdvertisementType::ViaOnlineService);
 
-
-    const int32 LocalUserNum = 0;
-
-    bool bCreateResult = SessionInterface->CreateSession(LocalUserNum, NAME_GameSession, SessionSettings);
-
-    if (!bCreateResult)
-    {
-        UE_LOG(LogTemp, Error, TEXT("[SessionSubsystem] CreateSession failed to start"));
-        SessionInterface->ClearOnCreateSessionCompleteDelegate_Handle(OnCreateSessionCompleteHandle);
-    }
+    SessionInterface->CreateSession(LocalUserNum, LobbySessionName, Settings);
 }
 
-// 세선 생성 완료 시
 void USessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool bWasSuccessful)
 {
-    // 델리게이트 해제
     if (SessionInterface.IsValid())
     {
         SessionInterface->ClearOnCreateSessionCompleteDelegate_Handle(OnCreateSessionCompleteHandle);
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] HandleCreateSessionComplete: %s, Success: %d"),
-        *SessionName.ToString(), bWasSuccessful);
-
     if (!bWasSuccessful)
     {
+        UE_LOG(LogTemp, Error, TEXT("[Session] ✗ Lobby creation failed"));
         return;
     }
 
-    //UWorld* World = GetWorld();
-    //if (!World) return;
+    UE_LOG(LogTemp, Warning, TEXT("[Session] ✓ Lobby created successfully"));
 
-    //FString TravelURL = TEXT("/Game/Level/TestSession?listen");
-    //World->ServerTravel(TravelURL);
+    if (SessionInterface.IsValid())
+    {
+        SessionInterface->StartSession(SessionName);
+    }
+
+    TravelToDedicatedFromLobby(SessionName);
 }
 
-// 세션 검색
 void USessionSubsystem::FindGameSessions(int32 MaxResults, bool bIsLAN)
 {
-    if (IsRunningDedicatedServer())
-    {
-        UE_LOG(LogTemp, Warning, TEXT("FindGameSessions called on dedicated server – ignored"));
-        return;
-    }
-
-    SessionInterface = GetSessionInterface();
-
-    if (!SessionInterface.IsValid())
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] SessionInterface invalid in FindGameSessions"));
-        return;
-    }
-
-    SessionSearch = MakeShareable(new FOnlineSessionSearch());
-    SessionSearch->MaxSearchResults = MaxResults;
-    SessionSearch->bIsLanQuery = bIsLAN;
-    // Presence 사용 세션만 찾기
-    //SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
-
-    OnFindSessionsCompleteHandle =
-        SessionInterface->AddOnFindSessionsCompleteDelegate_Handle(
-            FOnFindSessionsCompleteDelegate::CreateUObject(
-                this, &USessionSubsystem::HandleFindSessionsComplete));
-
     UWorld* World = GetWorld();
-    if (!World)
+    if (!World || IsRunningDedicatedServer())
     {
         return;
     }
 
-    APlayerController* PC = World->GetFirstPlayerController();
-    if (!PC)
+    IOnlineIdentityPtr Identity = Online::GetIdentityInterface(World);
+    if (!Identity.IsValid())
     {
-        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] No PlayerController in FindGameSessions"));
         return;
     }
 
     const int32 LocalUserNum = 0;
-
-    bool bFindResult = SessionInterface->FindSessions(LocalUserNum, SessionSearch.ToSharedRef());
-
-    if (!bFindResult)
+    if (Identity->GetLoginStatus(LocalUserNum) != ELoginStatus::LoggedIn || !Identity->GetUniquePlayerId(LocalUserNum).IsValid())
     {
-        UE_LOG(LogTemp, Error, TEXT("[SessionSubsystem] FindSessions failed to start"));
+        FTimerHandle Tmp;
+        World->GetTimerManager().SetTimer(Tmp, [this, MaxResults, bIsLAN]()
+            {
+                this->FindGameSessions(MaxResults, bIsLAN);
+            }, 0.1f, false);
+        return;
+    }
+
+    SessionInterface = GetSessionInterface();
+    if (!SessionInterface.IsValid()) return;
+
+    SessionSearch = MakeShareable(new FOnlineSessionSearch());
+    SessionSearch->MaxSearchResults = MaxResults;
+    SessionSearch->bIsLanQuery = bIsLAN;
+    SessionSearch->QuerySettings.Set(SEARCH_LOBBIES, true, EOnlineComparisonOp::Equals);
+    SessionSearch->QuerySettings.Set(FName("LOBBY_TAG"), FString("BIO"), EOnlineComparisonOp::Equals);
+
+    OnFindSessionsCompleteHandle = SessionInterface->AddOnFindSessionsCompleteDelegate_Handle(
+        FOnFindSessionsCompleteDelegate::CreateUObject(this, &USessionSubsystem::HandleFindSessionsComplete));
+
+    if (!SessionInterface->FindSessions(LocalUserNum, SessionSearch.ToSharedRef()))
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Session] FindSessions failed to start"));
         SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(OnFindSessionsCompleteHandle);
     }
 }
 
-// 세션 검색 완료 시
 void USessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 {
     if (SessionInterface.IsValid())
     {
         SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(OnFindSessionsCompleteHandle);
     }
-
-    UE_LOG(LogTemp, Log, TEXT("[SessionSubsystem] HandleFindSessionsComplete: Success: %d, NumResults: %d"),
-        bWasSuccessful,
-        SessionSearch.IsValid() ? SessionSearch->SearchResults.Num() : 0);
 
     LastSessionInfos.Empty();
 
@@ -210,7 +184,6 @@ void USessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
             Info.SearchResultIndex = i;
             Info.PingInMs = Result.PingInMs;
 
-            // 세션 이름
             FString Name;
             if (!Result.Session.SessionSettings.Get(FName(TEXT("SESSION_NAME")), Name))
             {
@@ -218,14 +191,28 @@ void USessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
             }
             Info.SessionName = Name;
 
-            // 인원
             const int32 OpenSlots = Result.Session.NumOpenPublicConnections;
             const int32 MaxSlots = Result.Session.SessionSettings.NumPublicConnections;
             Info.MaxPlayers = MaxSlots;
             Info.CurrentPlayers = MaxSlots - OpenSlots;
 
+            FString Addr;
+            Result.Session.SessionSettings.Get(FName("SERVER_ADDR"), Addr);
+
+            FString Ip, PortPart;
+            int32 Port = 0;
+            if (Addr.Split(TEXT(":"), &Ip, &PortPart))
+            {
+                Port = FCString::Atoi(*PortPart);
+            }
+
+            Info.ServerIp = Ip;
+            Info.ServerPort = Port;
+
             LastSessionInfos.Add(Info);
         }
+
+        UE_LOG(LogTemp, Warning, TEXT("[Session] ✓ Found %d lobbies"), SessionSearch->SearchResults.Num());
     }
 
     OnSessionSearchUpdated.Broadcast(LastSessionInfos);
@@ -233,84 +220,88 @@ void USessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 
 void USessionSubsystem::StartGameSession()
 {
-
-    if (!GetWorld() || !GetWorld()->GetAuthGameMode())
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] StartGameSession called on client"));
-        return;
-    }
-
-    SessionInterface = GetSessionInterface();
-
-    if (!SessionInterface.IsValid())
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] SessionInterface invalid in FindGameSessions"));
-        return;
-    }
-
     UWorld* World = GetWorld();
-    if (!World) return;
+    if (!World || !World->GetAuthGameMode())
+    {
+        return;
+    }
 
-    FString TravelURL = TEXT("/Game/Level/TestSession");
-    World->ServerTravel(TravelURL);
+    FString CurrentMap = World->GetMapName();
+    if (CurrentMap.Contains(TEXT("TestSession")))
+    {
+        return;
+    }
+
+    FString TravelURL = TEXT("/Game/Level/TestSession?listen");
+    UE_LOG(LogTemp, Warning, TEXT("[Session] ✓ Starting game session"));
+    World->ServerTravel(TravelURL, false);
 }
 
+void USessionSubsystem::TravelToDedicatedFromLobby(const FName& LobbySessionName)
+{
+    if (!SessionInterface.IsValid() || !GetWorld())
+    {
+        return;
+    }
+
+    APlayerController* PC = GetWorld()->GetFirstPlayerController();
+    if (!PC || !PC->IsLocalController())
+    {
+        return;
+    }
+
+    FNamedOnlineSession* Named = SessionInterface->GetNamedSession(LobbySessionName);
+    if (!Named)
+    {
+        return;
+    }
+
+    FString Addr;
+    if (!Named->SessionSettings.Get(FName("SERVER_ADDR"), Addr) || Addr.IsEmpty())
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Session] SERVER_ADDR missing"));
+        return;
+    }
+
+    if (!Addr.Contains(TEXT(":")))
+    {
+        Addr = FString::Printf(TEXT("%s:%d"), *Addr, 7777);
+    }
+
+    PC->ClientTravel(Addr, ETravelType::TRAVEL_Absolute);
+}
 
 void USessionSubsystem::JoinFoundSession(int32 index)
 {
-    if (IsRunningDedicatedServer())
+    if (IsRunningDedicatedServer() || !SessionInterface.IsValid() || !SessionSearch.IsValid())
     {
-        UE_LOG(LogTemp, Warning, TEXT("FindGameSessions called on dedicated server – ignored"));
         return;
     }
 
-    SessionInterface = GetSessionInterface();
-
-    if (!SessionInterface.IsValid() || !SessionSearch.IsValid())
+    if (SessionSearch->SearchResults.Num() <= 0 || index >= SessionSearch->SearchResults.Num())
     {
-        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] JoinFirstFoundSession: invalid state"));
         return;
     }
 
-    if (SessionSearch->SearchResults.Num() <= 0)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] No sessions found to join"));
-        return;
-    }
+    const FOnlineSessionSearchResult& Result = SessionSearch->SearchResults[index];
 
-    // 일단 첫 번째 세션으로
-    const FOnlineSessionSearchResult& FirstResult = SessionSearch->SearchResults[index];
-
-    OnJoinSessionCompleteHandle =
-        SessionInterface->AddOnJoinSessionCompleteDelegate_Handle(
-            FOnJoinSessionCompleteDelegate::CreateUObject(
-                this, &USessionSubsystem::HandleJoinSessionComplete));
+    OnJoinSessionCompleteHandle = SessionInterface->AddOnJoinSessionCompleteDelegate_Handle(
+        FOnJoinSessionCompleteDelegate::CreateUObject(this, &USessionSubsystem::HandleJoinSessionComplete));
 
     UWorld* World = GetWorld();
-    if (!World)
+    if (!World || !World->GetFirstPlayerController())
     {
-        return;
-    }
-
-    APlayerController* PC = World->GetFirstPlayerController();
-    if (!PC)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] No PlayerController in JoinFirstFoundSession"));
         return;
     }
 
     const int32 LocalUserNum = 0;
+    const FName LobbySessionName = TEXT("LobbySession");
 
-    bool bJoinResult = SessionInterface->JoinSession(LocalUserNum, NAME_GameSession, FirstResult);
-
-    if (!bJoinResult)
+    if (!SessionInterface->JoinSession(LocalUserNum, LobbySessionName, Result))
     {
-        UE_LOG(LogTemp, Error, TEXT("[SessionSubsystem] JoinSession failed to start"));
         SessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(OnJoinSessionCompleteHandle);
     }
 }
-
-
 
 void USessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result)
 {
@@ -319,65 +310,41 @@ void USessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoinSess
         SessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(OnJoinSessionCompleteHandle);
     }
 
-    UE_LOG(LogTemp, Log, TEXT("[SessionSubsystem] HandleJoinSessionComplete: %s, Result: %d"),
-        *SessionName.ToString(), (int32)Result);
-
     EJoinResultBP BPResult = EJoinResultBP::UnknownError;
 
     switch (Result)
     {
     case EOnJoinSessionCompleteResult::Success:
         BPResult = EJoinResultBP::Success;
+        UE_LOG(LogTemp, Warning, TEXT("[Session] ✓ Successfully joined lobby"));
         break;
     case EOnJoinSessionCompleteResult::SessionIsFull:
         BPResult = EJoinResultBP::SessionIsFull;
+        UE_LOG(LogTemp, Warning, TEXT("[Session] ✗ Lobby is full"));
         break;
     case EOnJoinSessionCompleteResult::SessionDoesNotExist:
         BPResult = EJoinResultBP::SessionDoesNotExist;
+        UE_LOG(LogTemp, Warning, TEXT("[Session] ✗ Lobby does not exist"));
         break;
     case EOnJoinSessionCompleteResult::CouldNotRetrieveAddress:
         BPResult = EJoinResultBP::CouldNotRetrieveAddress;
+        UE_LOG(LogTemp, Warning, TEXT("[Session] ✗ Could not retrieve address"));
         break;
     case EOnJoinSessionCompleteResult::AlreadyInSession:
         BPResult = EJoinResultBP::AlreadyInSession;
+        UE_LOG(LogTemp, Warning, TEXT("[Session] ✗ Already in session"));
         break;
     default:
         BPResult = EJoinResultBP::UnknownError;
+        UE_LOG(LogTemp, Warning, TEXT("[Session] ✗ Unknown error"));
         break;
     }
 
-    // 여기서 BP에게 결과 알림
     OnJoinSessionFinished.Broadcast(BPResult);
 
-    if (Result != EOnJoinSessionCompleteResult::Success)
+    if (Result == EOnJoinSessionCompleteResult::Success)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] JoinSession not successful"));
-        return;
+        const FName LobbySessionName = TEXT("LobbySession");
+        TravelToDedicatedFromLobby(LobbySessionName);
     }
-
-    // 접속할 URL 얻기
-    FString ConnectString;
-    if (!SessionInterface->GetResolvedConnectString(SessionName, ConnectString))
-    {
-        UE_LOG(LogTemp, Error, TEXT("[SessionSubsystem] Could not get connect string"));
-        return;
-    }
-
-    UE_LOG(LogTemp, Log, TEXT("[SessionSubsystem] ConnectString: %s"), *ConnectString);
-
-    UWorld* World = GetWorld();
-    if (!World)
-    {
-        return;
-    }
-
-    APlayerController* PC = World->GetFirstPlayerController();
-    if (!PC)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[SessionSubsystem] No PlayerController in HandleJoinSessionComplete"));
-        return;
-    }
-
-    // 클라에서 서버로 여행
-    PC->ClientTravel(ConnectString, ETravelType::TRAVEL_Absolute);
 }
