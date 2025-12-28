@@ -108,6 +108,10 @@ void AStaffCharacter::Tick(float DeltaTime)
 	{
 		PerformInteractionCheck();
 	}
+
+	/*if (IsLocallyControlled()) {
+		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::FromInt(Status->CurrentStamina));
+	}*/
 }
 
 // Called to bind functionality to input
@@ -238,10 +242,22 @@ void AStaffCharacter::HandleLookInput(const FInputActionValue& InValue)
 
 void AStaffCharacter::HandleStartRun(const FInputActionValue& InValue)
 {
+	if (Status->CurrentStamina <= 0.f || !Status->bIsRunable)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = Status->MoveSpeed;
+		ServerStopRun();
+		return;
+	}
+
+	GetCharacterMovement()->MaxWalkSpeed =
+		Status->MoveSpeed * Status->RunMultiply;
+
 	ServerStartRun();
 }
 void AStaffCharacter::HandleStopRun(const FInputActionValue& InValue)
 {
+	GetCharacterMovement()->MaxWalkSpeed = Status->MoveSpeed;
+
 	if (!HasAuthority())
 	{
 		ServerStopRun();
