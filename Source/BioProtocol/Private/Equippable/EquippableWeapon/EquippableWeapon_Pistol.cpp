@@ -5,7 +5,7 @@
 #include "DrawDebugHelpers.h"
 
 AEquippableWeapon_Pistol::AEquippableWeapon_Pistol()
-{
+{  
     // ±«√— Ω∫≈»
     Damage = 25.0f;
     Range = 5000.0f;   // 50m

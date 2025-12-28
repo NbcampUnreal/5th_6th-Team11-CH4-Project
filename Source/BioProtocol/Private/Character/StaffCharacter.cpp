@@ -11,6 +11,7 @@
 #include "Net/UnrealNetwork.h"
 #include <Character/MyPlayerController.h>
 #include <Kismet/GameplayStatics.h>
+#include "Components/ChildActorComponent.h"
 
 #include "BioProtocol/Public/Inventory/InventoryComponent.h"
 #include "BioProtocol/Public/Items/ItemBase.h"
@@ -49,10 +50,24 @@ AStaffCharacter::AStaffCharacter()
 	// ���ο��Ը� ���̱�
 	FirstPersonMesh->SetOnlyOwnerSee(true);
 	FirstPersonMesh->bCastDynamicShadow = false;
-	FirstPersonMesh->CastShadow = false;
+	FirstPersonMesh->CastShadow = false;	
+
+	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+	WeaponMesh->SetupAttachment(FirstPersonMesh, TEXT("hand_r"));
+
+	WeaponMesh->SetHiddenInGame(true);
+	WeaponMesh->SetVisibility(false, true);
+
+	WeaponMesh->SetCastShadow(false);
 
 	// 3��Ī �޽��� ���ο��� �� ���̰�
 	GetMesh()->SetOwnerNoSee(true);
+	ThirdWeaponMesh= CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ThirdWeaponMesh"));
+	ThirdWeaponMesh->SetupAttachment(GetMesh(), TEXT("hand_r"));
+	ThirdWeaponMesh->SetHiddenInGame(true);
+	ThirdWeaponMesh->SetVisibility(false, true);
+	ThirdWeaponMesh->SetCastShadow(false);
+	ThirdWeaponMesh->SetOwnerNoSee(true);
 
 	// ������ �ɼ�
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
@@ -376,20 +391,36 @@ void AStaffCharacter::TestUpdateLeverGauge()
 
 void AStaffCharacter::TestItemSlot1()
 {	
-	if (HasAuthority())
+	if (WeaponMesh)
+	{
+		WeaponMesh->SetVisibility(!bIsGunEquipped, true);
+		WeaponMesh->SetHiddenInGame(bIsGunEquipped);
+	}
+
+	//무기인벤에 있는지확인 필요
+	if (!HasAuthority())
+	{
+		ServerTestItemSlot1();
+		return;
+	}
+
+	bIsGunEquipped = !bIsGunEquipped;
+	OnRep_GunEquipped();
+
+	/*if (HasAuthority())
 	{
 		bIsGunEquipped = !bIsGunEquipped;
 	}
 	else
 	{
 		ServerTestItemSlot1();
-	}
+	}*/
 }
 
 void AStaffCharacter::ServerTestItemSlot1_Implementation()
 {
 	bIsGunEquipped = !bIsGunEquipped;
-
+	OnRep_GunEquipped();
 }
 
 void AStaffCharacter::ReleaseLever()
@@ -537,6 +568,15 @@ void AStaffCharacter::TestHit()
 	Server_TestHit();
 }
 
+void AStaffCharacter::OnRep_GunEquipped()
+{
+	if (ThirdWeaponMesh)
+	{
+		ThirdWeaponMesh->SetVisibility(bIsGunEquipped, true);
+		ThirdWeaponMesh->SetHiddenInGame(!bIsGunEquipped);
+	}
+}
+
 void AStaffCharacter::OnRep_MaterialIndex()
 {
 	if (IsLocallyControlled())
@@ -631,21 +671,21 @@ void AStaffCharacter::PerformInteractionCheck()
 		{
 			AActor* HitActor = TraceHit.GetActor();
 
-			// 디버그: Hit한 액터 출력
-			UE_LOG(LogTemp, Warning, TEXT("[Player] LineTrace hit: %s"),
-				HitActor ? *HitActor->GetName() : TEXT("NULL"));
+			//// 디버그: Hit한 액터 출력
+			//UE_LOG(LogTemp, Warning, TEXT("[Player] LineTrace hit: %s"),
+			//	HitActor ? *HitActor->GetName() : TEXT("NULL"));
 
 			// 🔧 수정: Interface 체크를 if 안에서만 하도록 변경
 			if (HitActor && HitActor->GetClass()->ImplementsInterface(UInteractionInterface::StaticClass()))
 			{
-				UE_LOG(LogTemp, Log, TEXT("[Player] ✓ Actor implements IInteractionInterface!"));
+				//UE_LOG(LogTemp, Log, TEXT("[Player] ✓ Actor implements IInteractionInterface!"));
 
 				const float Distance = (TraceStart - TraceHit.ImpactPoint).Size();
 
 				// 새로운 interactable 발견
 				if (HitActor != InteractionData.CurrentInteractable && Distance <= InteractionCheckDistance)
 				{
-					UE_LOG(LogTemp, Log, TEXT("[Player] New interactable found! Distance: %.2f"), Distance);
+					//UE_LOG(LogTemp, Log, TEXT("[Player] New interactable found! Distance: %.2f"), Distance);
 					FoundInteractable(HitActor);
 					return;  // ← 여기서 함수 종료!
 				}
@@ -660,13 +700,13 @@ void AStaffCharacter::PerformInteractionCheck()
 			else
 			{
 				// Interface를 구현하지 않은 물체를 봄
-				UE_LOG(LogTemp, Log, TEXT("[Player] Hit actor does NOT implement IInteractionInterface"));
+				//UE_LOG(LogTemp, Log, TEXT("[Player] Hit actor does NOT implement IInteractionInterface"));
 			}
 		}
 		else
 		{
 			// LineTrace가 아무것도 안 맞음
-			UE_LOG(LogTemp, Log, TEXT("[Player] LineTrace hit nothing"));
+			//UE_LOG(LogTemp, Log, TEXT("[Player] LineTrace hit nothing"));
 		}
 	}
 
@@ -702,7 +742,7 @@ void AStaffCharacter::NoInteractableFound()
 		return;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("[Player] No interactable found, clearing current"));
+	//UE_LOG(LogTemp, Log, TEXT("[Player] No interactable found, clearing current"));
 
 	// 진행 중인 타이머 제거
 	if (IsInteracting())
@@ -1311,33 +1351,33 @@ void AStaffCharacter::FoundInteractable(AActor* NewInteractable)
 {
 	if (!NewInteractable)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[Player] FoundInteractable: NewInteractable is null!"));
+		//UE_LOG(LogTemp, Error, TEXT("[Player] FoundInteractable: NewInteractable is null!"));
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("========================================"));
-	UE_LOG(LogTemp, Warning, TEXT("[Player] FoundInteractable called"));
-	UE_LOG(LogTemp, Warning, TEXT("[Player] Actor: %s"), *NewInteractable->GetName());
+	//UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	//UE_LOG(LogTemp, Warning, TEXT("[Player] FoundInteractable called"));
+	//UE_LOG(LogTemp, Warning, TEXT("[Player] Actor: %s"), *NewInteractable->GetName());
 
 	// Interface 확인 (안전장치)
 	if (!NewInteractable->Implements<UInteractionInterface>())
 	{
-		UE_LOG(LogTemp, Error, TEXT("[Player] Actor does not implement IInteractionInterface!"));
-		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	/*	UE_LOG(LogTemp, Error, TEXT("[Player] Actor does not implement IInteractionInterface!"));
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));*/
 		return;
 	}
 
 	// 시간 제한 상호작용 도중에 새로운 객체를 발견함
 	if (IsInteracting())
 	{
-		UE_LOG(LogTemp, Log, TEXT("[Player] Currently interacting, ending previous interaction"));
+		//UE_LOG(LogTemp, Log, TEXT("[Player] Currently interacting, ending previous interaction"));
 		EndInteract();
 	}
 
 	// 이전 오브젝트 포커스 해제
 	if (InteractionData.CurrentInteractable && InteractionData.CurrentInteractable != NewInteractable)
 	{
-		UE_LOG(LogTemp, Log, TEXT("[Player] Ending focus on previous object"));
+		//UE_LOG(LogTemp, Log, TEXT("[Player] Ending focus on previous object"));
 		if (InteractionData.CurrentInteractable->Implements<UInteractionInterface>())
 		{
 			IInteractionInterface::Execute_EndFocus(InteractionData.CurrentInteractable);
@@ -1350,9 +1390,9 @@ void AStaffCharacter::FoundInteractable(AActor* NewInteractable)
 	// BeginFocus 호출
 	IInteractionInterface::Execute_BeginFocus(NewInteractable);
 
-	UE_LOG(LogTemp, Warning, TEXT("[Player] ✓ BeginFocus called successfully!"));
-	UE_LOG(LogTemp, Log, TEXT("[Player] Found interactable: %s"), *NewInteractable->GetName());
-	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	//UE_LOG(LogTemp, Warning, TEXT("[Player] ✓ BeginFocus called successfully!"));
+	//UE_LOG(LogTemp, Log, TEXT("[Player] Found interactable: %s"), *NewInteractable->GetName());
+	//UE_LOG(LogTemp, Warning, TEXT("========================================"));
 }
 
 

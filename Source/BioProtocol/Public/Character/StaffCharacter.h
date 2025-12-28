@@ -19,6 +19,7 @@ class UInventoryComponent;
 class AEquippableItem;
 class UItemBase;
 class IInteractionInterface;
+class UChildActorComponent;
 
 USTRUCT()
 struct FInteractionData
@@ -69,6 +70,12 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	UCameraComponent* FirstPersonCamera;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* WeaponMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* ThirdWeaponMesh;
 
 private:
 	void HandleMoveInput(const FInputActionValue& InValue);
@@ -206,6 +213,8 @@ private:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetTestMaterial();
 
+	UFUNCTION()
+	void OnRep_GunEquipped();
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	//ü��,���׹̳�,�̵��ӵ� ����Ǿ��ִ� Ŭ����
@@ -231,8 +240,8 @@ protected:
 	TArray<UMaterialInterface*>mat;
 
 protected:
-	UPROPERTY(Replicated)
-	bool bIsGunEquipped;
+	UPROPERTY(ReplicatedUsing = OnRep_GunEquipped)
+	bool bIsGunEquipped=false;
 
 	///////////////////////////////////////////�κ�,�����۰���
 public:
