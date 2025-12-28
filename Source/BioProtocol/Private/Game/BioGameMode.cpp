@@ -252,8 +252,29 @@ void ABioGameMode::CheckWinConditions()
 		if (ABioGameState* BioGS = GetGameState<ABioGameState>())
 		{
 			BioGS->SetGamePhase(EBioGamePhase::End);
+			// 테스트 후 EndGame 위치 옮기기
+			EndGame();
 		}
 	}
+}
+
+void ABioGameMode::CheckStaffWinConditions()
+{
+	// 직원이 이기는 경우 -> 탈출 포드 이용 시
+	// 탈출 포드 사용 시에 이 함수를 호출
+	if (BioGameState->bCanEscape)
+	{
+		UE_LOG(LogTemp, Error, TEXT("!!! STAFF WINS !!! Staff Escaped."));
+
+		if (ABioGameState* BioGS = GetGameState<ABioGameState>())
+		{
+			BioGS->SetGamePhase(EBioGamePhase::End);
+			// 테스트 후 EndGame 위치 옮기기
+			EndGame();
+		}
+	}
+
+
 }
 
 void ABioGameMode::SetPlayerSpectating(AController* VictimController)
