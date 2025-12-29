@@ -165,31 +165,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item|Animation")
 	UAnimMontage* UseMontage;
 
-	//==========================================
-	// SERVER RPC
-	//==========================================
-
-	/** 서버에 부착 요청 */
-	UFUNCTION(Server, Reliable)
-	void ServerAttachToSocket(FName SocketName);
-
-	UFUNCTION(Server, Reliable)
-	void ServerUse();
-
-	UFUNCTION(Server, Reliable)
-	void ServerStopUsing();
-
-	/** 서버에 분리 요청 */
-	UFUNCTION(Server, Reliable)
-	void ServerDetach();
-
-	/** 서버에 장착 요청 */
-	UFUNCTION(Server, Reliable)
-	void ServerEquip();
-
-	/** 서버에 해제 요청 */
-	UFUNCTION(Server, Reliable)
-	void ServerUnequip();
 
 	//==========================================
 	// REPLICATION NOTIFY
@@ -207,6 +182,7 @@ protected:
 protected:
 	virtual void BeginPlay() override;
 
+public:
 	/** 실제 부착 로직 (서버와 클라이언트 공통) */
 	void PerformAttachment(FName SocketName);
 
