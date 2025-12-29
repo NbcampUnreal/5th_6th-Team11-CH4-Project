@@ -1764,8 +1764,6 @@ void AStaffCharacter::Die(AController* KillerController)
 	if (AAndroidCharacter* Killer = Cast<AAndroidCharacter>(KillerPawn))
 	{
 		Killer->bHasKilledPlayer = true; 
-		UE_LOG(LogTemp, Error, TEXT("killllllllllllllllllllllllllllllled"));
-
 	}
 
 	// 5. TODO: ��� �ִϸ��̼� ���

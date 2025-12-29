@@ -11,6 +11,8 @@
 
  */
 class UPostProcessComponent;
+class UNiagaraComponent;
+
 UCLASS()
 class BIOPROTOCOL_API AAndroidCharacter : public AStaffCharacter
 {
@@ -26,9 +28,15 @@ public:
 	void OnRep_IsAndroid();	
 	UPROPERTY(Replicated);
 	int8 bHasKilledPlayer = false;
+
+	void UpdateEyeFX(int8 val);
+
 protected:	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PostProcess")
 	UPostProcessComponent* PostProcessComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FX")
+	UNiagaraComponent* AndroidFX;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

@@ -9,6 +9,7 @@
 #include <Game/BioGameMode.h>
 #include "Game/BioGameState.h"
 #include "Game/BioProtocolTypes.h"
+#include "NiagaraComponent.h"
 
 AAndroidCharacter::AAndroidCharacter()
 {
@@ -21,6 +22,10 @@ AAndroidCharacter::AAndroidCharacter()
 	PostProcessComp->bUnbound = true;
 	PostProcessComp->Priority = 10.0f;
 
+	AndroidFX = CreateDefaultSubobject<UNiagaraComponent>(TEXT("AndroidFX"));
+	AndroidFX->SetupAttachment(GetMesh());
+
+	//AndroidFX->bAutoActivate = false;
 }
 
 void AAndroidCharacter::BeginPlay()
@@ -119,6 +124,8 @@ void AAndroidCharacter::OnChangeMode(float scale)
 void AAndroidCharacter::OnRep_CharacterScale()
 {
 	OnChangeMode(CharacterScale);
+	UpdateEyeFX(bIsHunter);
+
 }
 
 void AAndroidCharacter::Server_OnChangeMode_Implementation()
@@ -249,6 +256,20 @@ void AAndroidCharacter::OnRep_IsAndroid()
 
 		}
 	}
+}
+
+void AAndroidCharacter::UpdateEyeFX(int8 val)
+{
+	if (IsLocallyControlled())
+	{
+		AndroidFX->Deactivate();
+		return;
+	}
+
+	if (val)
+		AndroidFX->Activate(true);
+	else
+		AndroidFX->Deactivate();
 }
 
 void AAndroidCharacter::ServerSwitchToStaff_Implementation()
