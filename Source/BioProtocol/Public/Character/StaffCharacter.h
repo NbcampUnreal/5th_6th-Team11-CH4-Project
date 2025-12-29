@@ -8,6 +8,7 @@
 #include "Interfaces/InteractionInterface.h"
 #include "InputActionValue.h"
 #include "Net/UnrealNetwork.h"
+#include "Daeho/TestCharacter.h"
 #include "StaffCharacter.generated.h"
 
 class UCameraComponent;
@@ -20,6 +21,7 @@ class AEquippableItem;
 class UItemBase;
 class IInteractionInterface;
 class UChildActorComponent;
+//class EToolType; //테스트
 
 USTRUCT()
 struct FInteractionData
@@ -62,8 +64,16 @@ public:
 public:
 	bool IsGunEquipped() const { return bIsGunEquipped; };
 	void PlayMeleeAttackMontage(UAnimMontage* Montage);
+	void MissionInteract();
+	UFUNCTION(Server, Reliable)
+	void ServerMissionInteract();
+
+	EToolType GetCurrentTool() {return CurrentTool;};
 
 protected:
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Tool")
+	EToolType CurrentTool;//테스트
+
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* FirstPersonMesh;

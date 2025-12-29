@@ -22,6 +22,7 @@
 #include "BioProtocol/Public/Equippable/EquippableTool/EquippableTool_Wrench.h"
 #include "BioProtocol/Public/Equippable/EquippableTool/EquippableTool_Battery.h"
 #include "BioProtocol/Public/Equippable/EquippableTool/EquippableTool_Welder.h"
+#include "Daeho/MyInteractableInterface.h"
 
 // Sets default values
 AStaffCharacter::AStaffCharacter()
@@ -81,6 +82,8 @@ AStaffCharacter::AStaffCharacter()
 	InteractionCheckDistance = 225.f;
 
 	CurrentEquippedItem = nullptr;
+
+	CurrentTool = EToolType::Wrench;
 }
 
 // Called when the game starts or when spawned
@@ -183,6 +186,25 @@ void AStaffCharacter::Tick(float DeltaTime)
 	/*if (IsLocallyControlled()) {
 		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::FromInt(Status->CurrentStamina));
 	}*/
+
+
+	//FVector Start = FirstPersonCamera->GetComponentLocation();
+	//FVector End = Start + (FirstPersonCamera->GetForwardVector() * 250.0f); // 250cm 거리
+
+	//FHitResult HitResult;
+	//FCollisionQueryParams Params;
+	//Params.AddIgnoredActor(this); // 내 몸은 무시
+
+	//bool bHit = GetWorld()->LineTraceSingleByChannel(
+	//	HitResult,
+	//	Start,
+	//	End,
+	//	ECC_Visibility, // 보이는 물체 대상
+	//	Params
+	//);
+
+	// 디버그 라인 그리기 (개발 확인용)
+
 }
 
 // Called to bind functionality to input
@@ -598,6 +620,44 @@ void AStaffCharacter::PlayMeleeAttackMontage(UAnimMontage* Montage)
 	}
 }
 
+void AStaffCharacter::MissionInteract()
+{
+	UE_LOG(LogTemp, Log, TEXT("0"));
+
+	ServerMissionInteract();
+}
+
+void AStaffCharacter::ServerMissionInteract_Implementation()
+{
+	UE_LOG(LogTemp, Log, TEXT("1"));
+
+	FVector Start;
+	FRotator ControlRot;
+
+	Controller->GetPlayerViewPoint(Start, ControlRot);
+	// 또는 GetActorEyesViewPoint(Start, ControlRot);
+
+	FVector End = Start + (ControlRot.Vector() * 250.f);
+
+	FHitResult HitResult;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		Start,
+		End,
+		ECC_Visibility,
+		Params
+	);
+
+	if (bHit && HitResult.GetActor() &&
+		HitResult.GetActor()->GetClass()->ImplementsInterface(UMyInteractableInterface::StaticClass()))
+	{
+		IMyInteractableInterface::Execute_Interact(HitResult.GetActor(), this);
+	}
+}
+
 float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	if (!HasAuthority()) return 0.f;
@@ -701,7 +761,7 @@ void AStaffCharacter::PerformInteractionCheck()
 	if (LookDirection > 0)
 	{
 		// Debug Line
-		DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 1.f, 0, 2.f);
+		//DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 1.f, 0, 2.f);
 
 		FCollisionQueryParams QueryParams;
 		QueryParams.AddIgnoredActor(this);
@@ -1284,6 +1344,10 @@ void AStaffCharacter::InteractPressed(const FInputActionValue& InValue)
 	{
 		UE_LOG(LogTemp, Error, TEXT("[Player] No CurrentInteractable! Cannot interact!"));
 	}
+
+
+	//미션수집
+	MissionInteract();
 }
 
 void AStaffCharacter::InteractReleased(const FInputActionValue& InValue)
