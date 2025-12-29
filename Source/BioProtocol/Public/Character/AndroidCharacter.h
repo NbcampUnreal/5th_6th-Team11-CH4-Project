@@ -37,6 +37,8 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FX")
 	UNiagaraComponent* AndroidFX;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FX")
+	UNiagaraComponent* AndroidFX2;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

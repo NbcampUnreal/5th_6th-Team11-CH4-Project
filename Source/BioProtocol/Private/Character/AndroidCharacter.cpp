@@ -23,9 +23,19 @@ AAndroidCharacter::AAndroidCharacter()
 	PostProcessComp->Priority = 10.0f;
 
 	AndroidFX = CreateDefaultSubobject<UNiagaraComponent>(TEXT("AndroidFX"));
-	AndroidFX->SetupAttachment(GetMesh());
 
-	//AndroidFX->bAutoActivate = false;
+	AndroidFX->SetupAttachment(GetMesh(), TEXT("Eye_L_Socket"));
+	AndroidFX->SetRelativeLocation(FVector::ZeroVector);
+	AndroidFX->SetRelativeRotation(FRotator::ZeroRotator);
+
+	AndroidFX->bAutoActivate = false;
+
+	AndroidFX2 = CreateDefaultSubobject<UNiagaraComponent>(TEXT("AndroidFX2"));
+
+	AndroidFX2->SetupAttachment(GetMesh(), TEXT("Eye_R_Socket"));
+	AndroidFX2->SetRelativeLocation(FVector::ZeroVector);
+	AndroidFX2->SetRelativeRotation(FRotator::ZeroRotator);
+	AndroidFX2->bAutoActivate = false;
 }
 
 void AAndroidCharacter::BeginPlay()
@@ -190,15 +200,15 @@ bool AAndroidCharacter::IsNightPhase()
 
 void AAndroidCharacter::AndroidArmAttack()
 {
-	
+
 
 }
 
 void AAndroidCharacter::AttackInput(const FInputActionValue& InValue)
 {
-	if (!bIsCanAttack|| bHasKilledPlayer)
+	if (!bIsCanAttack || bHasKilledPlayer)
 		return;
-	if (!bIsHunter){
+	if (!bIsHunter) {
 		Super::AttackInput(1);
 		return;
 	}
@@ -206,7 +216,7 @@ void AAndroidCharacter::AttackInput(const FInputActionValue& InValue)
 }
 
 void AAndroidCharacter::ServerPullLever_Internal()
-{	
+{
 	if (bIsHunter)
 		return;
 
@@ -216,9 +226,9 @@ void AAndroidCharacter::ServerPullLever_Internal()
 void AAndroidCharacter::PullLever()
 {
 	if (bIsHunter)
-		return; 
+		return;
 
-	Super::PullLever(); 
+	Super::PullLever();
 }
 
 void AAndroidCharacter::OnRep_IsAndroid()
@@ -263,13 +273,21 @@ void AAndroidCharacter::UpdateEyeFX(int8 val)
 	if (IsLocallyControlled())
 	{
 		AndroidFX->Deactivate();
+		AndroidFX2->Deactivate();
+
 		return;
 	}
 
-	if (val)
+	if (val) {
 		AndroidFX->Activate(true);
-	else
+		AndroidFX2->Activate(true);
+
+	}
+	else {
 		AndroidFX->Deactivate();
+		AndroidFX2->Deactivate();
+
+	}
 }
 
 void AAndroidCharacter::ServerSwitchToStaff_Implementation()
