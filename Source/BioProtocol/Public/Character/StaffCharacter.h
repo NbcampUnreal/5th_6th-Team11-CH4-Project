@@ -117,7 +117,13 @@ protected:
 
 	//item�̳� inventoryŬ�����ȿ� ������ ������ �Է� ���������� ����
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
-	TObjectPtr<UInputAction> TestItem1;
+	TObjectPtr<UInputAction> Item1;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
+	TObjectPtr<UInputAction> Item2;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
+	TObjectPtr<UInputAction> Item3;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
 	TObjectPtr<UInputAction> TestItem2;

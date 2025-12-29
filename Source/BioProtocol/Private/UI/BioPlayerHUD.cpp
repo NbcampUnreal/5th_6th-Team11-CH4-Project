@@ -43,6 +43,15 @@ void UBioPlayerHUD::UpdateHealth(float CurrentHP)
 	}
 }
 
+void UBioPlayerHUD::UpdateStaminaBar(float NewStamina)
+{
+	if (!StaminaBar) return;
+
+	float Percent = FMath::Clamp(NewStamina / MaxSP, 0.0f, 1.0f);
+	StaminaBar->SetPercent(Percent);
+
+}
+
 void UBioPlayerHUD::UpdateItemSlot(int32 SlotIndex, UTexture2D* Icon)
 {
 	if (Slots.IsValidIndex(SlotIndex) && Slots[SlotIndex])

@@ -5,7 +5,7 @@
 #include "Character/StaffCharacter.h"
 #include <Character/ThirdSpectatorPawn.h>
 
-void AMyGameModeBase::OnPlayerKilled(AController* VictimController)
+void AMyGameModeBase::SetPlayerSpectating(AController* VictimController)
 {
     if (!VictimController) return;
 
