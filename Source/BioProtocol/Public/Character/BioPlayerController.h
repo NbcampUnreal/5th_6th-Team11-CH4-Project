@@ -134,4 +134,13 @@ private:
 	void StartProximityVoice();
 	void UpdateProximityVoice();
 	static float CalcProxVolume01(float Dist, float MinD, float MaxD);
+
+
+	// (추가) 클라에서 PlayerArray 순회하여 리모트 VOIPTalker까지 보장
+	FTimerHandle VOIPTalkerSyncTimer;
+
+	void EnsureAllVOIPTalkers();
+	void EnsureVOIPTalkerForPlayerState(APlayerState* InPlayerState);
+	APawn* FindPawnForPlayerState(APlayerState* InPlayerState) const;
+
 };

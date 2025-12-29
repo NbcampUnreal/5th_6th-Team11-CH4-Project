@@ -16,6 +16,8 @@
 #include "EOSVoiceChat.h"
 #include "EOSVoiceChatTypes.h"
 #include "Net/VoiceConfig.h"
+#include "GameFramework/GameStateBase.h"
+#include "Engine/World.h"
 
 
 ABioPlayerController::ABioPlayerController()
@@ -138,13 +140,22 @@ void ABioPlayerController::BeginPlay()
 		// 클라이언트만 VoIP 시작
 		if (World && World->GetNetMode() == NM_Client)
 		{
-			// 2초 후 VOIPTalker 생성
 			FTimerHandle InitTimer;
 			GetWorldTimerManager().SetTimer(InitTimer, [this]()
 				{
 					if (PlayerState)
 					{
+						// 로컬 talker
 						CreateVOIPTalker();
+
+						// (추가) 리모트 포함 전체 talker를 계속 보장
+						GetWorldTimerManager().SetTimer(
+							VOIPTalkerSyncTimer,
+							this,
+							&ABioPlayerController::EnsureAllVOIPTalkers,
+							0.5f,   // 0.5초~1초 추천
+							true
+						);
 
 						// 1초 후 음성 시작
 						FTimerHandle VoiceTimer;
@@ -161,6 +172,7 @@ void ABioPlayerController::BeginPlay()
 void ABioPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(ProximityTimer);
+	GetWorldTimerManager().ClearTimer(VOIPTalkerSyncTimer); // 추가
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -419,84 +431,25 @@ void ABioPlayerController::StopNativeVoIP()
 
 void ABioPlayerController::CreateVOIPTalker()
 {
-	UE_LOG(LogTemp, Error, TEXT("=== CreateVOIPTalker START ==="));
+	UE_LOG(LogTemp, Error, TEXT("=== CreateVOIPTalker START (Local Wrapper) ==="));
 
 	if (!IsLocalController())
-	{
-		UE_LOG(LogTemp, Error, TEXT("[VoIP] Not local controller"));
 		return;
-	}
 
-	APlayerState* PS = GetPlayerState<APlayerState>();
-	if (!PS)
+	if (!PlayerState)
 	{
 		UE_LOG(LogTemp, Error, TEXT("[VoIP] PlayerState is NULL"));
 		return;
 	}
 
-	// 이미 있으면 재사용
-	VOIPTalkerComponent = PS->FindComponentByClass<UVOIPTalker>();
-	if (!VOIPTalkerComponent)
+	EnsureVOIPTalkerForPlayerState(PlayerState);
+
+	if (VOIPTalkerComponent)
 	{
-		// 권장: 엔진 헬퍼 사용 (생성 + 내부 등록 처리)
-		VOIPTalkerComponent = UVOIPTalker::CreateTalkerForPlayer(PS);
-
-		if (!VOIPTalkerComponent)
-		{
-			UE_LOG(LogTemp, Error, TEXT("[VoIP] CreateTalkerForPlayer failed, fallback to NewObject"));
-
-			VOIPTalkerComponent = NewObject<UVOIPTalker>(PS, UVOIPTalker::StaticClass(), TEXT("VOIPTalker"));
-			if (!VOIPTalkerComponent)
-			{
-				UE_LOG(LogTemp, Error, TEXT("[VoIP] Failed to create VOIPTalker"));
-				return;
-			}
-		}
-
-		// 등록이 안 되어 있으면 월드에 등록
-		if (!VOIPTalkerComponent->IsRegistered())
-		{
-			VOIPTalkerComponent->RegisterComponentWithWorld(GetWorld());
-		}
-
-		// PlayerState에 연결 (CreateTalkerForPlayer가 했더라도, 안전하게 한 번 더)
-		VOIPTalkerComponent->RegisterWithPlayerState(PS);
-		UE_LOG(LogTemp, Warning, TEXT("[VoIP] VOIPTalker created & registered"));
+		UE_LOG(LogTemp, Warning, TEXT("[VoIP] Local VOIPTalker ready. Registered=%d Active=%d"),
+			VOIPTalkerComponent->IsRegistered() ? 1 : 0,
+			VOIPTalkerComponent->IsActive() ? 1 : 0);
 	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[VoIP] VOIPTalker already exists, reuse"));
-	}
-
-	// 붙일 컴포넌트(공간 음성 기준)
-	FVoiceSettings NewSettings = VOIPTalkerComponent->Settings;
-	if (APawn* MyPawn = GetPawn())
-	{
-		NewSettings.ComponentToAttachTo = MyPawn->GetRootComponent();
-		UE_LOG(LogTemp, Warning, TEXT("[VoIP] Attached to Pawn root: %s"), *MyPawn->GetName());
-	}
-	else
-	{
-		// Pawn 없으면 OnPossess에서 다시 붙이게 두면 됨
-		NewSettings.ComponentToAttachTo = nullptr;
-		UE_LOG(LogTemp, Warning, TEXT("[VoIP] No Pawn yet, will attach in OnPossess"));
-	}
-
-	// 감쇠(3D 거리감) 쓰려면 여기서 AttenuationSettings를 너의 USoundAttenuation 에셋으로 넣어줘야 함
-	NewSettings.AttenuationSettings = nullptr;
-
-	VOIPTalkerComponent->Settings = NewSettings;
-
-	// 핵심: IsActive() 체크로 낚이지 않도록, 컴포넌트 Activate는 확실히 켜둠
-	VOIPTalkerComponent->bAutoActivate = true;
-	if (!VOIPTalkerComponent->IsActive())
-	{
-		VOIPTalkerComponent->Activate(true);
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("[VoIP] VOIPTalker ready. Registered=%d Active=%d"),
-		VOIPTalkerComponent->IsRegistered() ? 1 : 0,
-		VOIPTalkerComponent->IsActive() ? 1 : 0);
 }
 
 
@@ -811,4 +764,116 @@ float ABioPlayerController::CalcProxVolume01(float Dist, float MinD, float MaxD)
 
 	const float Alpha = (Dist - MinD) / (MaxD - MinD);
 	return FMath::Clamp(1.0f - (Alpha * Alpha), 0.0f, 1.0f);
+}
+
+APawn* ABioPlayerController::FindPawnForPlayerState(APlayerState* InPlayerState) const
+{
+	if (!InPlayerState)
+		return nullptr;
+
+	UWorld* World = GetWorld();
+	if (!World)
+		return nullptr;
+
+	for (TActorIterator<APawn> It(World); It; ++It)
+	{
+		APawn* IterPawn = *It; // 이름 변경
+		if (!IsValid(IterPawn))
+			continue;
+
+		if (IterPawn->GetPlayerState() == InPlayerState)
+			return IterPawn;
+	}
+
+	return nullptr;
+}
+
+void ABioPlayerController::EnsureVOIPTalkerForPlayerState(APlayerState* InPlayerState)
+{
+	if (!IsLocalController() || !InPlayerState)
+		return;
+
+	UVOIPTalker* Talker = InPlayerState->FindComponentByClass<UVOIPTalker>();
+
+	if (!Talker)
+	{
+		// 1) 가능하면 엔진 헬퍼 사용 (권장)
+		Talker = UVOIPTalker::CreateTalkerForPlayer(InPlayerState);
+
+		// 2) 만약 CreateTalkerForPlayer가 실패하면 fallback
+		if (!Talker)
+		{
+			Talker = NewObject<UVOIPTalker>(InPlayerState, UVOIPTalker::StaticClass(), TEXT("VOIPTalker"));
+		}
+
+		if (!Talker)
+		{
+			UE_LOG(LogTemp, Error, TEXT("[VoIP] Failed to create VOIPTalker for PS=%s"), *InPlayerState->GetName());
+			return;
+		}
+
+		// 컴포넌트 등록/PlayerState 연결
+		if (!Talker->IsRegistered())
+		{
+			Talker->RegisterComponent(); // PlayerState는 Actor라 RegisterComponent로 충분
+		}
+
+		Talker->RegisterWithPlayerState(InPlayerState);
+
+		// Activate 보장 (IsActive 체크용)
+		Talker->bAutoActivate = true;
+		if (!Talker->IsActive())
+		{
+			Talker->Activate(true);
+		}
+
+		UE_LOG(LogTemp, Warning, TEXT("[VoIP] VOIPTalker created & registered for PS=%s"), *InPlayerState->GetName());
+	}
+
+	// Pawn attach (리모트 포함)
+	APawn* TargetPawn = FindPawnForPlayerState(InPlayerState);
+	if (TargetPawn && TargetPawn->GetRootComponent())
+	{
+		// Settings는 복사해서 수정 후 다시 넣는 게 안전
+		FVoiceSettings S = Talker->Settings;
+
+		if (S.ComponentToAttachTo != TargetPawn->GetRootComponent())
+		{
+			S.ComponentToAttachTo = TargetPawn->GetRootComponent();
+			// 필요하면 감쇠 에셋을 여기서 지정 (없으면 nullptr 유지)
+			// S.AttenuationSettings = YourAttenuationAsset;
+
+			Talker->Settings = S;
+
+			UE_LOG(LogTemp, Verbose, TEXT("[VoIP] Talker attached. PS=%s Pawn=%s"),
+				*InPlayerState->GetName(), *TargetPawn->GetName());
+		}
+	}
+
+	// 로컬 PS면 멤버 포인터도 최신으로 유지
+	if (InPlayerState == PlayerState)
+	{
+		VOIPTalkerComponent = Talker;
+	}
+}
+
+
+void ABioPlayerController::EnsureAllVOIPTalkers()
+{
+	if (!IsLocalController())
+		return;
+
+	UWorld* World = GetWorld();
+	if (!World || World->GetNetMode() != NM_Client)
+		return;
+
+	AGameStateBase* GS = World->GetGameState();
+	if (!GS)
+		return;
+
+	// 모든 PlayerState에 대해 Talker를 보장 (로컬+리모트)
+	for (APlayerState* PS : GS->PlayerArray)
+	{
+		EnsureVOIPTalkerForPlayerState(PS);
+	}
 }
