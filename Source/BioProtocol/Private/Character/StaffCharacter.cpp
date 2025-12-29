@@ -88,30 +88,81 @@ void AStaffCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (IsLocallyControlled() == true)
+	USkeletalMeshComponent* CharMesh = GetMesh();
+
+	// 1. 메시가 제대로 설정되어 있는지 확인 (서버/클라 공통 디버그)
+	if (CharMesh)
 	{
-		GetMesh()->SetSkeletalMesh(StaffArmMesh);
+		if (USkeletalMesh* FinalMesh = CharMesh->GetSkeletalMeshAsset())
+		{
+			UE_LOG(LogTemp, Log, TEXT("[Player] Final SkeletalMesh: %s"),
+				*FinalMesh->GetName());
 
-		APlayerController* PC = Cast<APlayerController>(GetController());
-		checkf(IsValid(PC) == true, TEXT("PlayerController is invalid."));
+			// 소켓 확인
+			TArray<FName> SocketNames = CharMesh->GetAllSocketNames();
+			UE_LOG(LogTemp, Log, TEXT("[Player] Available sockets (%d):"), SocketNames.Num());
 
-		UEnhancedInputLocalPlayerSubsystem* EILPS = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
-		checkf(IsValid(EILPS) == true, TEXT("EnhancedInputLocalPlayerSubsystem is invalid."));
+			bool bHasHandSocket = false;
+			for (const FName& Socket : SocketNames)
+			{
+				if (Socket == FName("hand_r_socket"))
+				{
+					bHasHandSocket = true;
+					UE_LOG(LogTemp, Warning, TEXT("[Player] Found hand_r_socket!"));
+					break;
+				}
+			}
 
-		EILPS->AddMappingContext(InputMappingContext, 0);
+			if (!bHasHandSocket)
+			{
+				UE_LOG(LogTemp, Error,
+					TEXT("[Player] You must add hand_r_socket to %s"),
+					*FinalMesh->GetName());
+			}
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error,
+				TEXT("[Player] SkeletalMesh is NULL! Check BP_StaffCharacter Mesh component."));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error,
+			TEXT("[Player] CharMesh (GetMesh()) is NULL!"));
 	}
 
-	if (HasAuthority() && Status)
+	// 2. Enhanced Input 설정 (로컬 플레이어만)
+	if (IsLocallyControlled())
 	{
-		Status->ApplyBaseStatus();
+		if (APlayerController* PC = Cast<APlayerController>(GetController()))
+		{
+			if (ULocalPlayer* LP = PC->GetLocalPlayer())
+			{
+				if (UEnhancedInputLocalPlayerSubsystem* EILPS =
+					ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(LP))
+				{
+					if (InputMappingContext)
+					{
+						EILPS->AddMappingContext(InputMappingContext, 0);
+						UE_LOG(LogTemp, Log, TEXT("[Player LOCAL] Input mapping added"));
+					}
+				}
+			}
+		}
 	}
 
-	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	// 3. 서버 전용 초기화
+	if (HasAuthority())
 	{
-		MeshComp->SetRenderCustomDepth(true);
-
-		MeshComp->SetCustomDepthStencilValue(1);
+		if (Status)
+		{
+			Status->ApplyBaseStatus();
+			UE_LOG(LogTemp, Log, TEXT("[Player SERVER] Status initialized"));
+		}
 	}
+
+
 }
 
 // Called every frame
@@ -363,8 +414,7 @@ void AStaffCharacter::ServerPullLever_Internal()
 	AController* C = GetController();
 	if (!C)
 		return;
-	//ktodo:��������(������ ���°Ű�����) �߰��ʿ�
-	//UE_LOG(LogTemp, Warning, TEXT("test"));
+
 	if (!GetWorld()->GetTimerManager().IsTimerActive(GaugeTimerHandle))
 	{
 		GetWorld()->GetTimerManager().SetTimer(
@@ -430,8 +480,6 @@ void AStaffCharacter::ReleaseLever()
 
 	bHoldingLever = false;
 
-
-	//���� ���� ������ ������
 	FRotator CurrentRot = Controller->GetControlRotation();
 	CurrentRot.Yaw = LeverBaseYaw;
 	Controller->SetControlRotation(CurrentRot);
@@ -564,7 +612,7 @@ float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 
 void AStaffCharacter::TestHit()
 {
-	// ������ ��û
+	
 	Server_TestHit();
 }
 
@@ -619,7 +667,6 @@ void AStaffCharacter::Server_TestHit_Implementation()
 		this,
 		UDamageType::StaticClass()
 	);
-	//Multicast_SetTestMaterial();
 
 }
 void AStaffCharacter::Multicast_SetTestMaterial_Implementation()
@@ -635,18 +682,6 @@ void AStaffCharacter::Multicast_SetTestMaterial_Implementation()
 	}
 }
 
-//void AStaffCharacter::ServerRPCTakeDamage_Implementation(float Damage)
-//{
-//	if (Status)
-//	{
-//		Status->ApplyDamage(Damage);
-//	}
-//}
-
-//bool AStaffCharacter::ServerRPCTakeDamage_Validate(float Damage)
-//{
-//	return true;
-//}
 
 void AStaffCharacter::PerformInteractionCheck()
 {
@@ -675,7 +710,7 @@ void AStaffCharacter::PerformInteractionCheck()
 			//UE_LOG(LogTemp, Warning, TEXT("[Player] LineTrace hit: %s"),
 			//	HitActor ? *HitActor->GetName() : TEXT("NULL"));
 
-			// 🔧 수정: Interface 체크를 if 안에서만 하도록 변경
+			// 수정: Interface 체크를 if 안에서만 하도록 변경
 			if (HitActor && HitActor->GetClass()->ImplementsInterface(UInteractionInterface::StaticClass()))
 			{
 				//UE_LOG(LogTemp, Log, TEXT("[Player] ✓ Actor implements IInteractionInterface!"));
@@ -713,26 +748,6 @@ void AStaffCharacter::PerformInteractionCheck()
 	NoInteractableFound();
 }
 
-/*
-void AStaffCharacter::NoInteractableFound()
-{
-	if (IsInteracting())
-	{
-		GetWorldTimerManager().ClearTimer(TimerHandle_Interaction);
-	}
-	// �Ⱦ� ����� ��� ���� ���� ���� ���� ���� �� ���
-	if (InteractionData.CurrentInteractable)
-	{
-		TargetInteractable->EndFocus(); 
-	}
-
-	//Hide interaction widget on the HUD
-
-	//�ʱ�ȭ
-	InteractionData.CurrentInteractable = nullptr;
-	TargetInteractable = nullptr;
-}
-	*/
 
 void AStaffCharacter::NoInteractableFound()
 {
@@ -759,45 +774,14 @@ void AStaffCharacter::NoInteractableFound()
 	// 초기화
 	InteractionData.CurrentInteractable = nullptr;
 
-	// 수정: TargetInteractable 사용 안 함 (제거 권장)
-	// TargetInteractable.SetObject(nullptr);
-	// TargetInteractable.SetInterface(nullptr);
 }
 
-/*
-void AStaffCharacter::BeginInteract()
-{
-	// verify nothig has changed with the interactavle state since beginning interaction
-	PerformInteractionCheck();
-
-	if (InteractionData.CurrentInteractable)
-	{
-		TargetInteractable->BeginInteract();
-
-		//���ӽð��� ���� 0����
-		if (FMath::IsNearlyZero(TargetInteractable->InteractableData.InteractionDuration, 0.1f))
-		{
-			Interact();
-		}
-		else
-		{
-			//���ӽð��� ���� 0�� �ƴ϶�� Ÿ�̸Ӹ� �����ϰ� ������ ��ȣ�ۿ��� ��
-			GetWorldTimerManager().SetTimer(TimerHandle_Interaction,
-				this,
-				&AStaffCharacter::Interact,
-				TargetInteractable->InteractableData.InteractionDuration,
-				false
-			);
-		}
-	}
-}
-	*/
 void AStaffCharacter::BeginInteract()
 {
 	UE_LOG(LogTemp, Warning, TEXT("========================================"));
 	UE_LOG(LogTemp, Warning, TEXT("[Player] BeginInteract called!"));
 
-	// 🔧 수정: PerformInteractionCheck 제거 (이미 Tick에서 계속 호출됨)
+	// 수정: PerformInteractionCheck 제거 (이미 Tick에서 계속 호출됨)
 	// PerformInteractionCheck();  // ← 불필요! 제거!
 
 	if (!InteractionData.CurrentInteractable)
@@ -819,7 +803,7 @@ void AStaffCharacter::BeginInteract()
 		return;
 	}
 
-	// 🔧 수정: BeginInteract 호출
+	// 수정: BeginInteract 호출
 	UE_LOG(LogTemp, Log, TEXT("[Player] Calling Execute_BeginInteract..."));
 	IInteractionInterface::Execute_BeginInteract(InteractableActor);
 
@@ -838,7 +822,7 @@ void AStaffCharacter::BeginInteract()
 	{
 		UE_LOG(LogTemp, Log, TEXT("[Player] Setting timer for %.2f seconds..."), Data.InteractionDuration);
 
-		// 🔧 수정: Lambda 대신 직접 Interact() 호출하도록 타이머 설정
+		// 수정: Lambda 대신 직접 Interact() 호출하도록 타이머 설정
 		GetWorldTimerManager().SetTimer(
 			TimerHandle_Interaction,
 			this,
@@ -851,12 +835,10 @@ void AStaffCharacter::BeginInteract()
 	UE_LOG(LogTemp, Warning, TEXT("========================================"));
 }
 
-
 void AStaffCharacter::EquipItem(AEquippableItem* Item)
 {
 	if (!HasAuthority())
 	{
-		ServerEquipItem(Item);
 		return;
 	}
 
@@ -866,20 +848,18 @@ void AStaffCharacter::EquipItem(AEquippableItem* Item)
 		return;
 	}
 
-	// �̹� ������ �������� ������ ���� ����
 	if (CurrentEquippedItem)
 	{
 		UnequipCurrentItem();
 	}
 
-	// ������ �ʱ�ȭ (���� �� �Ǿ� �ִٸ�)
 	if (!Item->OwningCharacter)
 	{
-		// TODO: ItemBase ������ �ʿ� �� ����
+		
 		Item->Initialize(nullptr, this);
 	}
 
-	// ������ ����
+	
 	Item->Equip();
 	CurrentEquippedItem = Item;
 
@@ -890,7 +870,6 @@ void AStaffCharacter::UnequipCurrentItem()
 {
 	if (!HasAuthority())
 	{
-		ServerUnequipItem();
 		return;
 	}
 
@@ -908,14 +887,6 @@ void AStaffCharacter::UnequipCurrentItem()
 
 void AStaffCharacter::DropCurrentItem()
 {
-	// 서버에서만 실행
-	if (!HasAuthority())
-	{
-		ServerDropItem();
-		return;
-	}
-
-	// 장착된 아이템이 없으면 리턴
 	if (!CurrentEquippedItem)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[Player] No item to drop"));
@@ -965,6 +936,7 @@ void AStaffCharacter::DropCurrentItem()
 	// ========================================
 	// PickUp 초기화
 	// ========================================
+	// 드랍된 픽업임을 표시 (BeginPlay에서 DataTable 로직 스킵용)
 	DroppedPickup->InitializeDrop(ItemReference, ItemReference->Quantity);
 
 	// ========================================
@@ -978,9 +950,28 @@ void AStaffCharacter::DropCurrentItem()
 
 		UE_LOG(LogTemp, Log, TEXT("[Player] PickUp physics enabled and thrown"));
 	}
-	else
+
+	if (Inventory)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Player] PickUp has no mesh component"));
+		// CurrentSlot에서 아이템 제거
+		switch (CurrentSlot)
+		{
+		case 1:
+			Inventory->Slot1_Weapon = nullptr;
+			UE_LOG(LogTemp, Log, TEXT("[Player SERVER] Cleared Slot 1"));
+			break;
+		case 2:
+			Inventory->Slot2_Tool = nullptr;
+			UE_LOG(LogTemp, Log, TEXT("[Player SERVER] Cleared Slot 2"));
+			break;
+		case 3:
+			Inventory->Slot3_Utility = nullptr;
+			UE_LOG(LogTemp, Log, TEXT("[Player SERVER] Cleared Slot 3"));
+			break;
+		}
+
+		// 인벤토리 리스트에서도 제거
+		Inventory->RemoveItem(ItemReference);
 	}
 
 	// ========================================
@@ -990,20 +981,11 @@ void AStaffCharacter::DropCurrentItem()
 	CurrentSlot = 0;
 
 	// ========================================
-	// 인벤토리에서 제거
-	// ========================================
-	if (Inventory)
-	{
-		Inventory->RemoveItem(ItemReference);
-		UE_LOG(LogTemp, Log, TEXT("[Player] Item removed from inventory"));
-	}
-
-	// ========================================
-	// AEquippableItem 제거 (중요!)
+	// AEquippableItem 제거
 	// ========================================
 	if (EquippedItem)
 	{
-		EquippedItem->Destroy();
+		//EquippedItem->Destroy();
 		UE_LOG(LogTemp, Log, TEXT("[Player] EquippableItem destroyed"));
 	}
 
@@ -1098,38 +1080,105 @@ void AStaffCharacter::ReloadWeapon()
 
 void AStaffCharacter::SwitchToSlot(int32 SlotNumber)
 {
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	UE_LOG(LogTemp, Warning, TEXT("[Player] SwitchToSlot called: %d"), SlotNumber);
+	UE_LOG(LogTemp, Warning, TEXT("[Player] HasAuthority: %s"), HasAuthority() ? TEXT("TRUE") : TEXT("FALSE"));
+
 	if (!Inventory || SlotNumber < 1 || SlotNumber > 3)
 	{
+		UE_LOG(LogTemp, Error, TEXT("[Player] Invalid inventory or slot number"));
 		return;
 	}
 
-	// ���� ���� �����̸� ����
+	// ========================================
+	// 클라이언트는 서버에 요청
+	// ========================================
+	if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Player CLIENT] Requesting ServerSwitchToSlot(%d)"), SlotNumber);
+		ServerSwitchToSlot(SlotNumber);
+		return;
+	}
+
+	// ========================================
+	// 서버 로직
+	// ========================================
+
+	// 같은 슬롯이면 무시
 	if (CurrentSlot == SlotNumber && CurrentEquippedItem)
 	{
+		UE_LOG(LogTemp, Log, TEXT("[Player SERVER] Already equipped slot %d"), SlotNumber);
 		return;
 	}
 
-	// ���� ������ ����
+	// 현재 장착 해제
 	if (CurrentEquippedItem)
 	{
-		Inventory->UnequipCurrentItem();
+		UE_LOG(LogTemp, Log, TEXT("[Player SERVER] Unequipping current item"));
+		CurrentEquippedItem->Unequip();
+		CurrentEquippedItem->Destroy();
+		CurrentEquippedItem = nullptr;
+
+		if (Inventory->CurrentEquippedItemActor)
+		{
+			Inventory->CurrentEquippedItemActor = nullptr;
+		}
 	}
 
-	// �� ������ ������ ����
+	// 새 슬롯 아이템 확인
 	UItemBase* ItemInSlot = Inventory->GetItemInSlot(SlotNumber);
+
 	if (ItemInSlot)
 	{
-		Inventory->EquipItem(ItemInSlot);
-		CurrentSlot = SlotNumber;
-
-		UE_LOG(LogTemp, Log, TEXT("[Player] Equipped slot %d: %s"),
+		UE_LOG(LogTemp, Warning, TEXT("[Player SERVER] Found item in slot %d: %s"),
 			SlotNumber, *ItemInSlot->TextData.Name.ToString());
+
+		// ItemClass 확인
+		if (!ItemInSlot->ItemClass)
+		{
+			UE_LOG(LogTemp, Error, TEXT("[Player SERVER] ItemClass is NULL!"));
+			return;
+		}
+
+		UE_LOG(LogTemp, Log, TEXT("[Player SERVER] ItemClass: %s"),
+			*ItemInSlot->ItemClass->GetName());
+
+		// 장착
+		AEquippableItem* SpawnedItem = Inventory->SpawnEquippableActor(ItemInSlot);
+		if (SpawnedItem)
+		{
+			SpawnedItem->Initialize(ItemInSlot, this);
+			SpawnedItem->Equip();
+
+			CurrentEquippedItem = SpawnedItem;
+			Inventory->CurrentEquippedItemActor = SpawnedItem;
+			CurrentSlot = SlotNumber;
+
+			UE_LOG(LogTemp, Warning, TEXT("[Player SERVER] ✓ Equipped slot %d: %s"),
+				SlotNumber, *ItemInSlot->TextData.Name.ToString());
+		}
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Player] Slot %d is empty"), SlotNumber);
+		UE_LOG(LogTemp, Warning, TEXT("[Player SERVER] Slot %d is empty"), SlotNumber);
 		CurrentSlot = 0;
 	}
+}
+
+void AStaffCharacter::ServerSwitchToSlot_Implementation(int32 SlotNumber)
+{
+	UE_LOG(LogTemp, Warning, TEXT("[Player SERVER RPC] ServerSwitchToSlot: %d"), SlotNumber);
+	SwitchToSlot(SlotNumber);
+}
+
+bool AStaffCharacter::ServerSwitchToSlot_Validate(int32 SlotNumber)
+{
+	return SlotNumber >= 1 && SlotNumber <= 3;
+}
+
+void AStaffCharacter::OnRep_CurrentSlot()
+{
+	UE_LOG(LogTemp, Log, TEXT("[Player] OnRep_CurrentSlot: %d"), CurrentSlot);
 }
 
 void AStaffCharacter::EquipSlot1(const FInputActionValue& InValue)
@@ -1256,18 +1305,21 @@ void AStaffCharacter::DropItemFromInventory(UItemBase* ItemToDrop, int32 Quantit
 		return;
 	}
 
-	// �κ��丮���� ����
-	if (QuantityToDrop >= ItemToDrop->Quantity)
+	// 2) 실제로 드랍할 수량 결정 (최소 1, 최대 현재 수량)
+	const int32 ItemCurrentQuantity = ItemToDrop->GetQuantity();
+	if (ItemCurrentQuantity <= 0)
 	{
-		Inventory->RemoveItem(ItemToDrop);
+		UE_LOG(LogTemp, Warning, TEXT("[Player] DropItemFromInventory: Item quantity <= 0, nothing to drop"));
+		return;
 	}
-	else
-	{
-		Inventory->RemoveItemByQuantity(ItemToDrop, QuantityToDrop);
-	}
+	const int32 FinalDropQuantity = FMath::Clamp(QuantityToDrop, 1, ItemCurrentQuantity);
 
-	// ���忡 APickUp ����
-	FVector DropLocation = GetActorLocation() + (GetActorForwardVector() * 100.0f) + FVector(0, 0, 50.0f);
+	UE_LOG(LogTemp, Warning, TEXT("[Player SERVER] Dropping %d of %s (Current: %d)"),
+		FinalDropQuantity, *ItemToDrop->TextData.Name.ToString(), ItemCurrentQuantity);
+
+	const FVector DropDirection = GetActorForwardVector();
+	const FVector DropLocation = GetActorLocation() + (GetActorForwardVector() * 100.0f) + FVector(0, 0, 50.0f);
+	const FRotator DropRotation = GetActorRotation();
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
@@ -1281,20 +1333,42 @@ void AStaffCharacter::DropItemFromInventory(UItemBase* ItemToDrop, int32 Quantit
 		SpawnParams
 	);
 
-	if (DroppedPickup)
+	if (!DroppedPickup)
 	{
-		DroppedPickup->InitializeDrop(ItemToDrop, QuantityToDrop);
-
-		// ���� Ȱ��ȭ (������ ȿ��)
-		if (DroppedPickup->PickUpMesh)
-		{
-			DroppedPickup->PickUpMesh->SetSimulatePhysics(true);
-			DroppedPickup->PickUpMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-			DroppedPickup->PickUpMesh->AddImpulse(GetActorForwardVector() * 500.0f, NAME_None, true);
-		}
+		UE_LOG(LogTemp, Error, TEXT("[Player] DropItemFromInventory: Failed to spawn APickUp"));
+		return;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("[Player] ✓ PickUp spawned: %s"),
-		*DroppedPickup->GetName());
+
+	// 5) 드랍 PickUp 초기화 (ItemReference / 메시 / 인터랙션 데이터)
+	DroppedPickup->InitializeDrop(ItemToDrop, FinalDropQuantity);
+
+	// 6) 물리 시뮬레이션 적용 (앞으로 던지기)
+	if (DroppedPickup->PickUpMesh)
+	{
+		DroppedPickup->PickUpMesh->SetSimulatePhysics(true);
+		DroppedPickup->PickUpMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		DroppedPickup->PickUpMesh->AddImpulse(DropDirection * 500.0f, NAME_None, true);
+
+		UE_LOG(LogTemp, Log, TEXT("[Player SERVER] PickUp physics enabled"));
+	}
+
+	// 7) 인벤토리에서 수량/아이템 제거
+	if (FinalDropQuantity >= ItemCurrentQuantity)
+	{
+		// 전량 드랍 → 아이템 제거
+		Inventory->RemoveItem(ItemToDrop);
+		UE_LOG(LogTemp, Log, TEXT("[Player] DropItemFromInventory: removed item completely from inventory"));
+	}
+	else
+	{
+		// 일부 드랍 → 수량만 차감
+		Inventory->RemoveItemByQuantity(ItemToDrop, FinalDropQuantity);
+		UE_LOG(LogTemp, Log, TEXT("[Player] DropItemFromInventory: removed %d (remain: %d)"),
+			FinalDropQuantity, ItemCurrentQuantity - FinalDropQuantity);
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[Player] ✓ PickUp spawned from inventory: %s (Qty: %d)"),
+		*DroppedPickup->GetName(), FinalDropQuantity);
 }
 
 bool AStaffCharacter::HasRequiredTool(FName ToolID)
@@ -1469,6 +1543,13 @@ void AStaffCharacter::Interact()
 		return;
 	}
 
+	if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Player] Client → calling ServerInteract RPC"));
+		ServerInteract(InteractableActor);
+		return;
+	}
+
 	UE_LOG(LogTemp, Warning, TEXT("[Player] Calling IInteractionInterface::Execute_Interact..."));
 	UE_LOG(LogTemp, Warning, TEXT("[Player] Target Object: %s"), *InteractableActor->GetName());
 	UE_LOG(LogTemp, Warning, TEXT("[Player] Player Character: %s"), *GetName());
@@ -1482,6 +1563,10 @@ void AStaffCharacter::Interact()
 
 UItemBase* AStaffCharacter::CreateItemFromDataTable(FName ItemID, int32 Quantity)
 {
+	UE_LOG(LogTemp, Error, TEXT("[CreateItem] Owner: %s (Class: %s)"),
+		*GetName(), *GetClass()->GetName());
+	UE_LOG(LogTemp, Error, TEXT("[CreateItem] ItemDataTable pointer: %p"), ItemDataTable);
+
 	UE_LOG(LogTemp, Warning, TEXT("========================================"));
 	UE_LOG(LogTemp, Warning, TEXT("[CreateItem] CreateItemFromDataTable called"));
 	UE_LOG(LogTemp, Warning, TEXT("[CreateItem] ItemID: %s"), *ItemID.ToString());
@@ -1523,7 +1608,7 @@ UItemBase* AStaffCharacter::CreateItemFromDataTable(FName ItemID, int32 Quantity
 	UE_LOG(LogTemp, Log, TEXT("[CreateItem] ItemData->ItemID: %s"), *ItemData->ItemID.ToString());
 
 	// ========================================
-	// 🔥 ItemClass 확인 (핵심!)
+	// ItemClass 확인 (핵심!)
 	// ========================================
 	if (!ItemData->ItemClass)
 	{
@@ -1571,24 +1656,7 @@ UItemBase* AStaffCharacter::CreateItemFromDataTable(FName ItemID, int32 Quantity
 	return NewItem;
 }
 
-void AStaffCharacter::ServerEquipItem_Implementation(AEquippableItem* Item)
-{
-	EquipItem(Item);
-}
 
-bool AStaffCharacter::ServerEquipItem_Validate(AEquippableItem* Item)
-{
-	return Item != nullptr;
-}
-void AStaffCharacter::ServerUnequipItem_Implementation()
-{
-	UnequipCurrentItem();
-}
-
-bool AStaffCharacter::ServerUnequipItem_Validate()
-{
-	return true;
-}
 
 void AStaffCharacter::ServerDropItem_Implementation()
 {
@@ -1600,36 +1668,6 @@ bool AStaffCharacter::ServerDropItem_Validate()
 	return true;
 }
 
-void AStaffCharacter::ServerDropCurrentItem_Implementation()
-{
-	DropCurrentItem();
-}
-
-bool AStaffCharacter::ServerDropCurrentItem_Validate()
-{
-	return true;
-}
-
-void AStaffCharacter::ServerUseItem_Implementation()
-{
-	UseEquippedItem();
-}
-
-bool AStaffCharacter::ServerUseItem_Validate()
-{
-	return CurrentEquippedItem != nullptr;
-}
-
-
-void AStaffCharacter::ServerStopUsingItem_Implementation()
-{
-	StopUsingEquippedItem();
-}
-
-bool AStaffCharacter::ServerStopUsingItem_Validate()
-{
-	return true;
-}
 
 void AStaffCharacter::Die()
 {
@@ -1640,14 +1678,6 @@ void AStaffCharacter::Die()
 
 	UE_LOG(LogTemp, Log, TEXT("[Player] Died"));
 
-	//// ��� ó��
-	//// 1. ĳ���� ��Ȱ��ȭ
-	//GetCharacterMovement()->DisableMovement();
-
-	//// 2. �浹 ��Ȱ��ȭ
-	//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	// 3. ���� ���� ������ ���
 	if (CurrentEquippedItem)
 	{
 		DropCurrentItem();
@@ -1673,9 +1703,46 @@ void AStaffCharacter::Die()
 	//OnHealthChanged.Broadcast(0.0f, MaxHealth);
 }
 
+void AStaffCharacter::ServerInteract_Implementation(AActor* InteractableActor)
+{
+	if (!InteractableActor)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Player SERVER] InteractableActor is null!"));
+		return;
+	}
+
+	if (!InteractableActor->Implements<UInteractionInterface>())
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Player SERVER] Actor does not implement interface!"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[Player SERVER] ★★★ ServerInteract executing! ★★★"));
+	UE_LOG(LogTemp, Warning, TEXT("[Player SERVER] Target: %s"), *InteractableActor->GetName());
+	UE_LOG(LogTemp, Warning, TEXT("[Player SERVER] Player: %s"), *GetName());
+
+	IInteractionInterface::Execute_Interact(InteractableActor, this);
+}
+
+bool AStaffCharacter::ServerInteract_Validate(AActor* InteractableActor)
+{
+	return true;
+}
+
 void AStaffCharacter::OnRep_CurrentEquippedItem()
 {
-	UE_LOG(LogTemp, Log, TEXT("[Player Client] CurrentEquippedItem updated"));
+	if (CurrentEquippedItem)
+	{
+		CurrentEquippedItem->PerformAttachment(CurrentEquippedItem->HandSocketName);
+		CurrentEquippedItem->bIsEquipped = true;
+
+		UE_LOG(LogTemp, Log, TEXT("[Player CLIENT] Item equipped on client"));  // 클라 메쉬 Attach, UI 갱신 등
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("[Player CLIENT] CurrentEquippedItem: NULL"));
+		UE_LOG(LogTemp, Log, TEXT("[Player CLIENT] Item unequipped on client"));
+	}
 }
 
 // ========================================

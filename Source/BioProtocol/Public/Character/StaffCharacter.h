@@ -262,8 +262,8 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentEquippedItem, BlueprintReadOnly, Category = "Equipment")
 	AEquippableItem* CurrentEquippedItem;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Equipment")
-	int32 CurrentSlot;
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentSlot, BlueprintReadOnly, Category = "Equipment")
+	int32 CurrentSlot = 0;
 
 	UFUNCTION(BlueprintPure, Category = "Equipment")
 	AEquippableItem* GetCurrentEquippedItem() const { return CurrentEquippedItem; }
@@ -288,6 +288,13 @@ public:
 	//==========================================
 	// SLOTS
 	//==========================================
+
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerSwitchToSlot(int32 SlotNumber);
+
+	UFUNCTION()
+	void OnRep_CurrentSlot();
 
 	UFUNCTION(BlueprintCallable, Category = "Slots")
 	void EquipSlot1(const FInputActionValue& InValue);
@@ -372,22 +379,11 @@ public:
 	//==========================================
 
 	UFUNCTION(Server, Reliable, WithValidation)
-	void ServerEquipItem(AEquippableItem* Item);
-
-	UFUNCTION(Server, Reliable, WithValidation)
-	void ServerUnequipItem();
-
-	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerDropItem();
 
 	UFUNCTION(Server, Reliable, WithValidation)
-	void ServerDropCurrentItem();
+	void ServerInteract(AActor* InteractableActor);
 
-	UFUNCTION(Server, Reliable, WithValidation)
-	void ServerUseItem();
-
-	UFUNCTION(Server, Reliable, WithValidation)
-	void ServerStopUsingItem();
 
 	//==========================================
 	// REPLICATION CALLBACKS

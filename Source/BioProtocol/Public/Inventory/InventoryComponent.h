@@ -118,6 +118,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
 	float CurrentInventoryWeight;
 
+	/** 장착 가능한 액터 스폰 */
+	AEquippableItem* SpawnEquippableActor(UItemBase* Item);
+
 	//==========================================
 	// SLOT SYSTEM 
 	//==========================================
@@ -135,7 +138,7 @@ public:
 	UItemBase* Slot3_Utility;
 
 	/** 현재 장착된 아이템 액터 */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory|Slots")
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentEquippedItemActor, BlueprintReadOnly, Category = "Inventory|Slots")
 	AEquippableItem* CurrentEquippedItemActor;
 
 	//==========================================
@@ -248,9 +251,6 @@ protected:
 	/** 기존 스택에 추가 */
 	int32 AddToExistingStack(UItemBase* ExistingItem, int32 QuantityToAdd);
 
-	/** 장착 가능한 액터 스폰 */
-	AEquippableItem* SpawnEquippableActor(UItemBase* Item);
-
 	/** 슬롯 자동 배치 */
 	void AutoAssignToSlot(UItemBase* Item);
 
@@ -270,11 +270,8 @@ protected:
 	UFUNCTION()
 	void OnRep_Slot3();
 
-	UFUNCTION(Server, Reliable)
-	void ServerEquipItem(UItemBase* Item);
-
-	UFUNCTION(Server, Reliable)
-	void ServerUnequipItem();
+	UFUNCTION()
+	void OnRep_CurrentEquippedItemActor();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 

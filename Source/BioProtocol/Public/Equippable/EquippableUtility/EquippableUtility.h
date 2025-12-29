@@ -112,9 +112,6 @@ protected:
 	UFUNCTION()
 	void OnRep_UsesRemaining();
 
-	UFUNCTION(Server, Reliable)
-	void ServerUseUtility();
-
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastPlayUseEffects();
 

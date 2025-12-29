@@ -16,6 +16,7 @@ void ABioGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(ABioGameState, CurrentPhase);
 	DOREPLIFETIME(ABioGameState, PhaseTimeRemaining);
 	DOREPLIFETIME(ABioGameState, OxygenLevel);
+	DOREPLIFETIME(ABioGameState, bCanEscape);
 }
 
 void ABioGameState::SetGamePhase(EBioGamePhase NewPhase)
@@ -27,7 +28,35 @@ void ABioGameState::SetGamePhase(EBioGamePhase NewPhase)
 	}
 }
 
+void ABioGameState::AddMissionProgress(int32 Amount)
+{
+	if (HasAuthority())
+	{
+		MissionProgress += Amount;
+		MissionProgress = FMath::Clamp(MissionProgress, 0, MaxMissionProgress);
+
+		if (MissionProgress >= MaxMissionProgress)
+		{
+			// 임무 진행도를 다 채웠으면 bCanEscape를 true로 변경
+			bCanEscape = true;
+		}
+	}
+}
+
 void ABioGameState::OnRep_Phase()
 {
 	OnPhaseChanged.Broadcast(CurrentPhase);
+}
+
+void ABioGameState::OnRep_MissionProgress()
+{
+	// 진행도가 변경될 때 UI 업데이트
+}
+
+void ABioGameState::OnRep_CanEscape()
+{
+	if (bCanEscape)
+	{
+		// 탈출이 가능할 때 UI 업데이트
+	}
 }

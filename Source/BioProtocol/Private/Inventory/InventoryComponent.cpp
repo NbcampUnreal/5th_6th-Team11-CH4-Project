@@ -374,7 +374,6 @@ void UInventoryComponent::EquipItem(UItemBase* ItemToEquip)
 	// 서버에 요청
 	if (!GetOwner()->HasAuthority())
 	{
-		ServerEquipItem(ItemToEquip);
 		return;
 	}
 
@@ -406,13 +405,13 @@ void UInventoryComponent::UnequipCurrentItem()
 {
 	if (!GetOwner()->HasAuthority())
 	{
-		ServerUnequipItem();
 		return;
 	}
 
 	if (CurrentEquippedItemActor)
 	{
 		CurrentEquippedItemActor->Unequip();
+		CurrentEquippedItemActor->Destroy();
 		CurrentEquippedItemActor = nullptr;
 
 		if (OwnerCharacter)
@@ -745,28 +744,93 @@ bool UInventoryComponent::IsInventoryFull() const
 
 void UInventoryComponent::OnRep_InventoryItems()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[Inventory Client] Items count: %d"), InventoryItems.Num());
+
 	OnInventoryUpdated.Broadcast();
 }
 
 void UInventoryComponent::OnRep_Slot1()
 {
-	UE_LOG(LogTemp, Log, TEXT("[Inventory Client] Slot 1 updated"));
+	UE_LOG(LogTemp, Warning, TEXT("[Inventory Client] Slot 1 updated: %s"),
+		Slot1_Weapon ? *Slot1_Weapon->TextData.Name.ToString() : TEXT("EMPTY"));
+
+	// 현재 슬롯이 1이면 다시 장착
+	if (OwnerCharacter && OwnerCharacter->CurrentSlot == 1)
+	{
+		if (Slot1_Weapon)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[Inventory Client] Re-equipping Slot 1 item"));
+			EquipItem(Slot1_Weapon);
+		}
+	}
 }
 
 void UInventoryComponent::OnRep_Slot2()
 {
-	UE_LOG(LogTemp, Log, TEXT("[Inventory Client] Slot 2 updated"));
+	UE_LOG(LogTemp, Warning, TEXT("[Inventory Client] Slot 2 updated: %s"),
+		Slot2_Tool ? *Slot2_Tool->TextData.Name.ToString() : TEXT("EMPTY"));
+
+	// 현재 슬롯이 2이면 다시 장착
+	if (OwnerCharacter && OwnerCharacter->CurrentSlot == 2)
+	{
+		if (Slot2_Tool)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[Inventory Client] Re-equipping Slot 2 item"));
+			EquipItem(Slot2_Tool);
+		}
+	}
 }
 
 void UInventoryComponent::OnRep_Slot3()
 {
-	UE_LOG(LogTemp, Log, TEXT("[Inventory Client] Slot 3 updated"));
+	UE_LOG(LogTemp, Warning, TEXT("[Inventory Client] Slot 3 updated: %s"),
+		Slot3_Utility ? *Slot3_Utility->TextData.Name.ToString() : TEXT("EMPTY"));
+
+	// 현재 슬롯이 3이면 다시 장착
+	if (OwnerCharacter && OwnerCharacter->CurrentSlot == 3)
+	{
+		if (Slot3_Utility)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[Inventory Client] Re-equipping Slot 3 item"));
+			EquipItem(Slot3_Utility);
+		}
+	}
+}
+
+void UInventoryComponent::OnRep_CurrentEquippedItemActor()
+{
+	UE_LOG(LogTemp, Warning, TEXT("[Inventory Client] OnRep_CurrentEquippedItemActor "));
+
+	if (CurrentEquippedItemActor)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[Inventory Client] CurrentEquippedItemActor: %s"),
+			*CurrentEquippedItemActor->GetName());
+
+		// 클라이언트에서도 장착 처리
+		if (OwnerCharacter)
+		{
+			OwnerCharacter->CurrentEquippedItem = CurrentEquippedItemActor;
+			
+			CurrentEquippedItemActor->PerformAttachment(CurrentEquippedItemActor->HandSocketName);
+			CurrentEquippedItemActor->bIsEquipped = true;
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("[Inventory Client] CurrentEquippedItemActor: NULL"));
+
+		// 장착 해제
+		if (OwnerCharacter)
+		{
+			OwnerCharacter->CurrentEquippedItem = nullptr;
+		}
+	}
 }
 
 //==========================================
 // SERVER RPC
 //==========================================
-
+/*
 void UInventoryComponent::ServerEquipItem_Implementation(UItemBase* Item)
 {
 	EquipItem(Item);
@@ -776,3 +840,4 @@ void UInventoryComponent::ServerUnequipItem_Implementation()
 {
 	UnequipCurrentItem();
 }
+*/

@@ -64,7 +64,6 @@ void AEquippableUtility::UseUtility()
 	// 서버에 사용 요청
 	if (!HasAuthority())
 	{
-		ServerUseUtility();
 		return;
 	}
 
@@ -218,10 +217,6 @@ void AEquippableUtility::OnRep_UsesRemaining()
 	}
 }
 
-void AEquippableUtility::ServerUseUtility_Implementation()
-{
-	UseUtility();
-}
 
 void AEquippableUtility::MulticastPlayUseEffects_Implementation()
 {

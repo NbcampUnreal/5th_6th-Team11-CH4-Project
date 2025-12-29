@@ -32,7 +32,28 @@ public:
 
 	void SetGamePhase(EBioGamePhase NewPhase);
 
+	// 임무 진행도
+	UPROPERTY(ReplicatedUsing = OnRep_MissionProgress, BlueprintReadOnly, Category = "Bio|GameRule")
+	int32 MissionProgress;
+
+	// 임무 진행도를 다 채웠을 시 탈출 포드를 이용할 수 있게 할 변수
+	UPROPERTY(ReplicatedUsing = OnRep_CanEscape, BlueprintReadOnly, Category = "Bio|GameRule")
+	bool bCanEscape = false;
+
+	void AddMissionProgress(int32 Amount);
+
 protected:
 	UFUNCTION()
 	void OnRep_Phase();
+
+	UFUNCTION()
+	void OnRep_MissionProgress();
+
+	UFUNCTION()
+	void OnRep_CanEscape();
+
+	UPROPERTY(BlueprintReadOnly, Category = "Bio|GameRule")
+	int32 MaxMissionProgress = 15;
+
+
 };
