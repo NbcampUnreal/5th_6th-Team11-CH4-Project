@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Character/StaffCharacter.h"
@@ -11,7 +11,7 @@
 #include "Net/UnrealNetwork.h"
 #include <Character/MyPlayerController.h>
 #include <Kismet/GameplayStatics.h>
-#include "GameFramework/PlayerState.h"
+
 #include "BioProtocol/Public/Inventory/InventoryComponent.h"
 #include "BioProtocol/Public/Items/ItemBase.h"
 #include "BioProtocol/Public/World/PickUp.h"
@@ -98,7 +98,6 @@ void AStaffCharacter::BeginPlay()
 		MeshComp->SetCustomDepthStencilValue(1);
 	}
 }
-
 
 // Called every frame
 void AStaffCharacter::Tick(float DeltaTime)

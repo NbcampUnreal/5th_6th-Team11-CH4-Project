@@ -1,4 +1,4 @@
-ï»¿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -73,10 +73,10 @@ private:
 
 	void HandleLookInput(const FInputActionValue& InValue);
 
-	//ë‹¬ë¦¬ê¸°ì‹œì‘(ì‰¬í”„íŠ¸ ìœ ì§€)
+	//´Ş¸®±â½ÃÀÛ(½¬ÇÁÆ® À¯Áö)
 	void HandleStartRun(const FInputActionValue& InValue);
 
-	//ë‹¬ë¦¬ê¸°ì‹œì‘(ì‰¬í”„íŠ¸ ë—„ë–¼)
+	//´Ş¸®±â½ÃÀÛ(½¬ÇÁÆ® ¶¿¶¼)
 	void HandleStopRun(const FInputActionValue& InValue);
 
 	void HandleCrouch(const FInputActionValue& InValue);
@@ -87,33 +87,33 @@ private:
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
-	TObjectPtr<UInputMappingContext> InputMappingContext; //ê¸°ë³¸ ì›€ì§ì„ , ìƒí˜¸ì‘ìš©
+	TObjectPtr<UInputMappingContext> InputMappingContext; //±âº» ¿òÁ÷ÀÓ , »óÈ£ÀÛ¿ë
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
 	TObjectPtr<UInputAction> MoveAction;//wasd
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
-	TObjectPtr<UInputAction> LookAction;//ë§ˆìš°ìŠ¤
+	TObjectPtr<UInputAction> LookAction;//¸¶¿ì½º
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
-	TObjectPtr<UInputAction> JumpAction;//ìŠ¤í˜ì´ìŠ¤ë°”
+	TObjectPtr<UInputAction> JumpAction;//½ºÆäÀÌ½º¹Ù
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
-	TObjectPtr<UInputAction> RunAction;//ì‰¬í”„íŠ¸
+	TObjectPtr<UInputAction> RunAction;//½¬ÇÁÆ®
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
 	TObjectPtr<UInputAction> CrouchAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
-	TObjectPtr<UInputAction> AttackAction;//í´ë¦­
+	TObjectPtr<UInputAction> AttackAction;//Å¬¸¯
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
-	TObjectPtr<UInputAction> TestKillAction;//k (í•¨ìˆ˜í˜¸ì¶œ í…ŒìŠ¤íŠ¸ìš©)
+	TObjectPtr<UInputAction> TestKillAction;//k (ÇÔ¼öÈ£Ãâ Å×½ºÆ®¿ë)
 
-	//ì•„ì´í…œ ë¨¹ëŠ”í‚¤ëˆŒë €ëŠ”ë° ì´ê²Œ ì•„ì´í…œì¸ì§€ ë ˆë²„ì¸ì§€ ê²€ì‚¬í›„ ë ˆë²„ë©´ PullLever í˜¸ì¶œí•˜ëŠ” ë°©ì‹ìœ¼ë¡œ ë°”ë€Œë©´ íì§€
+	//¾ÆÀÌÅÛ ¸Ô´ÂÅ°´­·¶´Âµ¥ ÀÌ°Ô ¾ÆÀÌÅÛÀÎÁö ·¹¹öÀÎÁö °Ë»çÈÄ ·¹¹ö¸é PullLever È£ÃâÇÏ´Â ¹æ½ÄÀ¸·Î ¹Ù²î¸é ÆóÁö
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
 	TObjectPtr<UInputAction> TestPullLever;
 
-	//itemì´ë‚˜ inventoryí´ë˜ìŠ¤ì•ˆì— ì•„ì´í…œ êº¼ë‚´ê¸° ì…ë ¥ ë”°ë¡œìˆìœ¼ë©´ íì§€
+	//itemÀÌ³ª inventoryÅ¬·¡½º¾È¿¡ ¾ÆÀÌÅÛ ²¨³»±â ÀÔ·Â µû·ÎÀÖÀ¸¸é ÆóÁö
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
 	TObjectPtr<UInputAction> Item1;
 
@@ -127,22 +127,22 @@ protected:
 	UInputAction* DropItemAction;
 
 protected:
-	//ë ˆë²„ë‹¹ê¸°ê¸° ì‹œì‘(ì•„ë‹ˆë©´ ìƒí˜¸ì‘ìš©ì˜¤ë˜í•˜ë©´ì„œ ì‹œì•¼ê° ì œí•œí•„ìš” í• ë•Œ í˜¸ì¶œ)
+	//·¹¹ö´ç±â±â ½ÃÀÛ(¾Æ´Ï¸é »óÈ£ÀÛ¿ë¿À·¡ÇÏ¸é¼­ ½Ã¾ß°¢ Á¦ÇÑÇÊ¿ä ÇÒ¶§ È£Ãâ)
 	virtual void PullLever();
 
-	//ë ˆë²„ ë–¼ê¸°
+	//·¹¹ö ¶¼±â
 	void ReleaseLever();
 
 	UFUNCTION(Server, Reliable)
 	void ServerPullLever();
 	UFUNCTION(Server, Reliable)
-	//////////////////ë ˆë²„ë–¼ê¸° ìƒí˜¸ì‘ìš© í…ŒìŠ¤íŠ¸ìš©
+	//////////////////·¹¹ö¶¼±â »óÈ£ÀÛ¿ë Å×½ºÆ®¿ë
 	void ServerReleaseLever();
 
-	//ì‹¤ì œ ë ˆë²„ë‹¹ê¸°ëŠ” ë™ì•ˆ ì‘ì—…í• êº¼ ì‘ì—…í•  í•¨ìˆ˜
+	//½ÇÁ¦ ·¹¹ö´ç±â´Â µ¿¾È ÀÛ¾÷ÇÒ²¨ ÀÛ¾÷ÇÒ ÇÔ¼ö
 	virtual void ServerPullLever_Internal();
-	void TestUpdateLeverGauge(); //ê²Œì´ì§€ ì°¨ëŠ”ê±° í…ŒìŠ¤íŠ¸ìš©(ì‹¤ì œ ë ˆë²„ì‘ìš©í•˜ëŠ” ì˜¤ë¸Œì íŠ¸ì— ì“¸ê»)
-	float TestGuage = 0;//í…ŒìŠ¤íŠ¸ê²Œì´ì§€
+	void TestUpdateLeverGauge(); //°ÔÀÌÁö Â÷´Â°Å Å×½ºÆ®¿ë(½ÇÁ¦ ·¹¹öÀÛ¿ëÇÏ´Â ¿ÀºêÁ§Æ®¿¡ ¾µ²¯)
+	float TestGuage = 0;//Å×½ºÆ®°ÔÀÌÁö
 
 	void TestItemSlot1();
 
@@ -189,7 +189,7 @@ private:
 	//UFUNCTION(Server, Reliable, WithValidation)
 	//void ServerRPCTakeDamage(float DamageAmount);
 
-	//í…ŒìŠ¤íŠ¸ìš© í•¨ìˆ˜(í˜„ì¬ í”¼ê²©í…ŒìŠ¤íŠ¸(Server_TestHit()))
+	//Å×½ºÆ®¿ë ÇÔ¼ö(ÇöÀç ÇÇ°İÅ×½ºÆ®(Server_TestHit()))
 	void TestHit();
 
 	UFUNCTION(Server, Reliable)
@@ -200,7 +200,7 @@ private:
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	//ì²´ë ¥,ìŠ¤í…Œë¯¸ë‚˜,ì´ë™ì†ë„ ì €ì¥ë˜ì–´ìˆëŠ” í´ë˜ìŠ¤
+	//Ã¼·Â,½ºÅ×¹Ì³ª,ÀÌµ¿¼Óµµ ÀúÀåµÇ¾îÀÖ´Â Å¬·¡½º
 	TObjectPtr<class UStaffStatusComponent> Status;
 
 	UFUNCTION()
@@ -219,19 +219,19 @@ protected:
 	USkeletalMesh* StaffArmMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMat")
-	//í”Œë ˆì´ì–´ êµ¬ë¶„ìš© ë©”í…Œë¦¬ì–¼
+	//ÇÃ·¹ÀÌ¾î ±¸ºĞ¿ë ¸ŞÅ×¸®¾ó
 	TArray<UMaterialInterface*>mat;
 
 protected:
 	UPROPERTY(Replicated)
 	bool bIsGunEquipped;
 
-	///////////////////////////////////////////ì¸ë²¤,ì•„ì´í…œê´€ë ¨
+	///////////////////////////////////////////ÀÎº¥,¾ÆÀÌÅÛ°ü·Ã
 public:
 	void Die();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UInventoryComponent* Inventory;  // <- í•˜ë‚˜ë§Œ ìœ ì§€
+	UInventoryComponent* Inventory;  // <- ÇÏ³ª¸¸ À¯Áö
 
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	UInventoryComponent* GetInventoryComponent() const { return Inventory; }
@@ -251,7 +251,7 @@ public:
 	AEquippableItem* GetCurrentEquippedItem() const { return CurrentEquippedItem; }
 
 	UFUNCTION(BlueprintPure, Category = "Equipment")
-	UInventoryComponent* GetInventory() const { return Inventory; }  // <- ì¸ë¼ì¸ êµ¬í˜„ìœ¼ë¡œ ê°„ë‹¨í•˜ê²Œ
+	UInventoryComponent* GetInventory() const { return Inventory; }  // <- ÀÎ¶óÀÎ ±¸ÇöÀ¸·Î °£´ÜÇÏ°Ô
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	void EquipItem(AEquippableItem* Item);
@@ -290,7 +290,7 @@ public:
 	// INTERACTION
 	//==========================================
 
-	/** í˜„ì¬ ìƒí˜¸ì‘ìš© ì¤‘ì¸ì§€ í™•ì¸ */
+	/** ÇöÀç »óÈ£ÀÛ¿ë ÁßÀÎÁö È®ÀÎ */
 	FORCEINLINE bool IsInteracting() const
 	{
 		return GetWorldTimerManager().IsTimerActive(TimerHandle_Interaction);
