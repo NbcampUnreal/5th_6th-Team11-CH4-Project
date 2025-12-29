@@ -23,6 +23,7 @@
 #include "BioProtocol/Public/Equippable/EquippableTool/EquippableTool_Battery.h"
 #include "BioProtocol/Public/Equippable/EquippableTool/EquippableTool_Welder.h"
 #include "Daeho/MyInteractableInterface.h"
+#include <Character/AndroidCharacter.h>
 
 // Sets default values
 AStaffCharacter::AStaffCharacter()
@@ -647,7 +648,7 @@ float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 
 	if (Status)
 	{
-		Status->ApplyDamage(ActualDamage);
+		Status->ApplyDamage(ActualDamage, EventInstigator);
 	}
 
 	return ActualDamage;
@@ -1732,7 +1733,7 @@ bool AStaffCharacter::ServerDropItem_Validate()
 }
 
 
-void AStaffCharacter::Die()
+void AStaffCharacter::Die(AController* KillerController)
 {
 	if (!HasAuthority())
 	{
@@ -1757,6 +1758,14 @@ void AStaffCharacter::Die()
 				DropItemFromInventory(Item, Item->Quantity);
 			}
 		}
+	}
+	APawn* KillerPawn = KillerController->GetPawn();
+
+	if (AAndroidCharacter* Killer = Cast<AAndroidCharacter>(KillerPawn))
+	{
+		Killer->bHasKilledPlayer = true; 
+		UE_LOG(LogTemp, Error, TEXT("killllllllllllllllllllllllllllllled"));
+
 	}
 
 	// 5. TODO: ��� �ִϸ��̼� ���

@@ -82,7 +82,7 @@ public:
 
 public:
 	void ApplyBaseStatus();
-	void ApplyDamage(float Damage);
+	void ApplyDamage(float Damage, AController* DamageInstigator);
 	bool IsDead() const { return CurrentHP <= 0.f; }
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;

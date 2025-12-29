@@ -269,7 +269,7 @@ protected:
 	bool bIsCanAttack = true;
 	///////////////////////////////////////////�κ�,�����۰���
 public:
-	void Die();
+	void Die(AController* KillerController);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", Replicated)
 	class UInventoryComponent* Inventory;  // <- �ϳ��� ����

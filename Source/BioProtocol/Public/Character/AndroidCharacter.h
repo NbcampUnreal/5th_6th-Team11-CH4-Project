@@ -24,7 +24,8 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	UFUNCTION()
 	void OnRep_IsAndroid();	
-
+	UPROPERTY(Replicated);
+	int8 bHasKilledPlayer = false;
 protected:	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PostProcess")
 	UPostProcessComponent* PostProcessComp;
@@ -121,4 +122,5 @@ private:
 	float HunterScale = 1.5f;
 	UPROPERTY(Replicated);
 	int8 bIsHunter = false;
+
 };

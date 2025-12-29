@@ -224,7 +224,7 @@ void UStaffStatusComponent::OnRep_IsTransformed()
 	OnTransformChanged.Broadcast(bIsTransformed);
 }
 
-void UStaffStatusComponent::ApplyDamage(float Damage)
+void UStaffStatusComponent::ApplyDamage(float Damage,AController* DamageInstigator)
 {
 	if (!GetOwner()->HasAuthority()) return;
 	if (PlayerStatus == EBioPlayerStatus::Dead) return;
@@ -240,6 +240,11 @@ void UStaffStatusComponent::ApplyDamage(float Damage)
 		CurrentHP = 0.f;
 		SetJailed();
 		PlayerStatus = EBioPlayerStatus::Jailed;
+
+		if (AStaffCharacter* OwnerChar = Cast<AStaffCharacter>(GetOwner()))
+		{
+			OwnerChar->Die(DamageInstigator);
+		}
 	}
 }
 

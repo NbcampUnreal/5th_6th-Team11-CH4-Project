@@ -76,6 +76,8 @@ void AAndroidCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(AAndroidCharacter, bIsAndroid);
 	DOREPLIFETIME(AAndroidCharacter, CharacterScale);
 	DOREPLIFETIME(AAndroidCharacter, bIsHunter);
+	DOREPLIFETIME(AAndroidCharacter, bHasKilledPlayer);
+
 }
 
 void AAndroidCharacter::OnDash()
@@ -187,7 +189,7 @@ void AAndroidCharacter::AndroidArmAttack()
 
 void AAndroidCharacter::AttackInput(const FInputActionValue& InValue)
 {
-	if (!bIsCanAttack)
+	if (!bIsCanAttack|| bHasKilledPlayer)
 		return;
 	if (!bIsHunter){
 		Super::AttackInput(1);
