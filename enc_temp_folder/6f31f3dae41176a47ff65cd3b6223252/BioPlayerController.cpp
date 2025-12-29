@@ -423,82 +423,82 @@ void ABioPlayerController::CreateVOIPTalker()
 
 	if (!IsLocalController())
 	{
-		UE_LOG(LogTemp, Error, TEXT("[VoIP] Not local controller"));
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ Not local controller"));
 		return;
 	}
 
-	APlayerState* PS = GetPlayerState<APlayerState>();
-	if (!PS)
+	if (!PlayerState)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[VoIP] PlayerState is NULL"));
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ PlayerState is NULL"));
 		return;
 	}
 
-	// 이미 있으면 재사용
-	VOIPTalkerComponent = PS->FindComponentByClass<UVOIPTalker>();
+	UE_LOG(LogTemp, Error, TEXT("[VoIP] PlayerState exists: %s"), *PlayerState->GetName());
+
+	// 이미 생성되어 있는지 확인
+	VOIPTalkerComponent = PlayerState->FindComponentByClass<UVOIPTalker>();
+
+	if (VOIPTalkerComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅ VOIPTalker already exists in PlayerState"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Error, TEXT("[VoIP] VOIPTalker not found, creating new one..."));
+
+	// VOIPTalker 생성
+	VOIPTalkerComponent = NewObject<UVOIPTalker>(
+		PlayerState,
+		UVOIPTalker::StaticClass(),
+		TEXT("VOIPTalker")
+	);
+
 	if (!VOIPTalkerComponent)
 	{
-		// 권장: 엔진 헬퍼 사용 (생성 + 내부 등록 처리)
-		VOIPTalkerComponent = UVOIPTalker::CreateTalkerForPlayer(PS);
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌❌❌ Failed to create VOIPTalker with NewObject!"));
+		return;
+	}
 
-		if (!VOIPTalkerComponent)
-		{
-			UE_LOG(LogTemp, Error, TEXT("[VoIP] CreateTalkerForPlayer failed, fallback to NewObject"));
+	UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅ VOIPTalker created with NewObject"));
 
-			VOIPTalkerComponent = NewObject<UVOIPTalker>(PS, UVOIPTalker::StaticClass(), TEXT("VOIPTalker"));
-			if (!VOIPTalkerComponent)
-			{
-				UE_LOG(LogTemp, Error, TEXT("[VoIP] Failed to create VOIPTalker"));
-				return;
-			}
-		}
+	// 3D 위치 기반 음성 설정
+	FVoiceSettings Settings;
 
-		// 등록이 안 되어 있으면 월드에 등록
-		if (!VOIPTalkerComponent->IsRegistered())
-		{
-			VOIPTalkerComponent->RegisterComponentWithWorld(GetWorld());
-		}
-
-		// PlayerState에 연결 (CreateTalkerForPlayer가 했더라도, 안전하게 한 번 더)
-		VOIPTalkerComponent->RegisterWithPlayerState(PS);
-		UE_LOG(LogTemp, Warning, TEXT("[VoIP] VOIPTalker created & registered"));
+	// Character의 Root Component에 붙임
+	APawn* MyPawn = GetPawn();
+	if (MyPawn)
+	{
+		Settings.ComponentToAttachTo = MyPawn->GetRootComponent();
+		UE_LOG(LogTemp, Warning, TEXT("[VoIP] VOIPTalker attached to Pawn root: %s"),
+			*MyPawn->GetName());
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[VoIP] VOIPTalker already exists, reuse"));
+		UE_LOG(LogTemp, Warning, TEXT("[VoIP] ⚠️ No Pawn yet"));
 	}
 
-	// 붙일 컴포넌트(공간 음성 기준)
-	FVoiceSettings NewSettings = VOIPTalkerComponent->Settings;
-	if (APawn* MyPawn = GetPawn())
+	Settings.AttenuationSettings = nullptr;
+	VOIPTalkerComponent->Settings = Settings;
+
+	UE_LOG(LogTemp, Error, TEXT("[VoIP] Calling RegisterComponent()..."));
+	VOIPTalkerComponent->RegisterComponent();
+
+	UE_LOG(LogTemp, Error, TEXT("[VoIP] Calling RegisterWithPlayerState()..."));
+	VOIPTalkerComponent->RegisterWithPlayerState(PlayerState);
+
+	UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅✅✅ VOIPTalker fully registered"));
+
+	// 확인
+	UVOIPTalker* FoundTalker = PlayerState->FindComponentByClass<UVOIPTalker>();
+	if (FoundTalker)
 	{
-		NewSettings.ComponentToAttachTo = MyPawn->GetRootComponent();
-		UE_LOG(LogTemp, Warning, TEXT("[VoIP] Attached to Pawn root: %s"), *MyPawn->GetName());
+		UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅ Verification: VOIPTalker found in PlayerState!"));
 	}
 	else
 	{
-		// Pawn 없으면 OnPossess에서 다시 붙이게 두면 됨
-		NewSettings.ComponentToAttachTo = nullptr;
-		UE_LOG(LogTemp, Warning, TEXT("[VoIP] No Pawn yet, will attach in OnPossess"));
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ Verification FAILED: VOIPTalker NOT found in PlayerState!"));
 	}
-
-	// 감쇠(3D 거리감) 쓰려면 여기서 AttenuationSettings를 너의 USoundAttenuation 에셋으로 넣어줘야 함
-	NewSettings.AttenuationSettings = nullptr;
-
-	VOIPTalkerComponent->Settings = NewSettings;
-
-	// 핵심: IsActive() 체크로 낚이지 않도록, 컴포넌트 Activate는 확실히 켜둠
-	VOIPTalkerComponent->bAutoActivate = true;
-	if (!VOIPTalkerComponent->IsActive())
-	{
-		VOIPTalkerComponent->Activate(true);
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("[VoIP] VOIPTalker ready. Registered=%d Active=%d"),
-		VOIPTalkerComponent->IsRegistered() ? 1 : 0,
-		VOIPTalkerComponent->IsActive() ? 1 : 0);
 }
-
 
 
 
