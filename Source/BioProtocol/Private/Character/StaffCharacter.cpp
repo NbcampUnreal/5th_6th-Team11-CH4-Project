@@ -147,19 +147,6 @@ void AStaffCharacter::BeginPlay()
 		}
 	}
 
-	/*
-	if (HasAuthority() && Status)
-	{
-		Status->ApplyBaseStatus();
-	}
-
-	if (USkeletalMeshComponent* MeshComp = GetMesh())
-	{
-		MeshComp->SetRenderCustomDepth(true);
-
-		MeshComp->SetCustomDepthStencilValue(1);
-	}
-	*/
 
 }
 
@@ -396,8 +383,7 @@ void AStaffCharacter::ServerPullLever_Internal()
 	AController* C = GetController();
 	if (!C)
 		return;
-	//ktodo:��������(������ ���°Ű�����) �߰��ʿ�
-	//UE_LOG(LogTemp, Warning, TEXT("test"));
+
 	if (!GetWorld()->GetTimerManager().IsTimerActive(GaugeTimerHandle))
 	{
 		GetWorld()->GetTimerManager().SetTimer(
@@ -447,8 +433,6 @@ void AStaffCharacter::ReleaseLever()
 
 	bHoldingLever = false;
 
-
-	//���� ���� ������ ������
 	FRotator CurrentRot = Controller->GetControlRotation();
 	CurrentRot.Yaw = LeverBaseYaw;
 	Controller->SetControlRotation(CurrentRot);
@@ -581,7 +565,7 @@ float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 
 void AStaffCharacter::TestHit()
 {
-	// ������ ��û
+	
 	Server_TestHit();
 }
 
@@ -627,7 +611,6 @@ void AStaffCharacter::Server_TestHit_Implementation()
 		this,
 		UDamageType::StaticClass()
 	);
-	//Multicast_SetTestMaterial();
 
 }
 void AStaffCharacter::Multicast_SetTestMaterial_Implementation()
@@ -643,18 +626,6 @@ void AStaffCharacter::Multicast_SetTestMaterial_Implementation()
 	}
 }
 
-//void AStaffCharacter::ServerRPCTakeDamage_Implementation(float Damage)
-//{
-//	if (Status)
-//	{
-//		Status->ApplyDamage(Damage);
-//	}
-//}
-
-//bool AStaffCharacter::ServerRPCTakeDamage_Validate(float Damage)
-//{
-//	return true;
-//}
 
 void AStaffCharacter::PerformInteractionCheck()
 {
@@ -721,26 +692,6 @@ void AStaffCharacter::PerformInteractionCheck()
 	NoInteractableFound();
 }
 
-/*
-void AStaffCharacter::NoInteractableFound()
-{
-	if (IsInteracting())
-	{
-		GetWorldTimerManager().ClearTimer(TimerHandle_Interaction);
-	}
-	// �Ⱦ� ����� ��� ���� ���� ���� ���� ���� �� ���
-	if (InteractionData.CurrentInteractable)
-	{
-		TargetInteractable->EndFocus(); 
-	}
-
-	//Hide interaction widget on the HUD
-
-	//�ʱ�ȭ
-	InteractionData.CurrentInteractable = nullptr;
-	TargetInteractable = nullptr;
-}
-	*/
 
 void AStaffCharacter::NoInteractableFound()
 {
@@ -767,45 +718,14 @@ void AStaffCharacter::NoInteractableFound()
 	// 초기화
 	InteractionData.CurrentInteractable = nullptr;
 
-	// 수정: TargetInteractable 사용 안 함 (제거 권장)
-	// TargetInteractable.SetObject(nullptr);
-	// TargetInteractable.SetInterface(nullptr);
 }
 
-/*
-void AStaffCharacter::BeginInteract()
-{
-	// verify nothig has changed with the interactavle state since beginning interaction
-	PerformInteractionCheck();
-
-	if (InteractionData.CurrentInteractable)
-	{
-		TargetInteractable->BeginInteract();
-
-		//���ӽð��� ���� 0����
-		if (FMath::IsNearlyZero(TargetInteractable->InteractableData.InteractionDuration, 0.1f))
-		{
-			Interact();
-		}
-		else
-		{
-			//���ӽð��� ���� 0�� �ƴ϶�� Ÿ�̸Ӹ� �����ϰ� ������ ��ȣ�ۿ��� ��
-			GetWorldTimerManager().SetTimer(TimerHandle_Interaction,
-				this,
-				&AStaffCharacter::Interact,
-				TargetInteractable->InteractableData.InteractionDuration,
-				false
-			);
-		}
-	}
-}
-	*/
 void AStaffCharacter::BeginInteract()
 {
 	UE_LOG(LogTemp, Warning, TEXT("========================================"));
 	UE_LOG(LogTemp, Warning, TEXT("[Player] BeginInteract called!"));
 
-	// 🔧 수정: PerformInteractionCheck 제거 (이미 Tick에서 계속 호출됨)
+	// 수정: PerformInteractionCheck 제거 (이미 Tick에서 계속 호출됨)
 	// PerformInteractionCheck();  // ← 불필요! 제거!
 
 	if (!InteractionData.CurrentInteractable)
@@ -846,7 +766,7 @@ void AStaffCharacter::BeginInteract()
 	{
 		UE_LOG(LogTemp, Log, TEXT("[Player] Setting timer for %.2f seconds..."), Data.InteractionDuration);
 
-		// 🔧 수정: Lambda 대신 직접 Interact() 호출하도록 타이머 설정
+		// 수정: Lambda 대신 직접 Interact() 호출하도록 타이머 설정
 		GetWorldTimerManager().SetTimer(
 			TimerHandle_Interaction,
 			this,
@@ -1016,115 +936,6 @@ void AStaffCharacter::DropCurrentItem()
 	UE_LOG(LogTemp, Warning, TEXT("[Player] ✓ Drop completed! PickUp spawned: %s"),
 		*DroppedPickup->GetName());
 
-	/*
-	// 장착된 아이템이 없으면 리턴
-	if (!CurrentEquippedItem)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Player] No item to drop"));
-		return;
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("[Player] Dropping equipped item: %s"),
-		*CurrentEquippedItem->GetName());
-
-	AEquippableItem* EquippedItem = CurrentEquippedItem;
-	UItemBase* ItemReference = EquippedItem->ItemReference;
-
-	if (!ItemReference)
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Player] ItemReference is null!"));
-		return;
-	}
-
-	// ========================================
-	// 아이템 던질 위치 계산
-	// ========================================
-	FVector ThrowDirection = GetActorForwardVector();
-	FVector ThrowLocation = GetActorLocation() + (ThrowDirection * 100.0f) + FVector(0, 0, 50.0f);
-	FRotator ThrowRotation = GetActorRotation();
-
-	// ========================================
-	// 월드에 APickUp 생성
-	// ========================================
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = this;
-	SpawnParams.SpawnCollisionHandlingOverride =
-		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
-	APickUp* DroppedPickup = GetWorld()->SpawnActor<APickUp>(
-		APickUp::StaticClass(),
-		ThrowLocation,
-		ThrowRotation,
-		SpawnParams
-	);
-
-	if (!DroppedPickup)
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Player] Failed to spawn PickUp!"));
-		return;
-	}
-
-	// ========================================
-	// PickUp 초기화
-	// ========================================
-	// 드랍된 픽업임을 표시 (BeginPlay에서 DataTable 로직 스킵용)
-	DroppedPickup->bSpawnedFromWorld = false;
-
-	DroppedPickup->InitializeDrop(ItemReference, ItemReference->Quantity);
-
-	// ========================================
-	// 물리 시뮬레이션 활성화 (던지기)
-	// ========================================
-	if (DroppedPickup->PickUpMesh)
-	{
-		DroppedPickup->PickUpMesh->SetSimulatePhysics(true);
-		DroppedPickup->PickUpMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		DroppedPickup->PickUpMesh->AddImpulse(ThrowDirection * 500.0f, NAME_None, true);
-
-		UE_LOG(LogTemp, Log, TEXT("[Player] PickUp physics enabled and thrown"));
-	}
-	
-	if (Inventory)
-	{
-		// CurrentSlot에서 아이템 제거
-		switch (CurrentSlot)
-		{
-		case 1:
-			Inventory->Slot1_Weapon = nullptr;
-			UE_LOG(LogTemp, Log, TEXT("[Player SERVER] Cleared Slot 1"));
-			break;
-		case 2:
-			Inventory->Slot2_Tool = nullptr;
-			UE_LOG(LogTemp, Log, TEXT("[Player SERVER] Cleared Slot 2"));
-			break;
-		case 3:
-			Inventory->Slot3_Utility = nullptr;
-			UE_LOG(LogTemp, Log, TEXT("[Player SERVER] Cleared Slot 3"));
-			break;
-		}
-
-		// 인벤토리 리스트에서도 제거
-		Inventory->RemoveItem(ItemReference);
-	}
-
-	// ========================================
-	// 현재 장착 해제
-	// ========================================
-	CurrentEquippedItem = nullptr;
-	CurrentSlot = 0;
-
-	// ========================================
-	// AEquippableItem 제거
-	// ========================================
-	if (EquippedItem)
-	{
-		//EquippedItem->Destroy();
-		UE_LOG(LogTemp, Log, TEXT("[Player] EquippableItem destroyed"));
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("[Player] ✓ Drop completed! PickUp spawned: %s"),
-		*DroppedPickup->GetName());
-		*/
 }
 
 void AStaffCharacter::UseEquippedItem()
