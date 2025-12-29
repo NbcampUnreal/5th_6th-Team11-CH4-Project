@@ -737,6 +737,7 @@ void AStaffCharacter::PerformInteractionCheck()
 					return;  // ← 여기서 함수 종료!
 				}
 			}
+<<<<<<< Updated upstream
 			else
 			{
 				// Interface를 구현하지 않은 물체를 봄
@@ -747,7 +748,11 @@ void AStaffCharacter::PerformInteractionCheck()
 		{
 			// LineTrace가 아무것도 안 맞음
 			//UE_LOG(LogTemp, Log, TEXT("[Player] LineTrace hit nothing"));
+=======
+			
+>>>>>>> Stashed changes
 		}
+
 	}
 
 	NoInteractableFound();
@@ -785,9 +790,6 @@ void AStaffCharacter::BeginInteract()
 {
 	UE_LOG(LogTemp, Warning, TEXT("========================================"));
 	UE_LOG(LogTemp, Warning, TEXT("[Player] BeginInteract called!"));
-
-	// 수정: PerformInteractionCheck 제거 (이미 Tick에서 계속 호출됨)
-	// PerformInteractionCheck();  // ← 불필요! 제거!
 
 	if (!InteractionData.CurrentInteractable)
 	{
@@ -892,6 +894,13 @@ void AStaffCharacter::UnequipCurrentItem()
 
 void AStaffCharacter::DropCurrentItem()
 {
+	if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Player CLIENT] Calling ServerDropItem RPC"));
+		ServerDropItem();
+		return;
+	}
+
 	if (!CurrentEquippedItem)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[Player] No item to drop"));
@@ -1710,15 +1719,8 @@ void AStaffCharacter::Die()
 
 void AStaffCharacter::ServerInteract_Implementation(AActor* InteractableActor)
 {
-	if (!InteractableActor)
+	if (!InteractableActor || !InteractableActor->Implements<UInteractionInterface>())
 	{
-		UE_LOG(LogTemp, Error, TEXT("[Player SERVER] InteractableActor is null!"));
-		return;
-	}
-
-	if (!InteractableActor->Implements<UInteractionInterface>())
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Player SERVER] Actor does not implement interface!"));
 		return;
 	}
 

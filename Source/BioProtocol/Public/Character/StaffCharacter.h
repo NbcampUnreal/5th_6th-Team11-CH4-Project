@@ -19,7 +19,12 @@ class UInventoryComponent;
 class AEquippableItem;
 class UItemBase;
 class IInteractionInterface;
+<<<<<<< Updated upstream
 class UChildActorComponent;
+=======
+class UDataTable;
+class UAnimMontage;
+>>>>>>> Stashed changes
 
 USTRUCT()
 struct FInteractionData

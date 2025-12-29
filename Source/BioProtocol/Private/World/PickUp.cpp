@@ -19,13 +19,13 @@ APickUp::APickUp()
 	// 픽업 메시 생성
 	PickUpMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PickUpMesh"));
 	SetRootComponent(PickUpMesh);
-	PickUpMesh->SetSimulatePhysics(true);
+	PickUpMesh->SetSimulatePhysics(false);
 	PickUpMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	PickUpMesh->SetCollisionResponseToAllChannels(ECR_Block);
 
 	// 기본값 초기화
 	ItemQuantity = 1;
-	ItemReference = nullptr;
+	//ItemReference = nullptr;
 }
 
 void APickUp::BeginPlay()
@@ -36,20 +36,35 @@ void APickUp::BeginPlay()
 	UE_LOG(LogTemp, Warning, TEXT("[PickUp] BeginPlay: %s (Authority: %d)"),
 		*GetName(), HasAuthority());
 
-	// ========================================
-	// 서버만 실행
-	// ========================================
+
 	if (HasAuthority())
 	{
-		// Drop된 아이템은 스킵
+		// Drop된 아이템은 스킵 (InitializeDrop에서 처리됨)
 		if (ItemReference)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[PickUp] Dropped item, skipping init"));
+			UE_LOG(LogTemp, Warning, TEXT("[PickUp SERVER] Dropped item, skipping init"));
 			return;
 		}
 
 		// 월드 배치 아이템 초기화
+		UE_LOG(LogTemp, Warning, TEXT("[PickUp SERVER] World-placed pickup, initializing..."));
 		InitializeFromDataTable();
+
+		// ReplicatedItemData 설정 (클라이언트 동기화)
+		if (ItemReference)
+		{
+			ReplicatedItemData.ItemID = ItemReference->ItemID;
+			ReplicatedItemData.ItemType = ItemReference->ItemType;
+			ReplicatedItemData.ItemQuality = ItemReference->ItemQuality;
+			ReplicatedItemData.Category = ItemReference->Category;
+			ReplicatedItemData.NumericData = ItemReference->NumericData;
+			ReplicatedItemData.TextData = ItemReference->TextData;
+			ReplicatedItemData.AssetData = ItemReference->AssetData;
+			ReplicatedItemData.ItemClass = ItemReference->ItemClass;
+			ReplicatedItemData.Quantity = ItemReference->Quantity;
+
+			UE_LOG(LogTemp, Warning, TEXT("[PickUp SERVER] ? ReplicatedItemData set"));
+		}
 	}
 }
 
@@ -263,19 +278,16 @@ void APickUp::InitializeDrop(UItemBase* ItemToDrop, const int32 InItemQuantity)
 
 void APickUp::UpdateInteractableData()
 {
-	if (!ItemReference)
+	InstanceInteractableData.InteractableType = EInteractableType::Pickup;
+	InstanceInteractableData.Action = FText::FromString("Pick Up");
+
+	if (ItemReference)
 	{
-		return;
+		InstanceInteractableData.Name = ItemReference->TextData.Name;
+		InstanceInteractableData.Quantity = ItemReference->Quantity;
 	}
 
-	// 상호작용 데이터 구성
-	InstanceInteractableData.InteractableType = EInteractableType::Pickup;
-	InstanceInteractableData.Action = ItemReference->TextData.InteractionText;
-	InstanceInteractableData.Name = ItemReference->TextData.Name;
-	InstanceInteractableData.Quantity = ItemReference->Quantity;
-
-	// 인터페이스 데이터 갱신
-	InteractableData = InstanceInteractableData;
+	InstanceInteractableData.InteractionDuration = 0.0f;
 }
 
 //==========================================
@@ -311,30 +323,18 @@ void APickUp::EndInteract_Implementation()
 
 void APickUp::Interact_Implementation(AStaffCharacter* PlayerCharacter)
 {
-	UE_LOG(LogTemp, Warning, TEXT("========================================"));
-	UE_LOG(LogTemp, Warning, TEXT("[PickUp] Interact_Implementation called!"));
+	UE_LOG(LogTemp, Warning, TEXT("[PickUp] Interact_Implementation called"));
+	UE_LOG(LogTemp, Warning, TEXT("[PickUp] HasAuthority: %s"), HasAuthority() ? TEXT("TRUE") : TEXT("FALSE"));
 
-	if (!PlayerCharacter)
+	if (!HasAuthority())
 	{
-		UE_LOG(LogTemp, Error, TEXT("[PickUp] PlayerCharacter is null!"));
-		UE_LOG(LogTemp, Warning, TEXT("========================================"));
-		return;
-	}
-
-	const bool bIsAuthority = HasAuthority();
-	UE_LOG(LogTemp, Warning, TEXT("[PickUp] HasAuthority: %s"), bIsAuthority ? TEXT("TRUE") : TEXT("FALSE"));
-
-	if (!bIsAuthority)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[PickUp] Called on client, skipping"));
-		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+		UE_LOG(LogTemp, Error, TEXT("[PickUp] Interact called on client!"));
 		return;
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("[PickUp] Running on server - calling TakePickup"));
+
 	TakePickup(PlayerCharacter);
-	UE_LOG(LogTemp, Warning, TEXT("[PickUp] TakePickup completed"));
-	UE_LOG(LogTemp, Warning, TEXT("========================================"));
 }
 
 FInteractableData APickUp::GetInteractableData_Implementation() const
@@ -344,8 +344,9 @@ FInteractableData APickUp::GetInteractableData_Implementation() const
 
 bool APickUp::CanInteract_Implementation(AStaffCharacter* PlayerCharacter) const
 {
+	return true;
 	// 아이템 참조가 유효하고, 상호작용 가능 상태인지 확인
-	return ItemReference != nullptr && InstanceInteractableData.bCanInteract;
+	//return ItemReference != nullptr && InstanceInteractableData.bCanInteract;
 }
 
 void APickUp::TakePickup(const AStaffCharacter* Taker)
