@@ -113,9 +113,34 @@ void ABioPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UE_LOG(LogTemp, Error, TEXT("=== BioPlayerController::BeginPlay START ==="));
-	UE_LOG(LogTemp, Error, TEXT("IsLocalController: %s"), IsLocalController() ? TEXT("YES") : TEXT("NO"));
-	UE_LOG(LogTemp, Error, TEXT("PlayerState: %s"), PlayerState ? TEXT("EXISTS") : TEXT("NULL"));
+	// ===== 필수 디버그 로그 =====
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		ENetMode NetMode = World->GetNetMode();
+		UE_LOG(LogTemp, Error, TEXT("========================================"));
+		UE_LOG(LogTemp, Error, TEXT("BioPlayerController::BeginPlay"));
+		UE_LOG(LogTemp, Error, TEXT("========================================"));
+		UE_LOG(LogTemp, Error, TEXT("NetMode: %d (0=Standalone, 1=DedicatedServer, 2=ListenServer, 3=Client)"), (int32)NetMode);
+		UE_LOG(LogTemp, Error, TEXT("HasAuthority: %s"), HasAuthority() ? TEXT("YES") : TEXT("NO"));
+		UE_LOG(LogTemp, Error, TEXT("IsLocalController: %s"), IsLocalController() ? TEXT("YES") : TEXT("NO"));
+		UE_LOG(LogTemp, Error, TEXT("IsRunningDedicatedServer: %s"), IsRunningDedicatedServer() ? TEXT("YES") : TEXT("NO"));
+		UE_LOG(LogTemp, Error, TEXT("PlayerState: %s"), PlayerState ? TEXT("EXISTS") : TEXT("NULL"));
+
+		if (NetMode == NM_Client || NetMode == NM_ListenServer)
+		{
+			UE_LOG(LogTemp, Error, TEXT("✅ NetMode is valid for VoIP"));
+		}
+		else if (NetMode == NM_Standalone)
+		{
+			UE_LOG(LogTemp, Error, TEXT("❌ NetMode is Standalone - VoIP will NOT work!"));
+		}
+		else if (NetMode == NM_DedicatedServer)
+		{
+			UE_LOG(LogTemp, Error, TEXT("ℹ️ This is the Dedicated Server - VoIP will relay"));
+		}
+		UE_LOG(LogTemp, Error, TEXT("========================================"));
+	}
 
 	if (IsLocalController())
 	{
@@ -129,35 +154,38 @@ void ABioPlayerController::BeginPlay()
 			}
 		}
 
-		// VOIPTalker 생성 타이머
-		UE_LOG(LogTemp, Error, TEXT("Setting timer for VOIPTalker creation..."));
-
-		FTimerHandle InitTimer;
-		GetWorldTimerManager().SetTimer(InitTimer, [this]()
-			{
-				UE_LOG(LogTemp, Error, TEXT("=== VOIPTalker Creation Timer Fired ==="));
-				UE_LOG(LogTemp, Error, TEXT("PlayerState in timer: %s"), PlayerState ? TEXT("EXISTS") : TEXT("NULL"));
-
-				if (PlayerState)
+		// NetMode 체크
+		if (World && World->GetNetMode() != NM_Standalone && World->GetNetMode() != NM_DedicatedServer)
+		{
+			// ⭐ 세션 생성을 기다린 후 VoIP 시작
+			FTimerHandle InitTimer;
+			GetWorldTimerManager().SetTimer(InitTimer, [this]()
 				{
-					UE_LOG(LogTemp, Error, TEXT("Calling CreateVOIPTalker..."));
-					CreateVOIPTalker();
-
-					// Pawn 확인
-					APawn* MyPawn = GetPawn();
-					UE_LOG(LogTemp, Error, TEXT("Pawn: %s"), MyPawn ? TEXT("EXISTS") : TEXT("NULL"));
-
-					if (MyPawn && VOIPTalkerComponent)
+					if (PlayerState)
 					{
-						VOIPTalkerComponent->Settings.ComponentToAttachTo = MyPawn->GetRootComponent();
-						UE_LOG(LogTemp, Warning, TEXT("[VoIP] VOIPTalker re-attached to spawned Pawn"));
+						UE_LOG(LogTemp, Error, TEXT("🎤 Attempting to create VOIPTalker..."));
+						CreateVOIPTalker();
+
+						APawn* MyPawn = GetPawn();
+						if (MyPawn && VOIPTalkerComponent)
+						{
+							VOIPTalkerComponent->Settings.ComponentToAttachTo = MyPawn->GetRootComponent();
+							UE_LOG(LogTemp, Warning, TEXT("[VoIP] VOIPTalker attached to Pawn"));
+						}
+
+						// ⭐ 2초 후 음성 활성화 (세션 등록 대기)
+						FTimerHandle VoiceTimer;
+						GetWorldTimerManager().SetTimer(VoiceTimer, [this]()
+							{
+								StartNativeVoIP();
+							}, 1.0f, false);
 					}
-				}
-				else
-				{
-					UE_LOG(LogTemp, Error, TEXT("PlayerState STILL NULL after 0.5s!"));
-				}
-			}, 0.5f, false);
+					else
+					{
+						UE_LOG(LogTemp, Error, TEXT("❌ PlayerState is NULL after 1 second!"));
+					}
+				}, 1.0f, false);
+		}
 	}
 }
 
@@ -413,46 +441,26 @@ void ABioPlayerController::StartNativeVoIP()
 	}
 	UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅ PlayerState: %s"), *PlayerState->GetPlayerName());
 
-	// VOIPTalker 생성 시도
+	// VOIPTalker 생성
 	UE_LOG(LogTemp, Error, TEXT("[VoIP] Attempting to create VOIPTalker..."));
 	CreateVOIPTalker();
 
-	// NetConnection 확인
-	if (!Player || !Player->PlayerController)
-	{
-		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ NetConnection NULL"));
-		return;
-	}
-	UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅ NetConnection valid"));
-
-	// VoIP 시작
-	UE_LOG(LogTemp, Warning, TEXT("[VoIP] 🎤 Calling StartTalking()..."));
-	StartTalking();
-
-	// VOIPTalker 확인
 	if (!VOIPTalkerComponent)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ VOIPTalker component not found"));
-		UE_LOG(LogTemp, Error, TEXT("[VoIP] Check: [Voice] bEnabled and VoiceChannel=1 in ini"));
-
-		// PlayerState에서 직접 찾아보기
-		UVOIPTalker* FoundTalker = PlayerState->FindComponentByClass<UVOIPTalker>();
-		if (FoundTalker)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[VoIP] Found VOIPTalker in PlayerState!"));
-			VOIPTalkerComponent = FoundTalker;
-		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("[VoIP] VOIPTalker really doesn't exist in PlayerState"));
-		}
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ Failed to create VOIPTalker"));
+		return;
 	}
-	else
+
+	// ⭐ 중요: ToggleSpeaking 명령어 실행
+	UE_LOG(LogTemp, Warning, TEXT("[VoIP] 🎤 Executing ToggleSpeaking 1..."));
+
+	// 콘솔 명령어로 음성 활성화
+	if (APlayerController* PC = Cast<APlayerController>(this))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅ VOIPTalker component exists!"));
+		PC->ConsoleCommand(TEXT("ToggleSpeaking 1"));
 	}
 
-	// 0.5초 후 VOIPTalker 상태 확인
+	// 0.5초 후 상태 확인
 	FTimerHandle CheckTimer;
 	World->GetTimerManager().SetTimer(CheckTimer, [this]()
 		{
@@ -474,12 +482,6 @@ void ABioPlayerController::StartNativeVoIP()
 			else
 			{
 				UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ VOIPTalker still NULL after creation attempt"));
-			}
-
-			if (UWorld* W = GetWorld())
-			{
-				UE_LOG(LogTemp, Warning, TEXT("[VoIP] Debug - NumPlayers: %d"),
-					W->GetNumPlayerControllers());
 			}
 		}, 0.5f, false);
 }
