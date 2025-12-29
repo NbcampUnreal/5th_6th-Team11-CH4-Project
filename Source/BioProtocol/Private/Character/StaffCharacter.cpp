@@ -162,7 +162,12 @@ void AStaffCharacter::BeginPlay()
 		}
 	}
 
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		MeshComp->SetRenderCustomDepth(true);
 
+		MeshComp->SetCustomDepthStencilValue(1);
+	}
 }
 
 // Called every frame
