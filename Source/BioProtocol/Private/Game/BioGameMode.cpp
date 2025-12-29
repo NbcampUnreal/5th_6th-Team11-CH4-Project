@@ -9,6 +9,7 @@
 #include "Character/StaffStatusComponent.h"
 #include <Character/ThirdSpectatorPawn.h>
 #include <Character/StaffCharacter.h>
+#include "Character/BioPlayerController.h"
 #include "VoiceChannelManager.h"
 #include "HttpModule.h"
 #include "Interfaces/IHttpRequest.h"
@@ -16,8 +17,6 @@
 #include "Json.h"
 #include "JsonUtilities.h"
 
-
-#include "TestController.h"//임시
 
 
 ABioGameMode::ABioGameMode()
@@ -253,8 +252,29 @@ void ABioGameMode::CheckWinConditions()
 		if (ABioGameState* BioGS = GetGameState<ABioGameState>())
 		{
 			BioGS->SetGamePhase(EBioGamePhase::End);
+			// 테스트 후 EndGame 위치 옮기기
+			EndGame();
 		}
 	}
+}
+
+void ABioGameMode::CheckStaffWinConditions()
+{
+	// 직원이 이기는 경우 -> 탈출 포드 이용 시
+	// 탈출 포드 사용 시에 이 함수를 호출
+	if (BioGameState->bCanEscape)
+	{
+		UE_LOG(LogTemp, Error, TEXT("!!! STAFF WINS !!! Staff Escaped."));
+
+		if (ABioGameState* BioGS = GetGameState<ABioGameState>())
+		{
+			BioGS->SetGamePhase(EBioGamePhase::End);
+			// 테스트 후 EndGame 위치 옮기기
+			EndGame();
+		}
+	}
+
+
 }
 
 void ABioGameMode::SetPlayerSpectating(AController* VictimController)
@@ -351,9 +371,9 @@ void ABioGameMode::CreateGameVoiceChannels()
 	{
 		if (APlayerController* PC = It->Get())
 		{
-			if (ATestController* TestPC = Cast<ATestController>(PC))
+			if (ABioPlayerController* BioPC = Cast<ABioPlayerController>(PC))
 			{
-				if (ABioPlayerState* PS = TestPC->GetPlayerState<ABioPlayerState>())
+				if (ABioPlayerState* PS = BioPC->GetPlayerState<ABioPlayerState>())
 				{
 					if (PS->EOSPlayerName.IsEmpty())
 					{
@@ -414,10 +434,10 @@ void ABioGameMode::CreateGameChannel(EBioPlayerRole Team, const TArray<APlayerCo
 
 	for (APlayerController* PC : Players)
 	{
-		ATestController* TestPC = Cast<ATestController>(PC);
-		if (!TestPC) continue;
+		ABioPlayerController* BioPC = Cast<ABioPlayerController>(PC);
+		if (!BioPC) continue;
 
-		ABioPlayerState* PS = TestPC->GetPlayerState<ABioPlayerState>();
+		ABioPlayerState* PS = BioPC->GetPlayerState<ABioPlayerState>();
 		if (!PS || PS->EOSPlayerName.IsEmpty()) continue;
 
 		if (Team == EBioPlayerRole::Cleaner && PS->GameRole != EBioPlayerRole::Cleaner)
@@ -472,7 +492,7 @@ void ABioGameMode::CreateGameChannel(EBioPlayerRole Team, const TArray<APlayerCo
 
 			if (ValidControllers.Num() > 0)
 			{
-				if (ATestController* FirstPC = Cast<ATestController>(ValidControllers[0]))
+				if (ABioPlayerController* FirstPC = Cast<ABioPlayerController>(ValidControllers[0]))
 				{
 					FirstPC->Client_JoinGameChannel(ChannelName, ClientBaseUrl, FirstToken);
 				}
@@ -518,7 +538,7 @@ void ABioGameMode::CreateGameChannel(EBioPlayerRole Team, const TArray<APlayerCo
 
 						if (PlayerIndex < ValidControllers.Num())
 						{
-							if (ATestController* PC = Cast<ATestController>(ValidControllers[PlayerIndex]))
+							if (ABioPlayerController* PC = Cast<ABioPlayerController>(ValidControllers[PlayerIndex]))
 							{
 								PC->Client_JoinGameChannel(ChannelName, ClientBaseUrl, ParticipantToken);
 							}

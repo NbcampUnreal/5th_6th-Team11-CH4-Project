@@ -1,5 +1,5 @@
 ﻿#include "VoiceChannelManager.h"
-#include "TestController.h"
+#include "Character/BioPlayerController.h"
 #include "Engine/World.h"
 
 void UVoiceChannelManager::RegisterLobbyChannel(const FString& ChannelName)
@@ -17,7 +17,7 @@ void UVoiceChannelManager::OnGameStart()
     {
         for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
         {
-            if (ATestController* PC = Cast<ATestController>(It->Get()))
+            if (ABioPlayerController* PC = Cast<ABioPlayerController>(It->Get()))
             {
                 if (PC->IsLocalController())
                 {
@@ -39,7 +39,7 @@ void UVoiceChannelManager::OnGameEnd()
 
     for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
     {
-        if (ATestController* PC = Cast<ATestController>(It->Get()))
+        if (ABioPlayerController* PC = Cast<ABioPlayerController>(It->Get()))
         {
             if (PC->IsLocalController())
             {

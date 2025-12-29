@@ -25,7 +25,10 @@ public:
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
 	void SendPlayerToJail(AController* PlayerToJail);
+
 	void CheckWinConditions();
+
+	void CheckStaffWinConditions();
 
 	void SetPlayerSpectating(AController* VictimController);
 
