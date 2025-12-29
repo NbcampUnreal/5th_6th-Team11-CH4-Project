@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "VoiceChatResult.h"
+#include "Net/VoiceConfig.h"
 #include "BioPlayerController.generated.h"
 
 class UBioPlayerHUD;
@@ -21,6 +22,7 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void OnPossess(APawn* InPawn) override;
 
 public:
 	// UI
@@ -47,18 +49,31 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_SetReady();
 
+
+
+	//  VoIP 말하기 제어
+	UFUNCTION(BlueprintCallable, Category = "Voice|Native")
+	void StartNativeVoIP();
+
+	UFUNCTION(BlueprintCallable, Category = "Voice|Native")
+	void StopNativeVoIP();
+
+
+	void CreateVOIPTalker();
+
+
 	// Voice Channel Management
 	UFUNCTION(Client, Reliable)
 	void Client_JoinLobbyChannel(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken);
 
-	UFUNCTION(Client, Reliable)
+	UFUNCTION(Client, Reliable) //Client_JoinMafiaChannel
 	void Client_JoinGameChannel(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken);
 
 	UFUNCTION(BlueprintCallable, Category = "Voice")
 	void LeaveLobbyChannel();
 
 	UFUNCTION(BlueprintCallable, Category = "Voice")
-	void LeaveGameChannels();
+	void LeaveGameChannels(); //LeaveMafiaChannel
 
 	// Voice Transmission Control
 	UFUNCTION(BlueprintCallable, Category = "Voice")
@@ -72,6 +87,14 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Voice")
 	void VoiceTransmitToNone();
+
+
+
+	// 음성 송신 제어 (VoIP)
+	UFUNCTION(BlueprintCallable, Category = "Voice")
+	void EnableMafiaVoice(bool bEnable);
+
+
 
 	// Proximity Voice Settings
 	UPROPERTY(EditDefaultsOnly, Category = "Voice|Proximity")
@@ -92,6 +115,10 @@ private:
 	// Voice Chat
 	IVoiceChatUser* VoiceChatUser = nullptr;
 	void CacheVoiceChatUser();
+
+	// Native VoIP - 추가
+	UPROPERTY()
+	UVOIPTalker* VOIPTalkerComponent = nullptr;  // ← 추가
 
 	// Voice Channels
 	FString LobbyChannelName;

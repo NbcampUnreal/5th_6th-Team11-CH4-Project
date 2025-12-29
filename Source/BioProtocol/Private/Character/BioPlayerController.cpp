@@ -15,6 +15,8 @@
 #include "IOnlineSubsystemEOS.h"
 #include "EOSVoiceChat.h"
 #include "EOSVoiceChatTypes.h"
+#include "Net/VoiceConfig.h"
+
 
 ABioPlayerController::ABioPlayerController()
 {
@@ -23,86 +25,139 @@ ABioPlayerController::ABioPlayerController()
 		bReplicates ? TEXT("TRUE") : TEXT("FALSE"));
 }
 
+//void ABioPlayerController::BeginPlay()
+//{
+//	Super::BeginPlay();
+//
+//	UE_LOG(LogTemp, Error, TEXT("🔧 BioPlayerController BeginPlay - Authority: %s, LocalController: %s"),
+//		HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"),
+//		IsLocalController() ? TEXT("YES") : TEXT("NO"));
+//
+//	// UI 초기화 (로컬 컨트롤러만)
+//	if (IsLocalController())
+//	{
+//		if (BioHUDClass)
+//		{
+//			InGameHUD = CreateWidget<UBioPlayerHUD>(this, BioHUDClass);
+//
+//			if (InGameHUD)
+//			{
+//				InGameHUD->AddToViewport();
+//			}
+//		}
+//		else
+//		{
+//			UE_LOG(LogTemp, Error, TEXT("BioHUDClass is NOT set in BioPlayerController!"));
+//		}
+//
+//		// 근접 보이스 시작
+//		StartProximityVoice();
+//	}
+//
+//	// PlayerState 확인
+//	ABioPlayerState* PS = GetPlayerState<ABioPlayerState>();
+//	if (PS)
+//	{
+//		UE_LOG(LogTemp, Error, TEXT("🔧 BioPlayerState Found: %s, Role: %d"),
+//			*PS->GetName(), (int32)PS->GameRole);
+//	}
+//	else
+//	{
+//		UE_LOG(LogTemp, Error, TEXT("🔧 BioPlayerState NOT FOUND - Will retry"));
+//
+//		FTimerHandle RetryTimer;
+//		GetWorldTimerManager().SetTimer(RetryTimer, [this]()
+//			{
+//				ABioPlayerState* RetryPS = GetPlayerState<ABioPlayerState>();
+//				if (RetryPS)
+//				{
+//					UE_LOG(LogTemp, Error, TEXT("🔧 BioPlayerState Found (Retry): %s"), *RetryPS->GetName());
+//				}
+//				else
+//				{
+//					UE_LOG(LogTemp, Error, TEXT("🔧 BioPlayerState STILL NOT FOUND!"));
+//				}
+//			}, 1.0f, false);
+//	}
+//
+//	// 게임 맵에서는 송신 중지 상태로 시작
+//	UWorld* World = GetWorld();
+//	if (World)
+//	{
+//		FString MapName = World->GetMapName();
+//		if (MapName.StartsWith(TEXT("UEDPIE_")))
+//		{
+//			int32 UnderscoreIndex;
+//			if (MapName.FindChar('_', UnderscoreIndex))
+//			{
+//				MapName = MapName.RightChop(UnderscoreIndex + 1);
+//			}
+//		}
+//
+//		if (MapName.Contains(TEXT("/")))
+//		{
+//			int32 LastSlashIndex;
+//			MapName.FindLastChar('/', LastSlashIndex);
+//			MapName = MapName.RightChop(LastSlashIndex + 1);
+//		}
+//
+//		if (MapName.Contains(TEXT("TestSession")) || MapName.Contains(TEXT("GameMap")))
+//		{
+//			VoiceTransmitToNone();
+//		}
+//	}
+//}
+
+
 void ABioPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UE_LOG(LogTemp, Error, TEXT("🔧 BioPlayerController BeginPlay - Authority: %s, LocalController: %s"),
-		HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"),
-		IsLocalController() ? TEXT("YES") : TEXT("NO"));
+	UE_LOG(LogTemp, Error, TEXT("=== BioPlayerController::BeginPlay START ==="));
+	UE_LOG(LogTemp, Error, TEXT("IsLocalController: %s"), IsLocalController() ? TEXT("YES") : TEXT("NO"));
+	UE_LOG(LogTemp, Error, TEXT("PlayerState: %s"), PlayerState ? TEXT("EXISTS") : TEXT("NULL"));
 
-	// UI 초기화 (로컬 컨트롤러만)
 	if (IsLocalController())
 	{
+		// UI 초기화
 		if (BioHUDClass)
 		{
 			InGameHUD = CreateWidget<UBioPlayerHUD>(this, BioHUDClass);
-
 			if (InGameHUD)
 			{
 				InGameHUD->AddToViewport();
 			}
 		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("BioHUDClass is NOT set in BioPlayerController!"));
-		}
 
-		// 근접 보이스 시작
-		StartProximityVoice();
-	}
+		// VOIPTalker 생성 타이머
+		UE_LOG(LogTemp, Error, TEXT("Setting timer for VOIPTalker creation..."));
 
-	// PlayerState 확인
-	ABioPlayerState* PS = GetPlayerState<ABioPlayerState>();
-	if (PS)
-	{
-		UE_LOG(LogTemp, Error, TEXT("🔧 BioPlayerState Found: %s, Role: %d"),
-			*PS->GetName(), (int32)PS->GameRole);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("🔧 BioPlayerState NOT FOUND - Will retry"));
-
-		FTimerHandle RetryTimer;
-		GetWorldTimerManager().SetTimer(RetryTimer, [this]()
+		FTimerHandle InitTimer;
+		GetWorldTimerManager().SetTimer(InitTimer, [this]()
 			{
-				ABioPlayerState* RetryPS = GetPlayerState<ABioPlayerState>();
-				if (RetryPS)
+				UE_LOG(LogTemp, Error, TEXT("=== VOIPTalker Creation Timer Fired ==="));
+				UE_LOG(LogTemp, Error, TEXT("PlayerState in timer: %s"), PlayerState ? TEXT("EXISTS") : TEXT("NULL"));
+
+				if (PlayerState)
 				{
-					UE_LOG(LogTemp, Error, TEXT("🔧 BioPlayerState Found (Retry): %s"), *RetryPS->GetName());
+					UE_LOG(LogTemp, Error, TEXT("Calling CreateVOIPTalker..."));
+					CreateVOIPTalker();
+
+					// Pawn 확인
+					APawn* MyPawn = GetPawn();
+					UE_LOG(LogTemp, Error, TEXT("Pawn: %s"), MyPawn ? TEXT("EXISTS") : TEXT("NULL"));
+
+					if (MyPawn && VOIPTalkerComponent)
+					{
+						VOIPTalkerComponent->Settings.ComponentToAttachTo = MyPawn->GetRootComponent();
+						UE_LOG(LogTemp, Warning, TEXT("[VoIP] VOIPTalker re-attached to spawned Pawn"));
+					}
 				}
 				else
 				{
-					UE_LOG(LogTemp, Error, TEXT("🔧 BioPlayerState STILL NOT FOUND!"));
+					UE_LOG(LogTemp, Error, TEXT("PlayerState STILL NULL after 0.5s!"));
 				}
-			}, 1.0f, false);
-	}
-
-	// 게임 맵에서는 송신 중지 상태로 시작
-	UWorld* World = GetWorld();
-	if (World)
-	{
-		FString MapName = World->GetMapName();
-		if (MapName.StartsWith(TEXT("UEDPIE_")))
-		{
-			int32 UnderscoreIndex;
-			if (MapName.FindChar('_', UnderscoreIndex))
-			{
-				MapName = MapName.RightChop(UnderscoreIndex + 1);
-			}
-		}
-
-		if (MapName.Contains(TEXT("/")))
-		{
-			int32 LastSlashIndex;
-			MapName.FindLastChar('/', LastSlashIndex);
-			MapName = MapName.RightChop(LastSlashIndex + 1);
-		}
-
-		if (MapName.Contains(TEXT("TestSession")) || MapName.Contains(TEXT("GameMap")))
-		{
-			VoiceTransmitToNone();
-		}
+			}, 0.5f, false);
 	}
 }
 
@@ -110,6 +165,21 @@ void ABioPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(ProximityTimer);
 	Super::EndPlay(EndPlayReason);
+}
+
+void ABioPlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+
+	UE_LOG(LogTemp, Error, TEXT("=== OnPossess called ==="));
+	UE_LOG(LogTemp, Error, TEXT("Pawn: %s"), InPawn ? *InPawn->GetName() : TEXT("NULL"));
+	UE_LOG(LogTemp, Error, TEXT("VOIPTalkerComponent: %s"), VOIPTalkerComponent ? TEXT("EXISTS") : TEXT("NULL"));
+
+	if (IsLocalController() && VOIPTalkerComponent && InPawn)
+	{
+		VOIPTalkerComponent->Settings.ComponentToAttachTo = InPawn->GetRootComponent();
+		UE_LOG(LogTemp, Warning, TEXT("[VoIP] VOIPTalker attached to new Pawn in OnPossess"));
+	}
 }
 
 // ========================================
@@ -202,6 +272,7 @@ void ABioPlayerController::HandleLoginComplete(int32, bool bOk, const FUniqueNet
 // ========================================
 // Session Management
 // ========================================
+
 
 void ABioPlayerController::CreateLobby(const FString& Ip, int32 Port, int32 PublicConnections)
 {
@@ -301,6 +372,212 @@ void ABioPlayerController::Server_SetEOSPlayerName_Implementation(const FString&
 		UE_LOG(LogTemp, Error, TEXT("🟡 ERROR: PlayerState is NULL!"));
 	}
 }
+
+
+// ========================================
+// Native VoIP
+// ========================================
+
+void ABioPlayerController::StartNativeVoIP()
+{
+	UE_LOG(LogTemp, Error, TEXT("=== StartNativeVoIP START ==="));
+
+	if (!IsLocalController())
+	{
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ Not local controller"));
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ World is NULL"));
+		return;
+	}
+
+	// NetMode 확인
+	ENetMode NetMode = World->GetNetMode();
+	if (NetMode == NM_Standalone)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ NetMode: Standalone - VoIP NOT SUPPORTED"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅ NetMode: %d"), (int32)NetMode);
+
+	// PlayerState 확인
+	if (!PlayerState)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ PlayerState NULL"));
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅ PlayerState: %s"), *PlayerState->GetPlayerName());
+
+	// VOIPTalker 생성 시도
+	UE_LOG(LogTemp, Error, TEXT("[VoIP] Attempting to create VOIPTalker..."));
+	CreateVOIPTalker();
+
+	// NetConnection 확인
+	if (!Player || !Player->PlayerController)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ NetConnection NULL"));
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅ NetConnection valid"));
+
+	// VoIP 시작
+	UE_LOG(LogTemp, Warning, TEXT("[VoIP] 🎤 Calling StartTalking()..."));
+	StartTalking();
+
+	// VOIPTalker 확인
+	if (!VOIPTalkerComponent)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ VOIPTalker component not found"));
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] Check: [Voice] bEnabled and VoiceChannel=1 in ini"));
+
+		// PlayerState에서 직접 찾아보기
+		UVOIPTalker* FoundTalker = PlayerState->FindComponentByClass<UVOIPTalker>();
+		if (FoundTalker)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[VoIP] Found VOIPTalker in PlayerState!"));
+			VOIPTalkerComponent = FoundTalker;
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("[VoIP] VOIPTalker really doesn't exist in PlayerState"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅ VOIPTalker component exists!"));
+	}
+
+	// 0.5초 후 VOIPTalker 상태 확인
+	FTimerHandle CheckTimer;
+	World->GetTimerManager().SetTimer(CheckTimer, [this]()
+		{
+			UE_LOG(LogTemp, Error, TEXT("=== VoIP Status Check (0.5s later) ==="));
+
+			if (VOIPTalkerComponent)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[VoIP] VOIPTalkerComponent EXISTS"));
+
+				if (VOIPTalkerComponent->IsActive())
+				{
+					UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅✅✅ VOIPTalker is Active - Native VoIP WORKING!"));
+				}
+				else
+				{
+					UE_LOG(LogTemp, Warning, TEXT("[VoIP] ⚠️ VOIPTalker exists but not active yet"));
+				}
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ VOIPTalker still NULL after creation attempt"));
+			}
+
+			if (UWorld* W = GetWorld())
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[VoIP] Debug - NumPlayers: %d"),
+					W->GetNumPlayerControllers());
+			}
+		}, 0.5f, false);
+}
+
+void ABioPlayerController::StopNativeVoIP()
+{
+	if (!IsLocalController())
+		return;
+
+	StopTalking();
+
+	UE_LOG(LogTemp, Warning, TEXT("[Native VoIP] Stopped talking"));
+}
+
+void ABioPlayerController::CreateVOIPTalker()
+{
+	UE_LOG(LogTemp, Error, TEXT("=== CreateVOIPTalker START ==="));
+
+	if (!IsLocalController())
+	{
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ Not local controller"));
+		return;
+	}
+
+	if (!PlayerState)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ PlayerState is NULL"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Error, TEXT("[VoIP] PlayerState exists: %s"), *PlayerState->GetName());
+
+	// 이미 생성되어 있는지 확인
+	VOIPTalkerComponent = PlayerState->FindComponentByClass<UVOIPTalker>();
+
+	if (VOIPTalkerComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅ VOIPTalker already exists in PlayerState"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Error, TEXT("[VoIP] VOIPTalker not found, creating new one..."));
+
+	// VOIPTalker 생성
+	VOIPTalkerComponent = NewObject<UVOIPTalker>(
+		PlayerState,
+		UVOIPTalker::StaticClass(),
+		TEXT("VOIPTalker")
+	);
+
+	if (!VOIPTalkerComponent)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌❌❌ Failed to create VOIPTalker with NewObject!"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅ VOIPTalker created with NewObject"));
+
+	// 3D 위치 기반 음성 설정
+	FVoiceSettings Settings;
+
+	// Character의 Root Component에 붙임
+	APawn* MyPawn = GetPawn();
+	if (MyPawn)
+	{
+		Settings.ComponentToAttachTo = MyPawn->GetRootComponent();
+		UE_LOG(LogTemp, Warning, TEXT("[VoIP] VOIPTalker attached to Pawn root: %s"),
+			*MyPawn->GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[VoIP] ⚠️ No Pawn yet"));
+	}
+
+	Settings.AttenuationSettings = nullptr;
+	VOIPTalkerComponent->Settings = Settings;
+
+	UE_LOG(LogTemp, Error, TEXT("[VoIP] Calling RegisterComponent()..."));
+	VOIPTalkerComponent->RegisterComponent();
+
+	UE_LOG(LogTemp, Error, TEXT("[VoIP] Calling RegisterWithPlayerState()..."));
+	VOIPTalkerComponent->RegisterWithPlayerState(PlayerState);
+
+	UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅✅✅ VOIPTalker fully registered"));
+
+	// 확인
+	UVOIPTalker* FoundTalker = PlayerState->FindComponentByClass<UVOIPTalker>();
+	if (FoundTalker)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[VoIP] ✅ Verification: VOIPTalker found in PlayerState!"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[VoIP] ❌ Verification FAILED: VOIPTalker NOT found in PlayerState!"));
+	}
+}
+
+
 
 // ========================================
 // Voice Chat Core
@@ -413,32 +690,29 @@ void ABioPlayerController::JoinGameChannel_Local(const FString& ChannelName, con
 	if (!VoiceChatUser)
 		return;
 
-	bool bIsMafiaChannel = ChannelName.Contains(TEXT("Mafia"));
-	bool bIsPublicChannel = ChannelName.Contains(TEXT("Citizen")) || ChannelName.Contains(TEXT("Public"));
-
-	EVoiceChatChannelType ChannelType = EVoiceChatChannelType::NonPositional;
-
-	if (bIsMafiaChannel)
-	{
-		MafiaGameChannelName = ChannelName;
-		ChannelType = EVoiceChatChannelType::NonPositional;
-	}
-	else if (bIsPublicChannel)
-	{
-		PublicGameChannelName = ChannelName;
-		ChannelType = EVoiceChatChannelType::Positional;
-	}
-	else
-	{
-		return;
-	}
+	MafiaGameChannelName = ChannelName;
 
 	FEOSVoiceChatChannelCredentials Creds;
 	Creds.ClientBaseUrl = ClientBaseUrl;
 	Creds.ParticipantToken = ParticipantToken;
 
-	VoiceChatUser->JoinChannel(ChannelName, Creds.ToJson(), ChannelType,
-		FOnVoiceChatChannelJoinCompleteDelegate::CreateUObject(this, &ABioPlayerController::OnVoiceChannelJoined)
+	// 마피아 채널은 NonPositional (거리 무관)
+	VoiceChatUser->JoinChannel(ChannelName, Creds.ToJson(), EVoiceChatChannelType::NonPositional,
+		FOnVoiceChatChannelJoinCompleteDelegate::CreateLambda(
+			[this, ChannelName](const FString& JoinedChannel, const FVoiceChatResult& Result)
+			{
+				if (Result.IsSuccess())
+				{
+					UE_LOG(LogTemp, Warning, TEXT("[Voice] ✓ Joined mafia channel"));
+					// 기본적으로는 송신 OFF
+					VoiceChatUser->TransmitToNoChannels();
+				}
+				else
+				{
+					UE_LOG(LogTemp, Error, TEXT("[Voice] ✗ Failed to join mafia channel: %s"), *Result.ErrorDesc);
+				}
+			}
+		)
 	);
 }
 
@@ -448,40 +722,21 @@ void ABioPlayerController::LeaveGameChannels()
 		return;
 
 	CacheVoiceChatUser();
-	if (!VoiceChatUser)
+	if (!VoiceChatUser || MafiaGameChannelName.IsEmpty())
 		return;
 
-	if (!PublicGameChannelName.IsEmpty())
-	{
-		VoiceChatUser->LeaveChannel(PublicGameChannelName,
-			FOnVoiceChatChannelLeaveCompleteDelegate::CreateLambda(
-				[this](const FString&, const FVoiceChatResult& Result)
+	VoiceChatUser->LeaveChannel(MafiaGameChannelName,
+		FOnVoiceChatChannelLeaveCompleteDelegate::CreateLambda(
+			[this](const FString& LeftChannel, const FVoiceChatResult& Result)
+			{
+				if (Result.IsSuccess())
 				{
-					if (Result.IsSuccess())
-					{
-						UE_LOG(LogTemp, Warning, TEXT("[Voice] ✓ Left public game channel"));
-						PublicGameChannelName.Empty();
-					}
+					UE_LOG(LogTemp, Warning, TEXT("[Voice] ✓ Left mafia channel"));
+					MafiaGameChannelName.Empty();
 				}
-			)
-		);
-	}
-
-	if (!MafiaGameChannelName.IsEmpty())
-	{
-		VoiceChatUser->LeaveChannel(MafiaGameChannelName,
-			FOnVoiceChatChannelLeaveCompleteDelegate::CreateLambda(
-				[this](const FString&, const FVoiceChatResult& Result)
-				{
-					if (Result.IsSuccess())
-					{
-						UE_LOG(LogTemp, Warning, TEXT("[Voice] ✓ Left mafia game channel"));
-						MafiaGameChannelName.Empty();
-					}
-				}
-			)
-		);
-	}
+			}
+		)
+	);
 }
 
 void ABioPlayerController::OnVoiceChannelJoined(const FString& ChannelName, const FVoiceChatResult& Result)
@@ -500,6 +755,24 @@ void ABioPlayerController::OnVoiceChannelJoined(const FString& ChannelName, cons
 // ========================================
 // Voice Transmission Control
 // ========================================
+void ABioPlayerController::EnableMafiaVoice(bool bEnable)
+{
+	CacheVoiceChatUser();
+	if (!VoiceChatUser || MafiaGameChannelName.IsEmpty())
+		return;
+
+	if (bEnable)
+	{
+		TSet<FString> Channels = { MafiaGameChannelName };
+		VoiceChatUser->TransmitToSpecificChannels(Channels);
+		UE_LOG(LogTemp, Warning, TEXT("[Voice] Mafia voice enabled"));
+	}
+	else
+	{
+		VoiceChatUser->TransmitToNoChannels();
+		UE_LOG(LogTemp, Warning, TEXT("[Voice] Mafia voice disabled"));
+	}
+}
 
 void ABioPlayerController::VoiceTransmitToNone()
 {
@@ -560,29 +833,14 @@ void ABioPlayerController::UpdateProximityVoice()
 	if (!IsLocalController())
 		return;
 
-	CacheVoiceChatUser();
-	if (!VoiceChatUser || PublicGameChannelName.IsEmpty())
-		return;
-
 	UWorld* World = GetWorld();
 	if (!World)
 		return;
 
 	FVector ListenerLoc;
-	FVector ListenerForward = FVector::ForwardVector;
-	FVector ListenerUp = FVector::UpVector;
-
 	if (APawn* MyPawn = GetPawn())
 	{
 		ListenerLoc = MyPawn->GetActorLocation();
-		ListenerForward = MyPawn->GetActorForwardVector();
-		ListenerUp = MyPawn->GetActorUpVector();
-	}
-	else if (PlayerCameraManager)
-	{
-		ListenerLoc = PlayerCameraManager->GetCameraLocation();
-		ListenerForward = PlayerCameraManager->GetActorForwardVector();
-		ListenerUp = PlayerCameraManager->GetActorUpVector();
 	}
 	else
 	{
@@ -592,6 +850,7 @@ void ABioPlayerController::UpdateProximityVoice()
 	ABioPlayerState* MyPS = GetPlayerState<ABioPlayerState>();
 	const bool bIAmCleaner = (MyPS && MyPS->GameRole == EBioPlayerRole::Cleaner);
 
+	// 모든 플레이어를 순회하면서 거리 기반 볼륨 조절
 	for (TActorIterator<APawn> It(World); It; ++It)
 	{
 		APawn* OtherPawn = *It;
@@ -599,7 +858,7 @@ void ABioPlayerController::UpdateProximityVoice()
 			continue;
 
 		ABioPlayerState* OtherPS = Cast<ABioPlayerState>(OtherPawn->GetPlayerState());
-		if (!OtherPS || OtherPS->EOSPlayerName.IsEmpty())
+		if (!OtherPS)
 			continue;
 
 		const bool bOtherIsCleaner = (OtherPS->GameRole == EBioPlayerRole::Cleaner);
@@ -609,15 +868,16 @@ void ABioPlayerController::UpdateProximityVoice()
 
 		float Volume = CalcProxVolume01(Distance, ProxMinDist, ProxMaxDist);
 
-		VoiceChatUser->Set3DPosition(PublicGameChannelName, SpeakerLoc, ListenerLoc, ListenerForward, ListenerUp);
-
 		// 마피아끼리는 항상 최대 볼륨
 		if (bIAmCleaner && bOtherIsCleaner)
 		{
 			Volume = 1.0f;
 		}
 
-		VoiceChatUser->SetPlayerVolume(OtherPS->EOSPlayerName, Volume);
+		// 네이티브 VoIP는 APlayerState를 통해 음량 조절
+		//MutePlayer(OtherPS, false); // 음소거 해제
+		// 참고: UE5.5에서는 개별 플레이어 볼륨 조절 API가 제한적일 수 있음
+		// 필요시 VOIPTalker 컴포넌트를 직접 조작
 	}
 }
 

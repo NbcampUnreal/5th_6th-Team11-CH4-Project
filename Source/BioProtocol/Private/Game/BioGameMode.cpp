@@ -98,7 +98,7 @@ void ABioGameMode::BeginPlay()
 				else if (PlayerCount == 0)
 				{
 					UE_LOG(LogTemp, Error, TEXT("[GameMode] ✗ No players found, returning to lobby"));
-					GetWorld()->ServerTravel("/Game/Level/Lobby?listen");
+					GetWorld()->ServerTravel("/Game/Level/Lobby");
 				}
 			}, 15.0f, false);
 	}
@@ -358,7 +358,7 @@ void ABioGameMode::EndGame()
 	FTimerHandle TimerHandle;
 	GetWorldTimerManager().SetTimer(TimerHandle, [this]()
 		{
-			GetWorld()->ServerTravel("/Game/Level/Lobby?listen");
+			GetWorld()->ServerTravel("/Game/Level/Lobby");
 		}, 2.0f, false);
 }
 
@@ -399,11 +399,10 @@ void ABioGameMode::CreateGameVoiceChannels()
 	UE_LOG(LogTemp, Warning, TEXT("[GameMode] ✓ Creating voice channels - Total: %d, Mafia: %d"),
 		AllPlayers.Num(), MafiaPlayers.Num());
 
-	if (AllPlayers.Num() > 0)
-	{
-		CreatePublicGameChannel(AllPlayers);
-	}
+	// 공개 채널은 네이티브 VoIP 사용 (별도 생성 불필요)
+	// 모든 플레이어는 자동으로 네이티브 VoIP로 통신
 
+	// 마피아 채널만 EOS로 생성
 	if (MafiaPlayers.Num() > 0)
 	{
 		CreateMafiaGameChannel(MafiaPlayers);
@@ -455,6 +454,7 @@ void ABioGameMode::CreateGameChannel(EBioPlayerRole Team, const TArray<APlayerCo
 	const FString RoomId = ChannelName;
 	ABioPlayerState* FirstPS = ValidPlayerStates[0];
 
+	// 첫 번째 플레이어로 채널 생성
 	TSharedRef<IHttpRequest> CreateRequest = FHttpModule::Get().CreateRequest();
 	CreateRequest->SetURL(TrustedServerUrl + TEXT("/voice/create-channel"));
 	CreateRequest->SetVerb(TEXT("POST"));
@@ -490,6 +490,7 @@ void ABioGameMode::CreateGameChannel(EBioPlayerRole Team, const TArray<APlayerCo
 			const FString ClientBaseUrl = JsonResponse->GetStringField(TEXT("clientBaseUrl"));
 			const FString FirstToken = JsonResponse->GetStringField(TEXT("participantToken"));
 
+			// 첫 번째 플레이어 참여
 			if (ValidControllers.Num() > 0)
 			{
 				if (ABioPlayerController* FirstPC = Cast<ABioPlayerController>(ValidControllers[0]))
@@ -498,6 +499,7 @@ void ABioGameMode::CreateGameChannel(EBioPlayerRole Team, const TArray<APlayerCo
 				}
 			}
 
+			// 나머지 플레이어들 추가
 			for (int32 i = 1; i < ValidPlayerStates.Num(); i++)
 			{
 				ABioPlayerState* PS = ValidPlayerStates[i];
