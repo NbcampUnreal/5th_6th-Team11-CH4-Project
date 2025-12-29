@@ -25,6 +25,7 @@ enum class EItemRarity : uint8
 UENUM(BlueprintType)
 enum class EItemCategory : uint8
 {
+    None,
     Weapon   UMETA(DisplayName = "Weapon"),    // 무기 아이템
     Work     UMETA(DisplayName = "Work"),      // 업무(미션)용 아이템
     Utility  UMETA(DisplayName = "Utility")    // 유틸리티(소모품 등)
@@ -34,6 +35,7 @@ enum class EItemCategory : uint8
 UENUM(BlueprintType)
 enum class EItemType : uint8
 {
+    None,
     Tool,
     Weapon,
     Utility,
@@ -42,7 +44,8 @@ enum class EItemType : uint8
 
 UENUM(BlueprintType)
 enum class EItemQuality : uint8
-{
+{  
+    None,
     Common,
     Uncommon,
     Rare,

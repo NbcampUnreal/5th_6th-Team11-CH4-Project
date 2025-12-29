@@ -45,7 +45,10 @@ struct FReplicatedItemData
 	int32 Quantity;
 
 	FReplicatedItemData()
-		: Quantity(1)
+		: ItemType(EItemType::None)
+		, ItemQuality(EItemQuality::Common)
+		, Category(EItemCategory::None)
+		, Quantity(1)
 	{
 	}
 };
