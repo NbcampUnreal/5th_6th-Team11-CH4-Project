@@ -1,6 +1,6 @@
 #include "BioProtocol/Public/Equippable/EquippableItem.h"
 #include "BioProtocol/Public/Items/ItemBase.h"
-#include "BioProtocol/Character/DXPlayerCharacter.h"
+#include "BioProtocol/Public/Character/StaffCharacter.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Character/StaffCharacter.h"
@@ -39,6 +39,49 @@ AEquippableItem::AEquippableItem()
 void AEquippableItem::BeginPlay()
 {
 	Super::BeginPlay();
+
+	const FName RowToUse = (ItemRowName.IsNone() ? ItemID : ItemRowName);
+
+	if (ItemDataTable && !RowToUse.IsNone())
+	{
+		static const FString Context(TEXT("EquippableItem_LoadItemData"));
+
+		if (const FItemData* Row = ItemDataTable->FindRow<FItemData>(RowToUse, Context, true))
+		{
+			// 1) 월드에 떨어져 있을 때 사용할 스태틱 메시
+			if (Row->AssetData.Mesh)
+			{
+				StaticMeshComp->SetStaticMesh(Row->AssetData.Mesh);
+				StaticMeshComp->SetVisibility(true);
+				ItemMesh->SetVisibility(false);
+			}
+
+			// 2) 손에 들었을 때 사용할 스켈레탈 메시
+			if (Row->AssetData.SkeletalMesh)
+			{
+				ItemMesh->SetSkeletalMesh(Row->AssetData.SkeletalMesh);
+				ItemMesh->SetVisibility(true);
+				StaticMeshComp->SetVisibility(false);
+			}
+
+			// 3) (선택) 아이템 이름/설명 등은 UItemBase나 UI 쪽에서 사용
+			// 예: 로그로 확인
+			UE_LOG(LogTemp, Log, TEXT("EquippableItem '%s' loaded: %s"),
+				*GetName(),
+				*Row->TextData.Name.ToString());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("AEquippableItem: Row '%s' not found in DataTable '%s'"),
+				*RowToUse.ToString(),
+				*ItemDataTable->GetName());
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Verbose, TEXT("AEquippableItem: ItemDataTable or ItemID/ItemRowName not set on %s"),
+			*GetName());
+	}
 }
 
 void AEquippableItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -60,18 +103,14 @@ void AEquippableItem::Use()
 {
 	if (!HasAuthority())
 	{
-		ServerUse();
 		return;
 	}
 
-	bIsInUse = true;
-	/*
 	if (!CanUse())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[Item] Cannot use: %s"), *GetName());
 		return;
 	}
-	*/
 
 	bIsInUse = true;
 	UE_LOG(LogTemp, Log, TEXT("[Item] Base Use called: %s"), *GetName());
@@ -81,7 +120,6 @@ void AEquippableItem::StopUsing()
 {
 	if (!HasAuthority())
 	{
-		ServerStopUsing();
 		return;
 	}
 
@@ -94,6 +132,7 @@ bool AEquippableItem::CanUse() const
 	return bIsEquipped && OwningCharacter != nullptr;
 }
 
+/*
 void AEquippableItem::ServerUse_Implementation()
 {
 	Use();
@@ -103,7 +142,7 @@ void AEquippableItem::ServerStopUsing_Implementation()
 {
 	StopUsing();
 }
-
+*/
 void AEquippableItem::PlayUseAnimation()
 {
 	// 1. 몽타주가 설정되어 있는지 확인
@@ -113,7 +152,7 @@ void AEquippableItem::PlayUseAnimation()
 	}
 
 	// 2. 이 아이템을 들고 있는 캐릭터 가져오기 (OwningCharacter 같은 멤버를 두고 있다면 그걸 사용)
-	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
+	AStaffCharacter* OwnerCharacter = Cast<AStaffCharacter>(OwningCharacter ? OwningCharacter : GetOwner());
 	if (!OwnerCharacter)
 	{
 		return;
@@ -141,6 +180,7 @@ void AEquippableItem::Initialize(UItemBase* InItemReference, AStaffCharacter* In
 
 	ItemReference = InItemReference;
 	OwningCharacter = InOwner;
+	SetOwner(InOwner);
 
 	// 1. 스태틱 메쉬 사용 (예: StaticMeshComponent가 있을 때)
 	if (StaticMeshComp && ItemReference->AssetData.Mesh)
@@ -172,7 +212,6 @@ bool AEquippableItem::AttachToSocket(FName SocketName)
 {
 	if (!HasAuthority())
 	{
-		ServerAttachToSocket(SocketName);
 		return true;
 	}
 
@@ -199,7 +238,6 @@ void AEquippableItem::Detach()
 {
 	if (!HasAuthority())
 	{
-		ServerDetach();
 		return;
 	}
 
@@ -210,7 +248,6 @@ void AEquippableItem::Equip()
 {
 	if (!HasAuthority())
 	{
-		ServerEquip();
 		return;
 	}
 
@@ -224,7 +261,6 @@ void AEquippableItem::Unequip()
 {
 	if (!HasAuthority())
 	{
-		ServerUnequip();
 		return;
 	}
 
@@ -254,6 +290,7 @@ void AEquippableItem::Unequip()
 
 	UE_LOG(LogTemp, Log, TEXT("[EquippableItem] Unequipped: %s to %s"),
 		*GetName(), *TargetSocket.ToString());
+
 }
 
 // ========================================
@@ -267,23 +304,34 @@ void AEquippableItem::PerformAttachment(FName SocketName)
 		UE_LOG(LogTemp, Error, TEXT("[EquippableItem] PerformAttachment failed: No OwningCharacter"));
 		return;
 	}
-
 	USkeletalMeshComponent* CharacterMesh = OwningCharacter->GetMesh();
 	if (!CharacterMesh)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[EquippableItem] PerformAttachment failed: No Character Mesh"));
+		UE_LOG(LogTemp, Error, TEXT("[EquippableItem] No Character Mesh Component"));
+		return;
+	}
+
+	USkeletalMesh* SkMesh = CharacterMesh->SkeletalMesh;
+	if (!SkMesh)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[EquippableItem] SkeletalMesh is NULL! "));
+		UE_LOG(LogTemp, Error, TEXT("[EquippableItem] Cannot attach to socket!"));
+		UE_LOG(LogTemp, Error, TEXT("[EquippableItem] Fix: Set SkeletalMesh in BP_StaffCharacter"));
 		return;
 	}
 
 	if (!CharacterMesh->DoesSocketExist(SocketName))
 	{
 		UE_LOG(LogTemp, Error, TEXT("[EquippableItem] Socket not found: %s"), *SocketName.ToString());
-		return;
-	}
 
-	if (GetAttachParentActor())
-	{
-		DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+		// 추가: 사용 가능한 소켓 출력
+		TArray<FName> SocketNames = CharacterMesh->GetAllSocketNames();
+		UE_LOG(LogTemp, Warning, TEXT("[EquippableItem] Available sockets:"));
+		for (const FName& Socket : SocketNames)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("  - %s"), *Socket.ToString());
+		}
+		return;
 	}
 
 	FAttachmentTransformRules AttachRules(
@@ -296,7 +344,18 @@ void AEquippableItem::PerformAttachment(FName SocketName)
 	AttachToComponent(CharacterMesh, AttachRules, SocketName);
 	CurrentAttachedSocket = SocketName;
 
-	ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	if (ItemMesh)
+	{
+		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		ItemMesh->SetSimulatePhysics(false);
+	}
+
+	if (StaticMeshComp)
+	{
+		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		StaticMeshComp->SetSimulatePhysics(false);
+	}
+
 
 	UE_LOG(LogTemp, Log, TEXT("[EquippableItem] Attached %s to socket: %s"),
 		*GetName(), *SocketName.ToString());
@@ -327,7 +386,7 @@ void AEquippableItem::PerformDetachment()
 // ========================================
 // SERVER RPC
 // ========================================
-
+/*
 void AEquippableItem::ServerAttachToSocket_Implementation(FName SocketName)
 {
 	PerformAttachment(SocketName);
@@ -347,19 +406,50 @@ void AEquippableItem::ServerUnequip_Implementation()
 {
 	Unequip();
 }
-
+*/
 // ========================================
 // REPLICATION NOTIFY
 // ========================================
 
 void AEquippableItem::OnRep_IsEquipped()
 {
+	if (!OwningCharacter)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[EquippableItem] OnRep_IsEquipped: OwningCharacter is null (%s)"),
+			*GetName());
+		return;
+	}
+
 	if (bIsEquipped)
 	{
-		UE_LOG(LogTemp, Log, TEXT("[EquippableItem Client] Item equipped: %s"), *GetName());
+
+		PerformAttachment(HandSocketName);
+		return;
 	}
-	else
+	FName TargetSocket = BackSocketName;
+
+	if (ItemReference)
 	{
-		UE_LOG(LogTemp, Log, TEXT("[EquippableItem Client] Item unequipped: %s"), *GetName());
+		switch (ItemReference->ItemType)
+		{
+		case EItemType::Tool:
+		case EItemType::Weapon:
+			TargetSocket = BackSocketName;
+			break;
+
+		case EItemType::Utility:
+			TargetSocket = HipSocketName;
+			break;
+
+		default:
+			TargetSocket = BackSocketName;
+			break;
+		}
 	}
+
+	PerformAttachment(TargetSocket);
+
+	UE_LOG(LogTemp, Verbose, TEXT("[EquippableItem] OnRep_IsEquipped -> %s, Socket: %s"),
+		bIsEquipped ? TEXT("Equipped") : TEXT("Unequipped"),
+		*TargetSocket.ToString());
 }

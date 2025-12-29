@@ -10,6 +10,49 @@
 class UItemBase;
 class UDataTable;
 class AStaffCharacter;
+class AEquippableItem;
+
+USTRUCT(BlueprintType)
+struct FReplicatedItemData
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FName ItemID;
+
+	UPROPERTY()
+	EItemType ItemType;
+
+	UPROPERTY()
+	EItemQuality ItemQuality;
+
+	UPROPERTY()
+	EItemCategory Category;
+
+	UPROPERTY()
+	FItemNumericData NumericData;
+
+	UPROPERTY()
+	FItemTextData TextData;
+
+	UPROPERTY()
+	FItemAssetData AssetData;
+
+	UPROPERTY()
+	TSubclassOf<AEquippableItem> ItemClass;
+
+	UPROPERTY()
+	int32 Quantity;
+
+	FReplicatedItemData()
+		: ItemType(EItemType::None)
+		, ItemQuality(EItemQuality::Common)
+		, Category(EItemCategory::None)
+		, Quantity(1)
+	{
+	}
+};
+
 
 UCLASS()
 class BIOPROTOCOL_API APickUp : public AActor, public IInteractionInterface
@@ -43,8 +86,14 @@ public:
 	int32 ItemQuantity;
 
 	/** 런타임에 생성된 아이템 참조 */
-	UPROPERTY(VisibleAnywhere, Replicated, Category = "PickUp | Item Reference")
+	UPROPERTY()
 	UItemBase* ItemReference;
+
+	UFUNCTION()
+	void OnRep_ItemData();
+
+	UPROPERTY(ReplicatedUsing = OnRep_ItemData)
+	FReplicatedItemData ReplicatedItemData;
 
 	/** 상호작용 UI에 표시될 데이터 */
 	UPROPERTY(VisibleAnywhere, Category = "PickUp | Interaction")
@@ -88,6 +137,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	void InitializeFromDataTable();
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #if WITH_EDITOR

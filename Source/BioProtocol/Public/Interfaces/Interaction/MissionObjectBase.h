@@ -12,8 +12,8 @@ class AStaffCharacter;
 class AEquippableItem;
 
 /**
- * ¹Ì¼Ç ¿ÀºêÁ§Æ® º£ÀÌ½º Å¬·¡½º
- * ¼ö¸®/»óÈ£ÀÛ¿ëÀÌ ÇÊ¿äÇÑ ¿ÀºêÁ§Æ®
+ * ï¿½Ì¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½ï¿½Ì½ï¿½ Å¬ï¿½ï¿½ï¿½ï¿½
+ * ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½È£ï¿½Û¿ï¿½ï¿½ï¿½ ï¿½Ê¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®
  */
 UCLASS()
 class BIOPROTOCOL_API AMissionObjectBase : public AActor, public IInteractionInterface
@@ -38,27 +38,27 @@ public:
 	// MISSION PROPERTIES
 	//==========================================
 
-	/** ÇÊ¿äÇÑ µµ±¸ ID (NAME_NoneÀÌ¸é µµ±¸ ºÒÇÊ¿ä) */
+	/** ï¿½Ê¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ID (NAME_Noneï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ê¿ï¿½) */
 	UPROPERTY(EditDefaultsOnly, Category = "Mission Object|Requirements")
 	FName RequiredToolID;
 
-	/** ¼ö¸®/¿Ï·á ¼Ò¿ä ½Ã°£ (ÃÊ) */
+	/** ï¿½ï¿½ï¿½ï¿½/ï¿½Ï·ï¿½ ï¿½Ò¿ï¿½ ï¿½Ã°ï¿½ (ï¿½ï¿½) */
 	UPROPERTY(EditDefaultsOnly, Category = "Mission Object|Requirements")
 	float CompletionTime;
 
-	/** ¿Ï·á »óÅÂ */
+	/** ï¿½Ï·ï¿½ ï¿½ï¿½ï¿½ï¿½ */
 	UPROPERTY(ReplicatedUsing = OnRep_IsCompleted, BlueprintReadOnly, Category = "Mission Object|State")
 	bool bIsCompleted;
 
-	/** ÁøÇà Áß »óÅÂ */
+	/** ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Mission Object|State")
 	bool bInProgress;
 
-	/** ÇöÀç ÀÛ¾÷ ÁßÀÎ ÇÃ·¹ÀÌ¾î */
+	/** ï¿½ï¿½ï¿½ï¿½ ï¿½Û¾ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ã·ï¿½ï¿½Ì¾ï¿½ */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Mission Object|State")
 	AStaffCharacter* CurrentWorker;
 
-	/** ÁøÇàµµ (0.0 ~ 1.0) */
+	/** ï¿½ï¿½ï¿½àµµ (0.0 ~ 1.0) */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Mission Object|State")
 	float Progress;
 
@@ -94,20 +94,21 @@ public:
 	// FUNCTIONS
 	//==========================================
 
-	/** ÀÛ¾÷ ½ÃÀÛ */
+	/** ï¿½Û¾ï¿½ ï¿½ï¿½ï¿½ï¿½ */
 	UFUNCTION(BlueprintCallable, Category = "Mission Object")
+
 	void StartWork(AStaffCharacter* Worker);
 
-	/** ÀÛ¾÷ Ãë¼Ò */
+	/** ï¿½Û¾ï¿½ ï¿½ï¿½ï¿½ */
 	UFUNCTION(BlueprintCallable, Category = "Mission Object")
-	void CancelWork();
+	virtual void CancelWork();
 
-	/** ÀÛ¾÷ ¿Ï·á */
+	/** ï¿½Û¾ï¿½ ï¿½Ï·ï¿½ */
 	UFUNCTION(BlueprintCallable, Category = "Mission Object")
-	void CompleteWork();
+	virtual void CompleteWork();
 
-	/** ÁøÇàµµ ¾÷µ¥ÀÌÆ® */
-	void UpdateProgress(float DeltaTime);
+	/** ï¿½ï¿½ï¿½àµµ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ® */
+	virtual void UpdateProgress(float DeltaTime);
 
 	//==========================================
 	// INTERACTION INTERFACE
@@ -134,17 +135,17 @@ public:
 	FOnProgressChanged OnProgressChanged;
 
 protected:
-	/** »óÈ£ÀÛ¿ë µ¥ÀÌÅÍ */
+	/** ï¿½ï¿½È£ï¿½Û¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 	UPROPERTY(EditInstanceOnly, Category = "Mission Object")
 	FInteractableData InstanceInteractableData;
 
-	/** ÀÛ¾÷ ÀÌÆåÆ® ½ÃÀÛ */
+	/** ï¿½Û¾ï¿½ ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½ï¿½ï¿½ */
 	void StartWorkEffects();
 
-	/** ÀÛ¾÷ ÀÌÆåÆ® ÁßÁö */
+	/** ï¿½Û¾ï¿½ ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½ï¿½ï¿½ */
 	void StopWorkEffects();
 
-	/** ÇÃ·¹ÀÌ¾î°¡ ÇÊ¿äÇÑ µµ±¸¸¦ °¡Áö°í ÀÖ´ÂÁö È®ÀÎ */
+	/** ï¿½Ã·ï¿½ï¿½Ì¾î°¡ ï¿½Ê¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ï¿½ï¿½ È®ï¿½ï¿½ */
 	bool HasRequiredTool(AStaffCharacter* Player) const;
 
 	//==========================================

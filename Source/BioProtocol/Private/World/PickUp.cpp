@@ -1,7 +1,7 @@
 // PickUp.cpp
 #include "BioProtocol/Public/World/PickUp.h"
 #include "BioProtocol/Public/Items/ItemBase.h"
-#include "BioProtocol/Character/DXPlayerCharacter.h"
+#include "BioProtocol/Public/World/ItemDataStructs.h"
 #include "BioProtocol/Public/Inventory/InventoryComponent.h"
 #include "BioProtocol/Public/Equippable/EquippableItem.h"
 #include "Engine/World.h"
@@ -18,10 +18,10 @@ APickUp::APickUp()
 
 	// 픽업 메시 생성
 	PickUpMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PickUpMesh"));
+	SetRootComponent(PickUpMesh);
 	PickUpMesh->SetSimulatePhysics(true);
 	PickUpMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	PickUpMesh->SetCollisionResponseToAllChannels(ECR_Block);
-	SetRootComponent(PickUpMesh);
 
 	// 기본값 초기화
 	ItemQuantity = 1;
@@ -32,19 +32,128 @@ void APickUp::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 서버에서만 아이템 초기화
+
+	UE_LOG(LogTemp, Warning, TEXT("[PickUp] BeginPlay: %s (Authority: %d)"),
+		*GetName(), HasAuthority());
+
+	// ========================================
+	// 서버만 실행
+	// ========================================
 	if (HasAuthority())
 	{
-		InitializePickup(UItemBase::StaticClass(), ItemQuantity);
+		// Drop된 아이템은 스킵
+		if (ItemReference)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[PickUp] Dropped item, skipping init"));
+			return;
+		}
+
+		// 월드 배치 아이템 초기화
+		InitializeFromDataTable();
 	}
 }
+
+	void APickUp::InitializeFromDataTable()
+	{
+		if (!ItemDataTable)
+		{
+			UE_LOG(LogTemp, Error, TEXT("[PickUp] ItemDataTable is NULL! (WorldSpawned)"));
+			return;
+		}
+
+		if (DesiredItemID.IsNone())
+		{
+			UE_LOG(LogTemp, Error, TEXT("[PickUp] DesiredItemID is NONE!"));
+			return;
+		}
+
+		const FItemData* ItemData = ItemDataTable->FindRow<FItemData>(DesiredItemID, TEXT(""));
+		if (!ItemData)
+		{
+			UE_LOG(LogTemp, Error, TEXT("[PickUp] ItemData NOT FOUND for: %s"), *DesiredItemID.ToString());
+			return;
+		}
+
+		ItemReference = NewObject<UItemBase>(this, UItemBase::StaticClass());
+		if (!ItemReference)
+		{
+			UE_LOG(LogTemp, Error, TEXT("[PickUp] Failed to create ItemReference!"));
+			return;
+		}
+
+		ItemReference->ItemID = ItemData->ItemID;
+		ItemReference->ItemType = ItemData->ItemType;
+		ItemReference->ItemQuality = ItemData->ItemQuality;
+		ItemReference->Category = ItemData->Category;
+		ItemReference->NumericData = ItemData->NumericData;
+		ItemReference->TextData = ItemData->TextData;
+		ItemReference->AssetData = ItemData->AssetData;
+		ItemReference->ItemClass = ItemData->ItemClass;
+		ItemReference->SetQuantity(ItemQuantity);
+
+		if (PickUpMesh && ItemData->AssetData.Mesh)
+		{
+			PickUpMesh->SetStaticMesh(ItemData->AssetData.Mesh);
+		}
+
+		UpdateInteractableData();
+	}
+ 
 
 void APickUp::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// ItemReference를 모든 클라이언트에 복제
-	DOREPLIFETIME(APickUp, ItemReference);
+	DOREPLIFETIME(APickUp, ReplicatedItemData);
+}
+
+void APickUp::OnRep_ItemData()
+{
+	UE_LOG(LogTemp, Error, TEXT("[PickUp CLIENT] OnRep_ItemData called! "));
+	UE_LOG(LogTemp, Error, TEXT("[PickUp CLIENT] Item: %s"),
+		*ReplicatedItemData.TextData.Name.ToString());
+
+	if (!PickUpMesh)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[PickUp CLIENT] PickUpMesh is NULL!"));
+		return;
+	}
+
+	if (!ReplicatedItemData.AssetData.Mesh)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[PickUp CLIENT] AssetData.Mesh is NULL!"));
+		return;
+	}
+
+	// 메시 설정
+	UE_LOG(LogTemp, Warning, TEXT("[PickUp CLIENT] Setting mesh: %s"),
+		*ReplicatedItemData.AssetData.Mesh->GetName());
+
+	PickUpMesh->SetStaticMesh(ReplicatedItemData.AssetData.Mesh);
+	PickUpMesh->SetVisibility(true);
+	PickUpMesh->SetHiddenInGame(false);
+
+	// 로컬 ItemReference 생성 (상호작용용)
+	if (!ItemReference)
+	{
+		ItemReference = NewObject<UItemBase>(this, UItemBase::StaticClass());
+
+		ItemReference->ItemID = ReplicatedItemData.ItemID;
+		ItemReference->ItemType = ReplicatedItemData.ItemType;
+		ItemReference->ItemQuality = ReplicatedItemData.ItemQuality;
+		ItemReference->Category = ReplicatedItemData.Category;
+		ItemReference->NumericData = ReplicatedItemData.NumericData;
+		ItemReference->TextData = ReplicatedItemData.TextData;
+		ItemReference->AssetData = ReplicatedItemData.AssetData;
+		ItemReference->ItemClass = ReplicatedItemData.ItemClass;
+		ItemReference->SetQuantity(ReplicatedItemData.Quantity);
+
+		UE_LOG(LogTemp, Warning, TEXT("[PickUp CLIENT] ? ItemReference created locally"));
+	}
+
+	UE_LOG(LogTemp, Error, TEXT("[PickUp CLIENT] ??? OnRep complete! ???"));
+	UE_LOG(LogTemp, Error, TEXT("========================================"));
 }
 
 void APickUp::InitializePickup(const TSubclassOf<UItemBase> BaseClass, const int32 InItemQuantity)
@@ -100,31 +209,56 @@ void APickUp::InitializePickup(const TSubclassOf<UItemBase> BaseClass, const int
 
 void APickUp::InitializeDrop(UItemBase* ItemToDrop, const int32 InItemQuantity)
 {
-	// 유효성 검사
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	UE_LOG(LogTemp, Warning, TEXT("[PickUp] InitializeDrop called!"));
+
 	if (!ItemToDrop)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[PickUp] ItemToDrop is nullptr!"));
+		UE_LOG(LogTemp, Error, TEXT("[PickUp] ItemToDrop is NULL!"));
 		return;
 	}
 
-	// 버린 아이템을 그대로 참조
+	// ========================================
+	//  ItemReference 설정 (로컬)
+	// ========================================
 	ItemReference = ItemToDrop;
-
-	// 수량 설정
 	const int32 FinalQuantity = FMath::Max(InItemQuantity, 1);
 	ItemReference->SetQuantity(FinalQuantity);
 
-	// 메시 설정
+	// ========================================
+	//  ReplicatedItemData 설정 (복제됨!)
+	// ========================================
+	ReplicatedItemData.ItemID = ItemToDrop->ItemID;
+	ReplicatedItemData.ItemType = ItemToDrop->ItemType;
+	ReplicatedItemData.ItemQuality = ItemToDrop->ItemQuality;
+	ReplicatedItemData.Category = ItemToDrop->Category;
+	ReplicatedItemData.NumericData = ItemToDrop->NumericData;
+	ReplicatedItemData.TextData = ItemToDrop->TextData;
+	ReplicatedItemData.AssetData = ItemToDrop->AssetData;
+	ReplicatedItemData.ItemClass = ItemToDrop->ItemClass;
+	ReplicatedItemData.Quantity = FinalQuantity;
+
+	UE_LOG(LogTemp, Warning, TEXT("[PickUp] ? ReplicatedItemData set: %s"),
+		*ReplicatedItemData.TextData.Name.ToString());
+
+	// ========================================
+	// 메시 설정 (서버)
+	// ========================================
 	if (PickUpMesh && ItemToDrop->AssetData.Mesh)
 	{
 		PickUpMesh->SetStaticMesh(ItemToDrop->AssetData.Mesh);
+		PickUpMesh->SetVisibility(true);
+		PickUpMesh->SetHiddenInGame(false);
+
+		UE_LOG(LogTemp, Warning, TEXT("[PickUp] SetStaticMesh: %s"),
+			*ItemToDrop->AssetData.Mesh->GetName());
 	}
 
-	// 상호작용 데이터 갱신
 	UpdateInteractableData();
 
-	UE_LOG(LogTemp, Log, TEXT("[PickUp] Drop initialized: %s (Quantity: %d)"),
-		*ItemReference->TextData.Name.ToString(), FinalQuantity);
+	UE_LOG(LogTemp, Warning, TEXT("[PickUp] ? Drop initialized: %s (Quantity: %d)"),
+		*ReplicatedItemData.TextData.Name.ToString(), FinalQuantity);
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
 }
 
 void APickUp::UpdateInteractableData()
@@ -177,10 +311,30 @@ void APickUp::EndInteract_Implementation()
 
 void APickUp::Interact_Implementation(AStaffCharacter* PlayerCharacter)
 {
-	if (PlayerCharacter)
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	UE_LOG(LogTemp, Warning, TEXT("[PickUp] Interact_Implementation called!"));
+
+	if (!PlayerCharacter)
 	{
-		TakePickup(PlayerCharacter);
+		UE_LOG(LogTemp, Error, TEXT("[PickUp] PlayerCharacter is null!"));
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+		return;
 	}
+
+	const bool bIsAuthority = HasAuthority();
+	UE_LOG(LogTemp, Warning, TEXT("[PickUp] HasAuthority: %s"), bIsAuthority ? TEXT("TRUE") : TEXT("FALSE"));
+
+	if (!bIsAuthority)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[PickUp] Called on client, skipping"));
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[PickUp] Running on server - calling TakePickup"));
+	TakePickup(PlayerCharacter);
+	UE_LOG(LogTemp, Warning, TEXT("[PickUp] TakePickup completed"));
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
 }
 
 FInteractableData APickUp::GetInteractableData_Implementation() const
@@ -198,17 +352,21 @@ void APickUp::TakePickup(const AStaffCharacter* Taker)
 {
 	if (!Taker || !ItemReference || IsPendingKillPending())
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[PickUp] TakePickup early return. Taker or ItemReference invalid"));
 		return;
 	}
 
 	UInventoryComponent* PlayerInventory = Taker->GetInventory();
 	if (!PlayerInventory)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[PickUp] No inventory on player"));
 		return;
 	}
 
 	// 인벤토리에 아이템 추가 시도
 	FItemAddResult AddResult = PlayerInventory->HandleAddItem(ItemReference);
+	UE_LOG(LogTemp, Warning, TEXT("[PickUp] HandleAddItem result: %d, Added: %d"),
+		(int32)AddResult.OperationResult, AddResult.ActualAmountAdded);
 
 	switch (AddResult.OperationResult)
 	{
@@ -232,17 +390,16 @@ void APickUp::TakePickup(const AStaffCharacter* Taker)
 		UpdateInteractableData();
 
 		UE_LOG(LogTemp, Log, TEXT("[PickUp] Partial add. Remaining: %d"), RemainingQuantity);
-		break;
 	}
+	break;
 
 	case EItemAddResult::IAR_NoItemsAdded:
-	{
+
 		// 추가 안됨 (인벤토리 가득참 or 무게 초과)
 		UE_LOG(LogTemp, Warning, TEXT("[PickUp] Cannot add items: %s"),
 			*AddResult.ResultMessage.ToString());
 
 		break;
-	}
 	}
 }
 

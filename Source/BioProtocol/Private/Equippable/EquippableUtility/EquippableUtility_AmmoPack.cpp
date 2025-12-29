@@ -2,7 +2,7 @@
 
 
 #include "Equippable/EquippableUtility/EquippableUtility_AmmoPack.h"
-#include "BioProtocol/Character/DXPlayerCharacter.h"
+#include "BioProtocol/Public/Character/StaffCharacter.h"
 #include "BioProtocol/Public/Equippable/EquippableWeapon/EquippableWeapon_.h"
 #include "BioProtocol/Public/Inventory/InventoryComponent.h"
 #include "BioProtocol/Public/Items/ItemBase.h"

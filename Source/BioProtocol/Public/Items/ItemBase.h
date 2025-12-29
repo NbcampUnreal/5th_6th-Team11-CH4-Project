@@ -44,6 +44,9 @@ public:
 	UPROPERTY(Replicated, VisibleAnywhere, Category = "Item")
 	int32 Quantity;
 
+	    UFUNCTION(BlueprintCallable, Category = "Item")
+    int32 GetQuantity() const { return Quantity; }
+
 	/** 숫자 데이터 (무게, 스택, 내구도 등) */
 	UPROPERTY(Replicated, VisibleAnywhere, Category = "Item")
 	FItemNumericData NumericData;

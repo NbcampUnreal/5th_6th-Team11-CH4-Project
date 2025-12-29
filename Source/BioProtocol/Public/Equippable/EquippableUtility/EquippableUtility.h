@@ -6,7 +6,7 @@
 #include "Delegates/DelegateCombinations.h"
 #include "EquippableUtility.generated.h"
 
-class ADXPlayerCharacter;
+class AStaffCharacter;
 
 //==========================================
 // EVENTS
@@ -111,9 +111,6 @@ protected:
 
 	UFUNCTION()
 	void OnRep_UsesRemaining();
-
-	UFUNCTION(Server, Reliable)
-	void ServerUseUtility();
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastPlayUseEffects();

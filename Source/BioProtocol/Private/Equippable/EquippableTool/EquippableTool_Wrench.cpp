@@ -2,7 +2,7 @@
 
 
 #include "Equippable/EquippableTool/EquippableTool_Wrench.h"
-#include "BioProtocol/Character/DXPlayerCharacter.h"
+#include "BioProtocol/Public/Character/StaffCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 

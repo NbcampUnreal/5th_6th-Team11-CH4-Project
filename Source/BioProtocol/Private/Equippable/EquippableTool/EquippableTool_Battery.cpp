@@ -1,5 +1,5 @@
 #include "Equippable/EquippableTool/EquippableTool_Battery.h"
-#include "BioProtocol/Character/DXPlayerCharacter.h"
+#include "BioProtocol/Public/Character/StaffCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
 

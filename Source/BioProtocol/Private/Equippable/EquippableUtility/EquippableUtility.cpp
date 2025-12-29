@@ -1,6 +1,6 @@
 // EquippableUtility.cpp
 #include "BioProtocol/Public/Equippable/EquippableUtility/EquippableUtility.h"
-#include "BioProtocol/Character/DXPlayerCharacter.h"
+#include "BioProtocol/Public/Character/StaffCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 
@@ -64,7 +64,6 @@ void AEquippableUtility::UseUtility()
 	// 서버에 사용 요청
 	if (!HasAuthority())
 	{
-		ServerUseUtility();
 		return;
 	}
 
@@ -218,10 +217,6 @@ void AEquippableUtility::OnRep_UsesRemaining()
 	}
 }
 
-void AEquippableUtility::ServerUseUtility_Implementation()
-{
-	UseUtility();
-}
 
 void AEquippableUtility::MulticastPlayUseEffects_Implementation()
 {

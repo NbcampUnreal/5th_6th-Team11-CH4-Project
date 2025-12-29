@@ -9,7 +9,6 @@
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
 			"AdditionalDependencies": [
-				
 				"Engine",
 				"CoreUObject",
 				"UMG",
@@ -30,12 +29,8 @@
 			"Enabled": true
 		},
 		{
-		  "Name": "EOSVoiceChat",
-		  "Enabled": true
-		},
-		{
-			"Name": "Fab",
-			"Enabled": false
+			"Name": "EOSVoiceChat",
+			"Enabled": true
 		},
 		{
 			"Name": "FabLauncher",

@@ -93,6 +93,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blink")
 	float BlinkDistance = 800.f;
 
+	bool IsNightPhase();
+
 protected:
 	virtual void ServerPullLever_Internal() override;
 	virtual void PullLever() override;

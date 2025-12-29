@@ -19,6 +19,13 @@ void ABioGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(ABioGameState, bCanEscape);
 }
 
+void ABioGameState::RegisterTask()
+{
+	if (HasAuthority()) {
+		MaxMissionProgress++;
+	}
+}
+
 void ABioGameState::SetGamePhase(EBioGamePhase NewPhase)
 {
 	if (HasAuthority())
@@ -34,6 +41,7 @@ void ABioGameState::AddMissionProgress(int32 Amount)
 	{
 		MissionProgress += Amount;
 		MissionProgress = FMath::Clamp(MissionProgress, 0, MaxMissionProgress);
+		UE_LOG(LogTemp, Log, TEXT("%d/%d"), MissionProgress,MaxMissionProgress);
 
 		if (MissionProgress >= MaxMissionProgress)
 		{
@@ -58,5 +66,7 @@ void ABioGameState::OnRep_CanEscape()
 	if (bCanEscape)
 	{
 		// 탈출이 가능할 때 UI 업데이트
+		UE_LOG(LogTemp, Log, TEXT("CanEscape"));
+
 	}
 }

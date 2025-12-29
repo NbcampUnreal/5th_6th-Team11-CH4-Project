@@ -1,6 +1,6 @@
 // EquippableTool_Welder.cpp
 #include "BioProtocol/Public/Equippable/EquippableTool/EquippableTool_Welder.h"
-#include "BioProtocol/Character/DXPlayerCharacter.h"
+#include "BioProtocol/Public/Character/StaffCharacter.h"
 #include "BioProtocol/Public/Items/ItemBase.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Components/AudioComponent.h"
