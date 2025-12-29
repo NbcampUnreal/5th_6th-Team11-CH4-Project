@@ -6,6 +6,9 @@
 #include "Components/CapsuleComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h" 
+#include <Game/BioGameMode.h>
+#include "Game/BioGameState.h"
+#include "Game/BioProtocolTypes.h"
 
 AAndroidCharacter::AAndroidCharacter()
 {
@@ -73,7 +76,6 @@ void AAndroidCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(AAndroidCharacter, bIsAndroid);
 	DOREPLIFETIME(AAndroidCharacter, CharacterScale);
 	DOREPLIFETIME(AAndroidCharacter, bIsHunter);
-
 }
 
 void AAndroidCharacter::OnDash()
@@ -168,6 +170,15 @@ void AAndroidCharacter::Xray()
 	bIsXray = PostProcessComp->bEnabled;
 }
 
+bool AAndroidCharacter::IsNightPhase()
+{
+	if (const ABioGameState* GS = GetWorld()->GetGameState<ABioGameState>())
+	{
+		return GS->CurrentPhase == EBioGamePhase::Night;
+	}
+	return false;
+}
+
 void AAndroidCharacter::ServerPullLever_Internal()
 {	
 	if (bIsHunter)
@@ -232,6 +243,9 @@ void AAndroidCharacter::ServerSwitchAndroid_Implementation()
 
 void AAndroidCharacter::SwitchAndroidMode()
 {
+	if (!IsNightPhase())
+		return;
+
 	bool bMode = !bIsAndroid;
 
 	// --- 서버가 아닌 경우 RPC 호출 ---
