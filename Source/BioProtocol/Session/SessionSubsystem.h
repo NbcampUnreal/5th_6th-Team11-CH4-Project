@@ -72,7 +72,6 @@ public:
     UFUNCTION(BlueprintCallable)
     const TArray<FSessionInfo>& GetLastSessionInfos() const { return LastSessionInfos; }
 
-
 protected:
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
     virtual void Deinitialize() override;
