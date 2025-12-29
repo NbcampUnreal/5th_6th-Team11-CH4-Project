@@ -425,30 +425,24 @@ void UInventoryComponent::UnequipCurrentItem()
 
 AEquippableItem* UInventoryComponent::SpawnEquippableActor(UItemBase* Item)
 {
-	AActor* OwnerActor = GetOwner();
-	if (!OwnerActor || !Item || !Item->ItemClass)
-	{
-		return nullptr;
-	}
-
-	if (!OwnerActor->HasAuthority())
+	if (!Item || !Item->ItemClass || !GetWorld())
 	{
 		return nullptr;
 	}
 
 	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = OwnerCharacter;
-	SpawnParams.SpawnCollisionHandlingOverride =
-		ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	SpawnParams.Owner = GetOwner();
+	SpawnParams.Instigator = Cast<APawn>(GetOwner());
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	AEquippableItem* SpawnedItem = GetWorld()->SpawnActor<AEquippableItem>(
+	AEquippableItem* SpawnedActor = GetWorld()->SpawnActor<AEquippableItem>(
 		Item->ItemClass,
-		OwnerCharacter->GetActorLocation(),
-		OwnerCharacter->GetActorRotation(),
+		GetOwner()->GetActorLocation(),
+		GetOwner()->GetActorRotation(),
 		SpawnParams
 	);
 
-	return SpawnedItem;
+	return SpawnedActor;
 }
 
 //==========================================
