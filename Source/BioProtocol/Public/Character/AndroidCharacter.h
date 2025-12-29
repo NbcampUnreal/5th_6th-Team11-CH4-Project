@@ -95,6 +95,10 @@ protected:
 
 	bool IsNightPhase();
 
+	void AndroidArmAttack();
+
+	virtual void AttackInput(const FInputActionValue& InValue) override;
+
 protected:
 	virtual void ServerPullLever_Internal() override;
 	virtual void PullLever() override;

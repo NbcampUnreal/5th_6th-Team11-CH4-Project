@@ -179,6 +179,23 @@ bool AAndroidCharacter::IsNightPhase()
 	return false;
 }
 
+void AAndroidCharacter::AndroidArmAttack()
+{
+	
+
+}
+
+void AAndroidCharacter::AttackInput(const FInputActionValue& InValue)
+{
+	if (!bIsCanAttack)
+		return;
+	if (!bIsHunter){
+		Super::AttackInput(1);
+		return;
+	}
+	ServerRPCMeleeAttack();
+}
+
 void AAndroidCharacter::ServerPullLever_Internal()
 {	
 	if (bIsHunter)
@@ -243,8 +260,8 @@ void AAndroidCharacter::ServerSwitchAndroid_Implementation()
 
 void AAndroidCharacter::SwitchAndroidMode()
 {
-	if (!IsNightPhase())
-		return;
+	/*if (!IsNightPhase())
+		return;*/
 
 	bool bMode = !bIsAndroid;
 

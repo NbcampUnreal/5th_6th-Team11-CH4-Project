@@ -38,3 +38,46 @@ void UStaffAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	bIsGun = OwnerCharacter->IsGunEquipped();
 }
+
+void UStaffAnimInstance::AnimNotify_TestHit()
+{
+	APawn* Pawn = TryGetPawnOwner();
+	if (!Pawn || !Pawn->IsLocallyControlled())
+		return;
+
+	const float CurrentTime = GetWorld()->GetTimeSeconds();
+
+	if (FMath::IsNearlyEqual(CurrentTime, LastHitNotifyTime, 0.001f))
+		return;
+
+	LastHitNotifyTime = CurrentTime;
+
+	if (AStaffCharacter* Char = Cast<AStaffCharacter>(Pawn))
+	{
+		Char->TestHit();
+	}
+}
+
+void UStaffAnimInstance::AnimNotify_AttackStart()
+{
+	APawn* Pawn = TryGetPawnOwner();
+	if (!Pawn || !Pawn->IsLocallyControlled())
+		return;
+
+	if (AStaffCharacter* Char = Cast<AStaffCharacter>(Pawn))
+	{
+		Char->ServerSetCanAttack(false);
+	}
+}
+
+void UStaffAnimInstance::AnimNotify_AttackEnd()
+{
+	APawn* Pawn = TryGetPawnOwner();
+	if (!Pawn || !Pawn->IsLocallyControlled())
+		return;
+
+	if (AStaffCharacter* Char = Cast<AStaffCharacter>(Pawn))
+	{
+		Char->ServerSetCanAttack(true);
+	}
+}

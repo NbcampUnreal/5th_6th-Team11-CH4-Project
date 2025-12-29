@@ -83,7 +83,7 @@ AStaffCharacter::AStaffCharacter()
 
 	CurrentEquippedItem = nullptr;
 
-	CurrentTool = EToolType::Wrench;
+	//CurrentTool = EToolType::Wrench;
 }
 
 // Called when the game starts or when spawned
@@ -258,6 +258,7 @@ void AStaffCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AStaffCharacter, MaterialIndex);
+	DOREPLIFETIME(AStaffCharacter, bIsCanAttack);
 	DOREPLIFETIME(AStaffCharacter, bIsGunEquipped);
 	DOREPLIFETIME(AStaffCharacter, CurrentEquippedItem);
 	DOREPLIFETIME(AStaffCharacter, CurrentSlot);
@@ -391,30 +392,7 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 	if (bHoldingLever) {
 		return;
 	}
-	if (!GetCharacterMovement()->IsFalling())
-	{
-		GetCharacterMovement()->SetMovementMode(MOVE_None);
-		/*FTimerHandle TimerHandle;
-		GetWorldTimerManager().SetTimer(TimerHandle, FTimerDelegate::CreateLambda([&]() -> void
-			{
-				bCanAttack = true;
-				GetCharacterMovement()->SetMovementMode(MOVE_Walking);
-			}), MeleeAttackMontagePlayTime, false);
-
-		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-		if (IsValid(AnimInstance) == true)
-		{
-			AnimInstance->Montage_Play(MeleeAttackMontage);
-		}*/
-
-		/*UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-		if (IsValid(AnimInstance) == true)
-		{
-			AnimInstance->Montage_Play(MeleeAttackMontage);
-		}*/
-
-		ServerRPCMeleeAttack();
-	}
+	UseEquippedItem();
 }
 
 
@@ -609,7 +587,7 @@ void AStaffCharacter::PlayMeleeAttackMontage(UAnimMontage* Montage)
 		UAnimInstance* FPAnim = FirstPersonMesh->GetAnimInstance();
 		if (FPAnim)
 		{
-			FPAnim->Montage_Play(Montage);
+			FPAnim->Montage_Play(MeleeAttackMontageFP);
 		}
 	}
 
@@ -622,14 +600,14 @@ void AStaffCharacter::PlayMeleeAttackMontage(UAnimMontage* Montage)
 
 void AStaffCharacter::MissionInteract()
 {
-	UE_LOG(LogTemp, Log, TEXT("0"));
+	//UE_LOG(LogTemp, Log, TEXT("0"));
 
 	ServerMissionInteract();
 }
 
 void AStaffCharacter::ServerMissionInteract_Implementation()
 {
-	UE_LOG(LogTemp, Log, TEXT("1"));
+	//UE_LOG(LogTemp, Log, TEXT("1"));
 
 	FVector Start;
 	FRotator ControlRot;
@@ -678,7 +656,12 @@ float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 void AStaffCharacter::TestHit()
 {
 	
-	Server_TestHit();
+	Server_Hit();
+}
+
+void AStaffCharacter::ServerSetCanAttack_Implementation(bool bCanAttack)
+{
+	bIsCanAttack = !bIsCanAttack;
 }
 
 void AStaffCharacter::OnRep_GunEquipped()
@@ -689,6 +672,12 @@ void AStaffCharacter::OnRep_GunEquipped()
 		ThirdWeaponMesh->SetHiddenInGame(!bIsGunEquipped);
 	}
 }
+
+void AStaffCharacter::OnRep_BIsCanAttack()
+{
+
+}
+
 
 void AStaffCharacter::OnRep_MaterialIndex()
 {
@@ -701,10 +690,15 @@ void AStaffCharacter::OnRep_MaterialIndex()
 }
 
 
-void AStaffCharacter::Server_TestHit_Implementation()
+void AStaffCharacter::Server_Hit_Implementation()
 {
-	FVector Start = GetActorLocation();
-	FVector End = Start + GetActorForwardVector() * 500.f;
+
+	FVector Start;
+	FRotator ControlRot;
+
+	Controller->GetPlayerViewPoint(Start, ControlRot);
+
+	FVector End = Start + (ControlRot.Vector() * 250.f);
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
