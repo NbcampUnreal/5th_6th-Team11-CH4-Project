@@ -3,6 +3,8 @@
 #include "Daeho/MyTestGameMode.h"
 #include "Components/BoxComponent.h"
 #include "NiagaraComponent.h"
+#include <Game/BioGameState.h>
+#include <Character/StaffCharacter.h>
 
 ATaskObject::ATaskObject()
 {
@@ -20,7 +22,8 @@ ATaskObject::ATaskObject()
 	CollisionBox->SetBoxExtent(FVector(50.f, 50.f, 50.f));
 
 	// 충돌 설정: Visibility 채널을 막아야 LineTrace에 걸림
-	CollisionBox->SetCollisionProfileName(TEXT("BlockAllDynamic"));
+	CollisionBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	CollisionBox->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 
 	// 2. 나이아가라 컴포넌트 생성
 	NiagaraEffect = CreateDefaultSubobject<UNiagaraComponent>(TEXT("NiagaraEffect"));
@@ -37,9 +40,9 @@ void ATaskObject::BeginPlay()
 	// 서버인 경우 GameMode에 자신을 등록 (전체 임무 수 증가)
 	if (HasAuthority())
 	{
-		if (AMyTestGameMode* GM = Cast<AMyTestGameMode>(GetWorld()->GetAuthGameMode()))
+		if (ABioGameState* GM = Cast<ABioGameState>(GetWorld()->GetGameState()))
 		{
-			GM->RegisterTask(this);
+			GM->RegisterTask();
 		}
 	}
 
@@ -63,7 +66,7 @@ void ATaskObject::Interact_Implementation(APawn* InstigatorPawn)
 	if (bIsCompleted) return;
 
 	// 상호작용 시도한 캐릭터 가져오기
-	ATestCharacter* MyChar = Cast<ATestCharacter>(InstigatorPawn);
+	AStaffCharacter* MyChar = Cast<AStaffCharacter>(InstigatorPawn);
 	if (!MyChar) return;
 
 	bool bCanDoTask = false;
@@ -87,9 +90,9 @@ void ATaskObject::Interact_Implementation(APawn* InstigatorPawn)
 		// 임무 성공
 		bIsCompleted = true;
 
-		if (AMyTestGameMode* GM = Cast<AMyTestGameMode>(GetWorld()->GetAuthGameMode()))
+		if (ABioGameState* GM = Cast<ABioGameState>(GetWorld()->GetGameState()))
 		{
-			GM->OnTaskCompleted();
+			GM->AddMissionProgress(1);
 		}
 
 		OnRep_IsCompleted();
@@ -117,6 +120,7 @@ void ATaskObject::OnRep_IsCompleted()
 			// 혹은 숨김 처리
 			NiagaraEffect->SetVisibility(false);
 		}
+
 		UE_LOG(LogTemp, Log, TEXT("Task Completed Visual Update!"));
 	}
 	else

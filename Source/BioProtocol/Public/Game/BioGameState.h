@@ -30,6 +30,8 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnGamePhaseChanged OnPhaseChanged;
 
+	void RegisterTask();
+
 	void SetGamePhase(EBioGamePhase NewPhase);
 
 	// 임무 진행도
@@ -53,7 +55,7 @@ protected:
 	void OnRep_CanEscape();
 
 	UPROPERTY(BlueprintReadOnly, Category = "Bio|GameRule")
-	int32 MaxMissionProgress = 15;
+	int32 MaxMissionProgress = 0;
 
 
 };
