@@ -232,7 +232,7 @@ void USessionSubsystem::StartGameSession()
         return;
     }
 
-    FString TravelURL = TEXT("/Game/Level/TestSession?listen");
+    FString TravelURL = TEXT("/Game/Level/MainLevel?listen");
     UE_LOG(LogTemp, Warning, TEXT("[Session] ✓ Starting game session"));
     World->ServerTravel(TravelURL, false);
 }
