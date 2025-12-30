@@ -455,6 +455,9 @@ public:
 	void ServerEquipWrench();
 
 	void UnequipAll();
+	void UnequipGun();
+	void UnequipTorch();
+	void UnequipWrench();
 
 
 	void TakeWrench();
@@ -462,7 +465,10 @@ public:
 	void TakeGun() { bHasGun = true; }
 
 	bool KServerPickUpItem(EToolType NewItemType, int32 NewDurability);
-
+	void KConsumeToolDurability(int32 Amount);
+	void KOnDrop();
+	UFUNCTION(Server, Reliable)
+	void KServerDropItem();
 
 	void SetItemMesh();
 protected:
@@ -473,6 +479,8 @@ protected:
 	uint8 bHasWrench;
 	UPROPERTY(ReplicatedUsing = OnRep_bHasGun, BlueprintReadOnly, Category = "Equipment")
 	uint8 bHasGun;
+	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
+	TSubclassOf<ADH_PickupItem> PickupItemClass;
 
 	//지금 손에 가지고있냐 여부 bool 이 변수값 바뀌면 다른 플레이어가 내 캐릭 손에 템 쥐고있는거 봄(OnRep_GunEquipped)
 	UPROPERTY(ReplicatedUsing = OnRep_GunEquipped)
@@ -481,6 +489,8 @@ protected:
 	bool bIsTorchEquipped = false;
 	UPROPERTY(ReplicatedUsing = OnRep_WrenchEquipped)
 	bool bIsWrenchEquipped = false;
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory")
+	int32 InventoryDurability;
 
 	/// <summary>
 	/// 손에붙일 템메쉬 (1인칭/다른클라3인칭)

@@ -192,48 +192,7 @@ void AStaffCharacter::Tick(float DeltaTime)
 	//);
 
 	// 디버그 라인 그리기 (개발 확인용)
-	if (!IsLocallyControlled())
-		return;
 
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (!PC)
-		return;
-
-	// ========================
-	// 장비 획득 (Has)
-	// ========================
-	if (PC->IsInputKeyDown(EKeys::NumPadFour))
-	{
-		bHasGun = true;
-	}
-
-	if (PC->IsInputKeyDown(EKeys::NumPadFive))
-	{
-		bHasWrench = true;
-	}
-
-	if (PC->IsInputKeyDown(EKeys::NumPadSix))
-	{
-		bHasTorch = true;
-	}
-
-	// ========================
-	// 장비 장착 (Equip)
-	// ========================
-	if (PC->WasInputKeyJustPressed(EKeys::NumPadOne))
-	{
-		TryEquipGun();
-	}
-
-	if (PC->WasInputKeyJustPressed(EKeys::NumPadTwo))
-	{
-		TryEquipWrench();
-	}
-
-	if (PC->WasInputKeyJustPressed(EKeys::NumPadThree))
-	{
-		TryEquipTorch();
-	}
 }
 
 // Called to bind functionality to input
@@ -264,7 +223,7 @@ void AStaffCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	EIC->BindAction(TestPullLever, ETriggerEvent::Started, this, &ThisClass::InteractPressed);
 	//EIC->BindAction(TestPullLever, ETriggerEvent::Completed, this, &ThisClass::EndInteract);
 	EIC->BindAction(TestPullLever, ETriggerEvent::Completed, this, &ThisClass::InteractReleased);
-	EIC->BindAction(DropAction, ETriggerEvent::Started, this, &ThisClass::DropCurrentItemInput);
+	EIC->BindAction(DropAction, ETriggerEvent::Started, this, &ThisClass::KOnDrop);
 
 	EIC->BindAction(Item1, ETriggerEvent::Started, this, &ThisClass::EquipSlot1);
 	EIC->BindAction(Item2, ETriggerEvent::Started, this, &ThisClass::EquipSlot2);
@@ -299,7 +258,7 @@ void AStaffCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AStaffCharacter, bIsGunEquipped);
 	DOREPLIFETIME(AStaffCharacter, bIsTorchEquipped);
 	DOREPLIFETIME(AStaffCharacter, bIsWrenchEquipped);
-
+	DOREPLIFETIME(AStaffCharacter, InventoryDurability);	
 }
 
 void AStaffCharacter::SetMaterialByIndex(int32 NewIndex)
@@ -546,9 +505,9 @@ void AStaffCharacter::TryEquipWrench()
 
 void AStaffCharacter::ServerEquipGun_Implementation()
 {
-	UnequipAll();
 
 	bIsGunEquipped = true;
+	UnequipAll();
 
 	//bIsGunEquipped = !bIsGunEquipped;
 
@@ -559,8 +518,8 @@ void AStaffCharacter::ServerEquipGun_Implementation()
 
 void AStaffCharacter::ServerEquipTorch_Implementation()
 {
-	UnequipAll();
 	bIsTorchEquipped = true;
+	UnequipAll();
 	CurrentTool = EToolType::Welder;
 
 	//bIsGunEquipped = false;
@@ -575,8 +534,8 @@ void AStaffCharacter::ServerEquipTorch_Implementation()
 
 void AStaffCharacter::ServerEquipWrench_Implementation()
 {
-	UnequipAll();
 	bIsWrenchEquipped = true;
+	UnequipAll();
 	CurrentTool = EToolType::Wrench;
 
 	//bIsWrenchEquipped = !bIsWrenchEquipped;
@@ -2040,19 +1999,36 @@ void AStaffCharacter::OnRep_bHasGun()
 
 void AStaffCharacter::UnequipAll()
 {
+	UnequipGun();
+	UnequipTorch();	
+	UnequipWrench();
+}
+
+void AStaffCharacter::UnequipGun()
+{
 	WeaponMesh->SetHiddenInGame(true);
 	WeaponMesh->SetVisibility(false, true);
 	WeaponMesh->SetCastShadow(false);
+	//bIsGunEquipped = false;
+}
+
+void AStaffCharacter::UnequipTorch()
+{
 	TorchMesh->SetHiddenInGame(true);
 	TorchMesh->SetVisibility(false, true);
 	TorchMesh->SetCastShadow(false);
+
+	//bIsWrenchEquipped = false;
+}
+
+void AStaffCharacter::UnequipWrench()
+{
 	WrenchMesh->SetHiddenInGame(true);
 	WrenchMesh->SetVisibility(false, true);
 	WrenchMesh->SetCastShadow(false);
 
-	bIsGunEquipped = false;
-	bIsWrenchEquipped = false;
-	bIsTorchEquipped = false;
+
+	//bIsTorchEquipped = false;
 }
 
 void AStaffCharacter::TakeWrench()
@@ -2093,6 +2069,95 @@ bool AStaffCharacter::KServerPickUpItem(EToolType NewItemType, int32 NewDurabili
 		return 0;
 		break;
 	}
+}
+
+void AStaffCharacter::KConsumeToolDurability(int32 Amount)
+{
+	if (CurrentTool == EToolType::None) return;
+	InventoryDurability -= Amount;
+
+	UE_LOG(LogTemp, Log, TEXT("Tool Used. Remaining Durability: %d"), InventoryDurability);
+
+	if (InventoryDurability <= 0)
+	{
+		// 내구도 0 -> 아이템 파괴
+		CurrentTool = EToolType::None;
+		InventoryDurability = 0;
+		UnequipAll();
+
+		UE_LOG(LogTemp, Warning, TEXT("Tool Broken!"));
+	}
+
+}
+
+void AStaffCharacter::KOnDrop()
+{
+	if (CurrentTool == EToolType::None) return;
+	UnequipAll();
+	KServerDropItem();
+
+}
+
+void AStaffCharacter::KServerDropItem_Implementation()
+{
+	if (CurrentTool == EToolType::None) return;
+	FVector SpawnLoc = GetActorLocation() + (GetActorForwardVector() * 100.0f);
+	FRotator SpawnRot = GetActorRotation();
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	// 아이템 액터 스폰 (Deferred Spawn 사용: 스폰 전에 변수 설정을 위해)
+	if (PickupItemClass)
+	{
+		ADH_PickupItem* DroppedItem = GetWorld()->SpawnActorDeferred<ADH_PickupItem>(
+			PickupItemClass,
+			FTransform(SpawnRot, SpawnLoc),
+			nullptr,
+			nullptr,
+			ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn
+		);
+
+		if (DroppedItem)
+		{
+			// 버리는 아이템의 정보 그대로 전달
+			DroppedItem->InitializeDrop(CurrentTool, InventoryDurability);
+
+			// 스폰 완료
+			UGameplayStatics::FinishSpawningActor(DroppedItem, FTransform(SpawnRot, SpawnLoc));
+		}
+	}
+
+	switch (CurrentTool)
+	{	
+	case EToolType::Wrench:			
+		bHasWrench = false;
+		break;
+	case EToolType::Welder:		
+		bHasTorch = false;
+		break;
+	default:
+		break;
+	}
+	
+
+	// 맨손으로 전환
+		// 상태만 변경
+	bIsTorchEquipped = false;
+	bIsGunEquipped = false;
+	bIsWrenchEquipped = false;
+
+	bIsGunEquipped = false;
+	
+	// 서버는 직접 호출
+	OnRep_TorchEquipped();
+	OnRep_GunEquipped();
+	OnRep_WrenchEquipped();
+
+	CurrentTool = EToolType::None;
+	InventoryDurability = 0;	
+
+	UE_LOG(LogTemp, Log, TEXT("Item Dropped."));
 }
 
 void AStaffCharacter::SetItemMesh()
