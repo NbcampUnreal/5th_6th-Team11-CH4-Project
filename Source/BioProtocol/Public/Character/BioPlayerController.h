@@ -62,9 +62,6 @@ public:
 
 	// Voice Transmission Control
 	UFUNCTION(BlueprintCallable, Category = "Voice")
-	void VoiceTransmitToLobby();
-
-	UFUNCTION(BlueprintCallable, Category = "Voice")
 	void VoiceTransmitToPublic();
 
 	UFUNCTION(BlueprintCallable, Category = "Voice")
