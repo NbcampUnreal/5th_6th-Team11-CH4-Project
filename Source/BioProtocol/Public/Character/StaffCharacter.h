@@ -65,9 +65,11 @@ public:
 	bool IsGunEquipped() const { return bIsGunEquipped; };
 	void PlayMeleeAttackMontage(UAnimMontage* Montage);
 	void MissionInteract();
+	void ItemInteract();
 	UFUNCTION(Server, Reliable)
 	void ServerMissionInteract();
-
+	UFUNCTION(Server, Reliable)
+	void ServerItemInteract();
 	EToolType GetCurrentTool() { return CurrentTool; };
 
 	UFUNCTION(Server, Reliable, WithValidation)
@@ -453,6 +455,11 @@ public:
 	void ServerEquipWrench();
 
 	void UnequipAll();
+
+
+	void TakeWrench();
+	void TakeTorch();
+	void TakeGun() { bHasGun = true; }
 
 
 	void SetItemMesh();

@@ -711,6 +711,36 @@ void AStaffCharacter::MissionInteract()
 	ServerMissionInteract();
 }
 
+void AStaffCharacter::ItemInteract()
+{
+	ServerItemInteract();
+}
+
+void AStaffCharacter::ServerItemInteract_Implementation()
+{
+	FVector Start;
+	FRotator ControlRot;
+
+	Controller->GetPlayerViewPoint(Start, ControlRot);
+	// 또는 GetActorEyesViewPoint(Start, ControlRot);
+
+	FVector End = Start + (ControlRot.Vector() * 250.f);
+
+	FHitResult HitResult;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		Start,
+		End,
+		ECC_Visibility,
+		Params
+	);
+
+
+}
+
 void AStaffCharacter::ServerMissionInteract_Implementation()
 {
 	//UE_LOG(LogTemp, Log, TEXT("1"));
@@ -1463,6 +1493,8 @@ void AStaffCharacter::InteractPressed(const FInputActionValue& InValue)
 		UE_LOG(LogTemp, Error, TEXT("[Player] No CurrentInteractable! Cannot interact!"));
 	}
 
+	//템수집
+	ItemInteract();
 
 	//미션수집
 	MissionInteract();
@@ -1992,6 +2024,21 @@ void AStaffCharacter::UnequipAll()
 	bIsGunEquipped = false;
 	bIsWrenchEquipped = false;
 	bIsTorchEquipped = false;
+}
+
+void AStaffCharacter::TakeWrench()
+{
+	if (bHasTorch)
+		return;
+
+	bHasWrench = true;
+}
+
+void AStaffCharacter::TakeTorch()
+{
+	if (bHasWrench) {
+
+	}
 }
 
 void AStaffCharacter::SetItemMesh()
