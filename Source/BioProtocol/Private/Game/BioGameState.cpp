@@ -3,6 +3,8 @@
 #include "Game/BioGameState.h"
 #include "Net/UnrealNetwork.h"
 
+#include "Game/BioGameMode.h"
+
 ABioGameState::ABioGameState()
 {
 	CurrentPhase = EBioGamePhase::Lobby;
@@ -47,7 +49,10 @@ void ABioGameState::AddMissionProgress(int32 Amount)
 		{
 			// 임무 진행도를 다 채웠으면 bCanEscape를 true로 변경
 			bCanEscape = true;
-		}
+			if (ABioGameMode* BioGameMode = GetWorld()->GetAuthGameMode<ABioGameMode>())
+			{
+				BioGameMode->EndGame();
+			}
 	}
 }
 
