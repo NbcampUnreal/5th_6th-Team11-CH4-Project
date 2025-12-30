@@ -21,7 +21,7 @@ void UVoiceChannelManager::OnGameStart()
             {
                 if (PC->IsLocalController())
                 {
-                    PC->LeaveLobbyChannel();
+                    //PC->LeaveLobbyChannel();
                 }
             }
         }

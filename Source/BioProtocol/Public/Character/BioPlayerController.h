@@ -61,6 +61,10 @@ public:
 	void LeaveGameChannels();
 
 	// Voice Transmission Control
+
+	UFUNCTION(BlueprintCallable, Category = "Voice")
+	void VoiceTransmitToALL();
+
 	UFUNCTION(BlueprintCallable, Category = "Voice")
 	void VoiceTransmitToPublic();
 
