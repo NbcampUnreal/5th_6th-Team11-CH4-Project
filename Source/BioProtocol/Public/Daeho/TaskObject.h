@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -8,7 +8,7 @@
 #include "TestCharacter.h"
 #include "TaskObject.generated.h"
 
-// 전방 선언
+// ?꾨갑 ?좎뼵
 class UBoxComponent;
 class UNiagaraComponent;
 
@@ -22,32 +22,32 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	// 상태 복제용 함수
+	// ?곹깭 蹂듭젣???⑥닔
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
-	// 인터페이스 함수 구현
+	// ?명꽣?섏씠???⑥닔 援ы쁽
 	virtual void Interact_Implementation(APawn* InstigatorPawn) override;
 
 protected:
-	// 임무가 이미 완료되었는지 확인 (RepNotify를 써서 시각적 효과 동기화 가능)
+	// ?꾨Т媛 ?대? ?꾨즺?섏뿀?붿? ?뺤씤 (RepNotify瑜??⑥꽌 ?쒓컖???④낵 ?숆린??媛??
 	UPROPERTY(ReplicatedUsing = OnRep_IsCompleted, BlueprintReadOnly, Category = "Task")
 	bool bIsCompleted;
 
-	// 변수 값이 변경되었을 때 클라이언트에서 호출됨
+	// 蹂??媛믪씠 蹂寃쎈릺?덉쓣 ???대씪?댁뼵?몄뿉???몄텧??
 	UFUNCTION()
 	void OnRep_IsCompleted();
 
-	/** 충돌 감지용 박스 컴포넌트 (눈에 안 보임, 레이저 맞는 용도) */
+	/** 異⑸룎 媛먯???諛뺤뒪 而댄룷?뚰듃 (?덉뿉 ??蹂댁엫, ?덉씠? 留욌뒗 ?⑸룄) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UBoxComponent* CollisionBox;
 
-	/** 파란색 반짝이는 이펙트용 컴포넌트 */
+	/** ?뚮???諛섏쭩?대뒗 ?댄럺?몄슜 而댄룷?뚰듃 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UNiagaraComponent* NiagaraEffect;
 
 public:
-	/** 이 임무를 수행하기 위해 필요한 도구 */
+	/** ???꾨Т瑜??섑뻾?섍린 ?꾪빐 ?꾩슂???꾧뎄 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Task")
 	EToolType RequiredTool;
 };

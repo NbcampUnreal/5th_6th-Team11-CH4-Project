@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
@@ -15,7 +15,7 @@ class BIOPROTOCOL_API IMyInteractableInterface
 	GENERATED_BODY()
 
 public:
-	// "BlueprintNativeEvent"를 추가해야 Execute_Interact가 생성됩니다.
+	// "BlueprintNativeEvent"瑜?異붽??댁빞 Execute_Interact媛 ?앹꽦?⑸땲??
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
 	void Interact(APawn* InstigatorPawn);
 };

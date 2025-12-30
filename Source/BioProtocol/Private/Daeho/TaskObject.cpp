@@ -1,4 +1,4 @@
-#include "Daeho/TaskObject.h"
+﻿#include "Daeho/TaskObject.h"
 #include "Net/UnrealNetwork.h"
 #include "Daeho/MyTestGameMode.h"
 #include "Components/BoxComponent.h"
@@ -8,28 +8,28 @@
 
 ATaskObject::ATaskObject()
 {
-	bReplicates = true; // 서버-클라 동기화 필수
+	bReplicates = true; // ?쒕쾭-?대씪 ?숆린???꾩닔
 	bIsCompleted = false;
 
-	// 기본값: 아무 도구나 가능 (맨손 미션)
+	// 湲곕낯媛? ?꾨Т ?꾧뎄??媛??(留⑥넀 誘몄뀡)
 	RequiredTool = EToolType::None;
 
-	// 1. 충돌 박스 생성 (루트 컴포넌트로 설정)
+	// 1. 異⑸룎 諛뺤뒪 ?앹꽦 (猷⑦듃 而댄룷?뚰듃濡??ㅼ젙)
 	CollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
 	RootComponent = CollisionBox;
 
-	// 박스 크기 설정 (적당히 키움)
+	// 諛뺤뒪 ?ш린 ?ㅼ젙 (?곷떦???ㅼ?)
 	CollisionBox->SetBoxExtent(FVector(50.f, 50.f, 50.f));
 
-	// 충돌 설정: Visibility 채널을 막아야 LineTrace에 걸림
+	// 異⑸룎 ?ㅼ젙: Visibility 梨꾨꼸??留됱븘??LineTrace??嫄몃┝
 	CollisionBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	CollisionBox->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 
-	// 2. 나이아가라 컴포넌트 생성
+	// 2. ?섏씠?꾧???而댄룷?뚰듃 ?앹꽦
 	NiagaraEffect = CreateDefaultSubobject<UNiagaraComponent>(TEXT("NiagaraEffect"));
 	NiagaraEffect->SetupAttachment(RootComponent);
 
-	// 기본적으로 활성화
+	// 湲곕낯?곸쑝濡??쒖꽦??
 	NiagaraEffect->SetAutoActivate(true);
 }
 
@@ -37,7 +37,7 @@ void ATaskObject::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 서버인 경우 GameMode에 자신을 등록 (전체 임무 수 증가)
+	// ?쒕쾭??寃쎌슦 GameMode???먯떊???깅줉 (?꾩껜 ?꾨Т ??利앷?)
 	if (HasAuthority())
 	{
 		if (ABioGameState* GM = Cast<ABioGameState>(GetWorld()->GetGameState()))
@@ -46,40 +46,41 @@ void ATaskObject::BeginPlay()
 		}
 	}
 
-	// 게임 중간에 들어온 플레이어를 위해 초기 상태에 맞춰 시각 효과 동기화
+	// 寃뚯엫 以묎컙???ㅼ뼱???뚮젅?댁뼱瑜??꾪빐 珥덇린 ?곹깭??留욎떠 ?쒓컖 ?④낵 ?숆린??
 	OnRep_IsCompleted();
 }
 
 void ATaskObject::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	// bIsCompleted 변수 복제 등록
+	// bIsCompleted 蹂??蹂듭젣 ?깅줉
 	DOREPLIFETIME(ATaskObject, bIsCompleted);
 }
 
 void ATaskObject::Interact_Implementation(APawn* InstigatorPawn)
 {
-	// 서버에서만 로직 처리
+	// ?쒕쾭?먯꽌留?濡쒖쭅 泥섎━
 	if (!HasAuthority()) return;
 
-	// 이미 완료됨
+	// ?대? ?꾨즺??
 	if (bIsCompleted) return;
 
-	// 상호작용 시도한 캐릭터 가져오기
-	AStaffCharacter* MyChar = Cast<AStaffCharacter>(InstigatorPawn);
+	//AStaffCharacter* MyChar = Cast<AStaffCharacter>(InstigatorPawn);
+	ATestCharacter* MyChar = Cast<ATestCharacter>(InstigatorPawn);
 	if (!MyChar) return;
+
+	EToolType CharTool = MyChar->GetCurrentActiveTool();
 
 	bool bCanDoTask = false;
 
 	if (RequiredTool == EToolType::None)
 	{
-		// 맨손 미션은 렌치나 용접기를 들고 있어도 수행 가능
+		// 留⑥넀 誘몄뀡? ?뚯튂???⑹젒湲곕? ?ㅺ퀬 ?덉뼱???섑뻾 媛??
 		bCanDoTask = true;
 	}
 	else
 	{
-		// 특정 도구 미션은 해당 도구를 들고 있어야 함
-		if (MyChar->GetCurrentTool() == RequiredTool)
+		if (CharTool == RequiredTool)
 		{
 			bCanDoTask = true;
 		}
@@ -87,37 +88,45 @@ void ATaskObject::Interact_Implementation(APawn* InstigatorPawn)
 
 	if (bCanDoTask)
 	{
-		// 임무 성공
 		bIsCompleted = true;
 
-		if (ABioGameState* GM = Cast<ABioGameState>(GetWorld()->GetGameState()))
+		/*if (ABioGameState* GM = Cast<ABioGameState>(GetWorld()->GetGameState()))
 		{
 			GM->AddMissionProgress(1);
+		}*/
+
+		if (AMyTestGameMode* GM = Cast<AMyTestGameMode>(GetWorld()->GetGameState()))
+		{
+			GM->OnTaskCompleted();
 		}
 
 		OnRep_IsCompleted();
 
-		UE_LOG(LogTemp, Log, TEXT("도구가 일치합니다! 임무 완료!"));
+		if (RequiredTool != EToolType::None)
+		{
+			MyChar->ConsumeToolDurability(1);
+		}
+
+		UE_LOG(LogTemp, Log, TEXT("Task Done!"));
 	}
 	else
 	{
-		// 도구 불일치 실패 로그
-		UE_LOG(LogTemp, Warning, TEXT("임무 실패: 도구가 없습니다. Required: %d, Has: %d"),
-			(int32)RequiredTool, (int32)MyChar->GetCurrentTool());
+		UE_LOG(LogTemp, Warning, TEXT("Task Failed!. Required Tool: %d, Has: %d"),
+			(int32)RequiredTool, (int32)MyChar->GetCurrentActiveTool());
 	}
 }
 
 void ATaskObject::OnRep_IsCompleted()
 {
-	// 임무 완료 시 색상을 초록색으로 바꾸거나 메시지를 띄우는 등 시각적 처리
+	// ?꾨Т ?꾨즺 ???됱긽??珥덈줉?됱쑝濡?諛붽씀嫄곕굹 硫붿떆吏瑜??꾩슦?????쒓컖??泥섎━
 	if (bIsCompleted)
 	{
 		if (NiagaraEffect)
 		{
-			// 이펙트 비활성화 (사라짐)
+			// ?댄럺??鍮꾪솢?깊솕 (?щ씪吏?
 			NiagaraEffect->Deactivate();
 
-			// 혹은 숨김 처리
+			// ?뱀? ?④? 泥섎━
 			NiagaraEffect->SetVisibility(false);
 		}
 

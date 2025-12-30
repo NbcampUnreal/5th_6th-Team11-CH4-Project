@@ -23,7 +23,6 @@ enum class EBioPlayerStatus : uint8
 UENUM(BlueprintType)
 enum class EBioGamePhase : uint8
 {
-	Lobby,      // 대기
 	Day,        // 업무 및 파밍
 	Night,      // 퍼지 타임
 	Evacuate,   // 탈출 단계

@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿#pragma once
 
 #pragma once
 
@@ -11,6 +11,7 @@
 class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
+class ADH_PickupItem;
 
 UENUM(BlueprintType)
 enum class EToolType : uint8
@@ -31,19 +32,20 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-
-public:
-	virtual void Tick(float DeltaTime) override;
-
-	// 입력을 바인딩하기 위한 함수 오버라이드
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
 	// 변수 복제 설정을 위한 오버라이드
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	/** 현재 장착 중인 도구 (Getter) */
+public:
+	virtual void Tick(float DeltaTime) override;
+	// 입력을 바인딩하기 위한 함수 오버라이드
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
 	UFUNCTION(BlueprintCallable, Category = "Tool")
-	EToolType GetCurrentTool() const { return CurrentTool; }
+	EToolType GetCurrentActiveTool() const;
+
+	//Item Functions
+	bool ServerPickUpItem(EToolType NewItemType, int32 NewDurability);
+	void ConsumeToolDurability(int32 Amount);
 
 protected:
 	/** 1인칭 카메라 */
@@ -72,17 +74,26 @@ protected:
 
 	/** 도구 변경 액션 (1, 2, 3 Key) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-	UInputAction* EquipSlot1Action; // 1번 키 (맨손)
+	UInputAction* Slot1Action; // 1번 키 (맨손)
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-	UInputAction* EquipSlot2Action; // 2번 키 (렌치)
+	UInputAction* Slot2Action; // 2번 키 (렌치)
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-	UInputAction* EquipSlot3Action; // 3번 키 (용접기)
+	UInputAction* DropAction;
 
 	/** 현재 장착된 도구 (Replicated되어야 서버와 클라가 같은 값을 가짐) */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Tool")
-	EToolType CurrentTool;
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory")
+	bool bIsToolEquipped;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory")
+	EToolType InventoryItemType;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory")
+	int32 InventoryDurability;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
+	TSubclassOf<ADH_PickupItem> PickupItemClass;
 
 	// 입력 처리 함수들
 	void Move(const FInputActionValue& Value);
@@ -90,15 +101,17 @@ protected:
 	void Interact(const FInputActionValue& Value);
 
 	// 도구 변경 입력 처리
-	void OnEquipSlot1(const FInputActionValue& Value);
-	void OnEquipSlot2(const FInputActionValue& Value);
-	void OnEquipSlot3(const FInputActionValue& Value);
+	void OnSlot1(const FInputActionValue& Value);
+	void OnSlot2(const FInputActionValue& Value);
+	
+	void OnDrop(const FInputActionValue& Value);
 
-	// 서버에 도구 변경 요청 (RPC)
 	UFUNCTION(Server, Reliable)
-	void ServerEquipTool(EToolType NewTool);
+	void ServerSetEquipState(bool bEquip);
 
-	// 서버로 상호작용 요청 (RPC)
+	UFUNCTION(Server, Reliable)
+	void ServerDropItem();
+
 	UFUNCTION(Server, Reliable)
 	void ServerInteract();
 };

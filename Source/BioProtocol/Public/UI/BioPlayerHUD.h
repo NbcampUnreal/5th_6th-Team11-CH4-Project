@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Game/BioProtocolTypes.h"
+#include "Daeho/TestCharacter.h"
 #include "BioPlayerHUD.generated.h"
 
 class ACharacter;
@@ -13,6 +14,8 @@ class UTextBlock;
 class UItemSlotWidget;
 class UTexture2D;
 class UWidgetSwitcher;
+class UStaffStatusComponent;
+class ABioGameState;
 
 UCLASS()
 class BIOPROTOCOL_API UBioPlayerHUD : public UUserWidget
@@ -21,12 +24,7 @@ class BIOPROTOCOL_API UBioPlayerHUD : public UUserWidget
 
 public:
 	virtual void NativeConstruct() override;
-
-	UFUNCTION(BlueprintCallable, Category = "HUD")
-	void UpdateHealth(float CurrentHP);
-
-	UFUNCTION(BlueprintCallable, Category = "HUD")
-	void UpdateStaminaBar(float NewStamina);
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 	UFUNCTION(BlueprintCallable)
 	void UpdateHUDState(EBioPlayerRole Role, EBioGamePhase CurrentPhase, bool bIsTransformed);
@@ -60,10 +58,35 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UWidgetSwitcher* RoleSpecificContainer;
 
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* PhaseText;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* TimeText;
+
+	UPROPERTY(meta = (BindWidget))
+	UProgressBar* MissionProgressBar;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* EscapeNotifyText;
+
 	TArray<UItemSlotWidget*> Slots;
 
-	float MaxHP = 100.0f;
-	float MaxSP = 100.0f;
-
 	TWeakObjectPtr<ACharacter> OwnerCharacter;
+
+	UFUNCTION()
+	void UpdateHP(float NewHP);
+
+	UFUNCTION()
+	void UpdateStamina(float NewStamina);
+
+	UFUNCTION()
+	void UpdateGamePhase(EBioGamePhase NewPhase);
+
+	void UpdateGameStateInfo();
+
+private:
+	TWeakObjectPtr<UStaffStatusComponent> CachedStatusComp;
+
+	TWeakObjectPtr<ABioGameState> CachedGameState;
 };

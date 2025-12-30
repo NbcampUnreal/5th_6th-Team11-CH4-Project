@@ -14,19 +14,15 @@ void UMainMenuWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	if (FindSessionsButton)
-	{
-		FindSessionsButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnFindSessionsClicked);
-	}
+	if (Btn_CreateSession) Btn_CreateSession->OnClicked.AddDynamic(this, &UMainMenuWidget::OnCreateSessionClicked);
+	if (Btn_FindSession)   Btn_FindSession->OnClicked.AddDynamic(this, &UMainMenuWidget::OnFindSessionClicked);
 
-	USessionSubsystem* Subsystem = GetSessionSubsystem();
-	if (Subsystem)
+	if (UGameInstance* GI = GetGameInstance())
 	{
-		Subsystem->OnSessionSearchUpdated.RemoveDynamic(this, &UMainMenuWidget::OnSessionSearchCompleted);
-		Subsystem->OnSessionSearchUpdated.AddDynamic(this, &UMainMenuWidget::OnSessionSearchCompleted);
-
-		Subsystem->OnJoinSessionFinished.RemoveDynamic(this, &UMainMenuWidget::OnJoinSessionCompleted);
-		Subsystem->OnJoinSessionFinished.AddDynamic(this, &UMainMenuWidget::OnJoinSessionCompleted);
+		if (GetSessionSubsystem())
+		{
+			GetSessionSubsystem()->OnSessionSearchUpdated.AddDynamic(this, &UMainMenuWidget::UpdateSessionList);
+		}
 	}
 }
 
@@ -40,62 +36,22 @@ USessionSubsystem* UMainMenuWidget::GetSessionSubsystem() const
 	return nullptr;
 }
 
-//void UMainMenuWidget::ApplyNickname()
-//{
-//	if (!NicknameInput) return;
-//
-//	FString InputName = NicknameInput->GetText().ToString();
-//	if (InputName.IsEmpty())
-//	{
-//		InputName = TEXT("Player");
-//	}
-//
-//	APlayerController* PC = GetOwningPlayer();
-//	if (PC)
-//	{
-//
-//		ALobbyPlayerState* MyPS = PC->GetPlayerState<ALobbyPlayerState>();
-//		if (MyPS)
-//		{
-//			MyPS->SetNickname(InputName);
-//		}
-//	}
-//
-//	UE_LOG(LogTemp, Log, TEXT("[MainMenu] Nickname Applied: %s"), *InputName);
-//}
-
-void UMainMenuWidget::OnFindSessionsClicked()
+void UMainMenuWidget::OnCreateSessionClicked()
 {
-	//ApplyNickname();
+	if (!GetSessionSubsystem()) return;
 
-	USessionSubsystem* Subsystem = GetSessionSubsystem();
-	if (Subsystem)
-	{
-		Subsystem->FindGameSessions(100, true);
-	}
+	const FString& ServerIP = TEXT("127.0.0.1");
+
+	GetSessionSubsystem()->CreateLobbyForDedicated(ServerIP, 7777, 6);
 }
 
-void UMainMenuWidget::OnSessionSearchCompleted(const TArray<FSessionInfo>& Sessions)
+void UMainMenuWidget::OnFindSessionClicked()
 {
-	if (!SessionListScrollBox || !SessionRowWidgetClass) return;
+	if (!GetSessionSubsystem()) return;
 
-	SessionListScrollBox->ClearChildren();
+	if (SessionListScrollBox) SessionListScrollBox->ClearChildren();
 
-	for (const FSessionInfo& Info : Sessions)
-	{
-		USessionRowWidget* RowWidget = CreateWidget<USessionRowWidget>(this, SessionRowWidgetClass);
-		if (RowWidget)
-		{
-			RowWidget->Setup(Info, Info.SearchResultIndex);
-			RowWidget->SetParentMenu(this);
-			SessionListScrollBox->AddChild(RowWidget);
-		}
-	}
-
-	if (Sessions.Num() == 0)
-	{
-		UE_LOG(LogTemp, Log, TEXT("No sessions found."));
-	}
+	GetSessionSubsystem()->FindGameSessions(20, false);
 }
 
 void UMainMenuWidget::JoinServerAtIndex(int32 Index)
@@ -107,16 +63,19 @@ void UMainMenuWidget::JoinServerAtIndex(int32 Index)
 	}
 }
 
-void UMainMenuWidget::OnJoinSessionCompleted(EJoinResultBP Result)
+void UMainMenuWidget::UpdateSessionList(const TArray<FSessionInfo>& SessionInfos)
 {
-	switch (Result)
+	if (!SessionListScrollBox || !SessionSlotClass) return;
+
+	SessionListScrollBox->ClearChildren();
+
+	for (const FSessionInfo& Info : SessionInfos)
 	{
-	case EJoinResultBP::Success:
-		UE_LOG(LogTemp, Log, TEXT("Joining Session..."));
-		break;
-	case EJoinResultBP::SessionIsFull:
-		break;
-	default:
-		break;
+		UUserWidget* SlotWidget = CreateWidget<UUserWidget>(this, SessionSlotClass);
+		if (USessionRowWidget* SessionSlot = Cast<USessionRowWidget>(SlotWidget))
+		{
+			SessionSlot->Setup(Info, Info.SearchResultIndex);
+		}
+		SessionListScrollBox->AddChild(SlotWidget);
 	}
 }
