@@ -19,7 +19,16 @@ public:
 	virtual void NativeInitializeAnimation() override;
 
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
+	UFUNCTION()
+	void AnimNotify_TestHit();
+
+	UFUNCTION()
+	void AnimNotify_AttackStart();
+
+	UFUNCTION()
+	void AnimNotify_AttackEnd();
 protected:
+	float LastHitNotifyTime = -1.f;
 	UPROPERTY()
 	TObjectPtr<AStaffCharacter> OwnerCharacter;
 

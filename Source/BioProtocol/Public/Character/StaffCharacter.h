@@ -70,6 +70,22 @@ public:
 
 	EToolType GetCurrentTool() {return CurrentTool;};
 
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerRPCMeleeAttack();
+
+	virtual void AttackInput(const FInputActionValue& InValue);
+
+	//�׽�Ʈ�� �Լ�(���� �ǰ��׽�Ʈ(Server_TestHit()))
+	void TestHit();
+
+	UFUNCTION(Server, Reliable)
+	void Server_Hit();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetTestMaterial();
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetCanAttack(bool bCanAttack);
 protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Tool")
 	EToolType CurrentTool;//테스트
@@ -102,7 +118,7 @@ private:
 
 	void HandleStand(const FInputActionValue& InValue);
 
-	void AttackInput(const FInputActionValue& InValue);
+	
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
@@ -175,7 +191,7 @@ protected:
 	void ServerTestItemSlot1();
 
 	FTimerHandle GaugeTimerHandle;
-
+	
 private:
 	uint8 bIsRunning = false;
 	uint8 bHoldingLever = false;
@@ -202,8 +218,7 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerStopJump();
 
-	UFUNCTION(Server, Reliable, WithValidation)
-	void ServerRPCMeleeAttack();
+	
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastRPCMeleeAttack();
@@ -214,17 +229,13 @@ private:
 	//UFUNCTION(Server, Reliable, WithValidation)
 	//void ServerRPCTakeDamage(float DamageAmount);
 
-	//�׽�Ʈ�� �Լ�(���� �ǰ��׽�Ʈ(Server_TestHit()))
-	void TestHit();
-
-	UFUNCTION(Server, Reliable)
-	void Server_TestHit();
-
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_SetTestMaterial();
-
+	
+	
 	UFUNCTION()
 	void OnRep_GunEquipped();
+
+	UFUNCTION()
+	void OnRep_BIsCanAttack();
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	//ü��,���׹̳�,�̵��ӵ� ����Ǿ��ִ� Ŭ����
@@ -239,7 +250,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TObjectPtr<UAnimMontage> MeleeAttackMontage;
 
-
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UAnimMontage> MeleeAttackMontageFP;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USkeletalMesh* StaffMesh;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -253,9 +265,11 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_GunEquipped)
 	bool bIsGunEquipped=false;
 
+	UPROPERTY(ReplicatedUsing = OnRep_BIsCanAttack)
+	bool bIsCanAttack = true;
 	///////////////////////////////////////////�κ�,�����۰���
 public:
-	void Die();
+	void Die(AController* KillerController);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", Replicated)
 	class UInventoryComponent* Inventory;  // <- �ϳ��� ����

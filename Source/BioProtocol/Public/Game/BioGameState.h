@@ -8,6 +8,7 @@
 #include "BioGameState.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGamePhaseChanged, EBioGamePhase, NewPhase);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEscapeEnabled);
 
 UCLASS()
 class BIOPROTOCOL_API ABioGameState : public AGameStateBase
@@ -30,6 +31,9 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnGamePhaseChanged OnPhaseChanged;
 
+	UPROPERTY(BlueprintAssignable, Category = "Bio|Event")
+	FOnEscapeEnabled OnEscapeEnabled;
+
 	void RegisterTask();
 
 	void SetGamePhase(EBioGamePhase NewPhase);
@@ -37,6 +41,9 @@ public:
 	// 임무 진행도
 	UPROPERTY(ReplicatedUsing = OnRep_MissionProgress, BlueprintReadOnly, Category = "Bio|GameRule")
 	int32 MissionProgress;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Bio|GameRule")
+	int32 MaxMissionProgress = 0;
 
 	// 임무 진행도를 다 채웠을 시 탈출 포드를 이용할 수 있게 할 변수
 	UPROPERTY(ReplicatedUsing = OnRep_CanEscape, BlueprintReadOnly, Category = "Bio|GameRule")
@@ -54,8 +61,7 @@ protected:
 	UFUNCTION()
 	void OnRep_CanEscape();
 
-	UPROPERTY(BlueprintReadOnly, Category = "Bio|GameRule")
-	int32 MaxMissionProgress = 0;
+
 
 
 };

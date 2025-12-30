@@ -6,7 +6,7 @@
 
 ABioGameState::ABioGameState()
 {
-	CurrentPhase = EBioGamePhase::Lobby;
+	CurrentPhase = EBioGamePhase::Day;
 	PhaseTimeRemaining = 0;
 	OxygenLevel = 100.0f;
 }
@@ -18,6 +18,8 @@ void ABioGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(ABioGameState, PhaseTimeRemaining);
 	DOREPLIFETIME(ABioGameState, OxygenLevel);
 	DOREPLIFETIME(ABioGameState, bCanEscape);
+	DOREPLIFETIME(ABioGameState, MissionProgress);
+	DOREPLIFETIME(ABioGameState, MaxMissionProgress);
 }
 
 void ABioGameState::RegisterTask()
@@ -46,11 +48,13 @@ void ABioGameState::AddMissionProgress(int32 Amount)
 
 		if (MissionProgress >= MaxMissionProgress)
 		{
-			// 임무 진행도를 다 채웠으면 bCanEscape를 true로 변경
-			bCanEscape = true;
-			if (ABioGameMode* BioGameMode = GetWorld()->GetAuthGameMode<ABioGameMode>())
+			if (!bCanEscape)
 			{
-				BioGameMode->EndGame();
+				bCanEscape = true;
+
+				OnEscapeEnabled.Broadcast();
+
+				UE_LOG(LogTemp, Warning, TEXT("[GameState] Mission Complete! Escape Enabled."));
 			}
 		}
 	}

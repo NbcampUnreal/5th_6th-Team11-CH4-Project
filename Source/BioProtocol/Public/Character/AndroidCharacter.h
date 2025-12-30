@@ -11,6 +11,8 @@
 
  */
 class UPostProcessComponent;
+class UNiagaraComponent;
+
 UCLASS()
 class BIOPROTOCOL_API AAndroidCharacter : public AStaffCharacter
 {
@@ -24,10 +26,19 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	UFUNCTION()
 	void OnRep_IsAndroid();	
+	UPROPERTY(Replicated);
+	int8 bHasKilledPlayer = false;
+
+	void UpdateEyeFX(int8 val);
 
 protected:	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PostProcess")
 	UPostProcessComponent* PostProcessComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FX")
+	UNiagaraComponent* AndroidFX;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FX")
+	UNiagaraComponent* AndroidFX2;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -95,6 +106,10 @@ protected:
 
 	bool IsNightPhase();
 
+	void AndroidArmAttack();
+
+	virtual void AttackInput(const FInputActionValue& InValue) override;
+
 protected:
 	virtual void ServerPullLever_Internal() override;
 	virtual void PullLever() override;
@@ -117,4 +132,5 @@ private:
 	float HunterScale = 1.5f;
 	UPROPERTY(Replicated);
 	int8 bIsHunter = false;
+
 };

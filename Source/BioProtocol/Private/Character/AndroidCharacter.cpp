@@ -9,6 +9,7 @@
 #include <Game/BioGameMode.h>
 #include "Game/BioGameState.h"
 #include "Game/BioProtocolTypes.h"
+#include "NiagaraComponent.h"
 
 AAndroidCharacter::AAndroidCharacter()
 {
@@ -21,6 +22,20 @@ AAndroidCharacter::AAndroidCharacter()
 	PostProcessComp->bUnbound = true;
 	PostProcessComp->Priority = 10.0f;
 
+	AndroidFX = CreateDefaultSubobject<UNiagaraComponent>(TEXT("AndroidFX"));
+
+	AndroidFX->SetupAttachment(GetMesh(), TEXT("Eye_L_Socket"));
+	AndroidFX->SetRelativeLocation(FVector::ZeroVector);
+	AndroidFX->SetRelativeRotation(FRotator::ZeroRotator);
+
+	AndroidFX->bAutoActivate = false;
+
+	AndroidFX2 = CreateDefaultSubobject<UNiagaraComponent>(TEXT("AndroidFX2"));
+
+	AndroidFX2->SetupAttachment(GetMesh(), TEXT("Eye_R_Socket"));
+	AndroidFX2->SetRelativeLocation(FVector::ZeroVector);
+	AndroidFX2->SetRelativeRotation(FRotator::ZeroRotator);
+	AndroidFX2->bAutoActivate = false;
 }
 
 void AAndroidCharacter::BeginPlay()
@@ -76,6 +91,8 @@ void AAndroidCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(AAndroidCharacter, bIsAndroid);
 	DOREPLIFETIME(AAndroidCharacter, CharacterScale);
 	DOREPLIFETIME(AAndroidCharacter, bIsHunter);
+	DOREPLIFETIME(AAndroidCharacter, bHasKilledPlayer);
+
 }
 
 void AAndroidCharacter::OnDash()
@@ -117,6 +134,8 @@ void AAndroidCharacter::OnChangeMode(float scale)
 void AAndroidCharacter::OnRep_CharacterScale()
 {
 	OnChangeMode(CharacterScale);
+	UpdateEyeFX(bIsHunter);
+
 }
 
 void AAndroidCharacter::Server_OnChangeMode_Implementation()
@@ -179,8 +198,25 @@ bool AAndroidCharacter::IsNightPhase()
 	return false;
 }
 
+void AAndroidCharacter::AndroidArmAttack()
+{
+
+
+}
+
+void AAndroidCharacter::AttackInput(const FInputActionValue& InValue)
+{
+	if (!bIsCanAttack || bHasKilledPlayer)
+		return;
+	if (!bIsHunter) {
+		Super::AttackInput(1);
+		return;
+	}
+	ServerRPCMeleeAttack();
+}
+
 void AAndroidCharacter::ServerPullLever_Internal()
-{	
+{
 	if (bIsHunter)
 		return;
 
@@ -190,9 +226,9 @@ void AAndroidCharacter::ServerPullLever_Internal()
 void AAndroidCharacter::PullLever()
 {
 	if (bIsHunter)
-		return; 
+		return;
 
-	Super::PullLever(); 
+	Super::PullLever();
 }
 
 void AAndroidCharacter::OnRep_IsAndroid()
@@ -232,6 +268,28 @@ void AAndroidCharacter::OnRep_IsAndroid()
 	}
 }
 
+void AAndroidCharacter::UpdateEyeFX(int8 val)
+{
+	if (IsLocallyControlled())
+	{
+		AndroidFX->Deactivate();
+		AndroidFX2->Deactivate();
+
+		return;
+	}
+
+	if (val) {
+		AndroidFX->Activate(true);
+		AndroidFX2->Activate(true);
+
+	}
+	else {
+		AndroidFX->Deactivate();
+		AndroidFX2->Deactivate();
+
+	}
+}
+
 void AAndroidCharacter::ServerSwitchToStaff_Implementation()
 {
 }
@@ -243,8 +301,8 @@ void AAndroidCharacter::ServerSwitchAndroid_Implementation()
 
 void AAndroidCharacter::SwitchAndroidMode()
 {
-	if (!IsNightPhase())
-		return;
+	/*if (!IsNightPhase())
+		return;*/
 
 	bool bMode = !bIsAndroid;
 

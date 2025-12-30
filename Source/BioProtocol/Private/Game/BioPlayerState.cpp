@@ -6,7 +6,7 @@
 
 ABioPlayerState::ABioPlayerState()
 {
-	GameRole = EBioPlayerRole::None;
+	GameRole = EBioPlayerRole::Staff;
 	ColorIndex = -1;
 	bIsReady = false;
 }

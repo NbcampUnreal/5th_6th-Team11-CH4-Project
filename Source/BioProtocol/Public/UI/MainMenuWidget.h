@@ -20,31 +20,30 @@ class BIOPROTOCOL_API UMainMenuWidget : public UUserWidget
 protected:
 	virtual void NativeConstruct() override;
 
-	//UPROPERTY(meta = (BindWidget))
-	//UEditableTextBox* NicknameInput;
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_FindSession;
 
 	UPROPERTY(meta = (BindWidget))
-	UButton* FindSessionsButton;
+	UButton* Btn_CreateSession;
 
 	UPROPERTY(meta = (BindWidget))
 	UScrollBox* SessionListScrollBox;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
-	TSubclassOf<USessionRowWidget> SessionRowWidgetClass;
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> SessionSlotClass;
 
 public:
 	void JoinServerAtIndex(int32 Index);
 
 private:
 	UFUNCTION()
-	void OnFindSessionsClicked();
+	void OnFindSessionClicked();
 
 	UFUNCTION()
-	void OnSessionSearchCompleted(const TArray<FSessionInfo>& Sessions);
+	void OnCreateSessionClicked();
 
 	UFUNCTION()
-	void OnJoinSessionCompleted(EJoinResultBP Result);
+	void UpdateSessionList(const TArray<FSessionInfo>& SessionInfos);
 
-	//void ApplyNickname();
 	USessionSubsystem* GetSessionSubsystem() const;
 };
