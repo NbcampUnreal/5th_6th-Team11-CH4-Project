@@ -31,6 +31,9 @@ public:
     FString PublicGameChannelName;      // 게임 내 전체 채널 (Trusted Server)
     FString MafiaGameChannelName;       // 게임 내 마피아 채널 (Trusted Server)
 
+    // 로비 채널 재조인을 위해 credentials 캐싱
+    FString LobbyClientBaseUrl;
+    FString LobbyParticipantToken;
 public:
     // 게임 시작 시 호출
     UFUNCTION(BlueprintCallable, Category = "Voice")
@@ -56,4 +59,16 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "Voice")
     FString GetMafiaGameChannelName() const { return MafiaGameChannelName; }
+
+private:
+    // 로비 맵 로드 완료 시점에 재조인
+    void HandlePostLoadMap(UWorld* LoadedWorld);
+
+public:
+    virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+    virtual void Deinitialize() override;
+
+    // 추가
+    void RegisterLobbyChannelCredentials(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken);
+
 };

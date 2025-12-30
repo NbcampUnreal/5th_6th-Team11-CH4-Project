@@ -68,6 +68,9 @@ public:
 	void VoiceTransmitToMafiaOnly();
 
 	UFUNCTION(BlueprintCallable, Category = "Voice")
+	void VoiceTransmitToLobby();
+
+	UFUNCTION(BlueprintCallable, Category = "Voice")
 	void VoiceTransmitToBothChannels();
 
 	UFUNCTION(BlueprintCallable, Category = "Voice")
@@ -82,6 +85,10 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Voice|Proximity")
 	float ProxMaxDist = 2000.f;
+
+
+	UFUNCTION(BlueprintCallable, Category = "Voice")
+	void JoinLobbyChannelFromManager(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken);
 
 private:
 	// EOS Login
@@ -107,4 +114,6 @@ private:
 	void StartProximityVoice();
 	void UpdateProximityVoice();
 	static float CalcProxVolume01(float Dist, float MinD, float MaxD);
+
+
 };

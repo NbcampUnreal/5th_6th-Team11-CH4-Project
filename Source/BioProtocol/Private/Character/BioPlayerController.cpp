@@ -15,6 +15,7 @@
 #include "IOnlineSubsystemEOS.h"
 #include "EOSVoiceChat.h"
 #include "EOSVoiceChatTypes.h"
+#include "VoiceChannelManager.h"
 
 ABioPlayerController::ABioPlayerController()
 {
@@ -102,6 +103,11 @@ void ABioPlayerController::BeginPlay()
 		if (MapName.Contains(TEXT("TestSession")) || MapName.Contains(TEXT("GameMap")))
 		{
 			VoiceTransmitToNone();
+		}
+
+		if (MapName.Contains(TEXT("Lobby")))
+		{
+			VoiceTransmitToLobby();
 		}
 	}
 }
@@ -348,6 +354,14 @@ void ABioPlayerController::JoinLobbyChannel_Local(const FString& ChannelName, co
 	if (!IsLocalController())
 		return;
 
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UVoiceChannelManager* VCM = GI->GetSubsystem<UVoiceChannelManager>())
+		{
+			VCM->RegisterLobbyChannelCredentials(ChannelName, ClientBaseUrl, ParticipantToken);
+		}
+	}
+
 	CacheVoiceChatUser();
 	if (!VoiceChatUser)
 		return;
@@ -536,6 +550,15 @@ void ABioPlayerController::VoiceTransmitToMafiaOnly()
 	VoiceChatUser->TransmitToSpecificChannels(Channels);
 }
 
+void ABioPlayerController::VoiceTransmitToLobby()
+{
+	CacheVoiceChatUser();
+	if (!VoiceChatUser)
+		return;
+	TSet<FString> Channels = { LobbyChannelName };
+	VoiceChatUser->TransmitToSpecificChannels(Channels);
+}
+
 void ABioPlayerController::VoiceTransmitToBothChannels()
 {
 	CacheVoiceChatUser();
@@ -628,4 +651,9 @@ float ABioPlayerController::CalcProxVolume01(float Dist, float MinD, float MaxD)
 
 	const float Alpha = (Dist - MinD) / (MaxD - MinD);
 	return FMath::Clamp(1.0f - (Alpha * Alpha), 0.0f, 1.0f);
+}
+
+void ABioPlayerController::JoinLobbyChannelFromManager(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken)
+{
+	JoinLobbyChannel_Local(ChannelName, ClientBaseUrl, ParticipantToken);
 }
