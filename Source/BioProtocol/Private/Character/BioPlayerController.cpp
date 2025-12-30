@@ -510,6 +510,19 @@ void ABioPlayerController::VoiceTransmitToNone()
 	}
 }
 
+void ABioPlayerController::VoiceTransmitToLobby()
+{
+	CacheVoiceChatUser();
+	if (!VoiceChatUser || LobbyChannelName.IsEmpty())
+	{
+		return;
+	}
+
+
+	TSet<FString> Channels = { LobbyChannelName };
+	VoiceChatUser->TransmitToSpecificChannels(Channels);
+}
+
 void ABioPlayerController::VoiceTransmitToPublic()
 {
 	CacheVoiceChatUser();
