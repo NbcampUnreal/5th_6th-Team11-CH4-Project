@@ -53,7 +53,7 @@ AStaffCharacter::AStaffCharacter()
 	// ���ο��Ը� ���̱�
 	FirstPersonMesh->SetOnlyOwnerSee(true);
 	FirstPersonMesh->bCastDynamicShadow = false;
-	FirstPersonMesh->CastShadow = false;	
+	FirstPersonMesh->CastShadow = false;
 	GetMesh()->SetOwnerNoSee(true);
 
 	SetItemMesh();
@@ -170,7 +170,20 @@ void AStaffCharacter::Tick(float DeltaTime)
 	{
 		PerformInteractionCheck();
 	}
+	if (IsLocallyControlled()) {
+		const UEnum* EnumPtr = StaticEnum<EToolType>();
+		if (EnumPtr)
+		{
+			FString ToolName = EnumPtr->GetNameStringByValue((int64)CurrentTool);
 
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				2.f,
+				FColor::Red,
+				FString::Printf(TEXT("CurrentTool: %s"), *ToolName)
+			);
+		}
+	}
 	/*if (IsLocallyControlled()) {
 		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::FromInt(Status->CurrentStamina));
 	}*/
@@ -258,7 +271,7 @@ void AStaffCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AStaffCharacter, bIsGunEquipped);
 	DOREPLIFETIME(AStaffCharacter, bIsTorchEquipped);
 	DOREPLIFETIME(AStaffCharacter, bIsWrenchEquipped);
-	DOREPLIFETIME(AStaffCharacter, InventoryDurability);	
+	DOREPLIFETIME(AStaffCharacter, InventoryDurability);
 }
 
 void AStaffCharacter::SetMaterialByIndex(int32 NewIndex)
@@ -419,8 +432,8 @@ void AStaffCharacter::ServerPullLever_Internal()
 			GaugeTimerHandle,
 			this,
 			&AStaffCharacter::TestUpdateLeverGauge,
-			0.1f,   
-			true    
+			0.1f,
+			true
 		);
 	}
 
@@ -438,7 +451,7 @@ void AStaffCharacter::TestUpdateLeverGauge()
 }
 
 void AStaffCharacter::TryEquipGun()
-{	
+{
 	if (!bHasGun)
 		return;
 	if (WeaponMesh)
@@ -456,7 +469,7 @@ void AStaffCharacter::TryEquipGun()
 	}
 
 	bIsGunEquipped = !bIsGunEquipped;
-	OnRep_GunEquipped();	
+	OnRep_GunEquipped();
 }
 
 void AStaffCharacter::TryEquipTorch()
@@ -471,15 +484,20 @@ void AStaffCharacter::TryEquipTorch()
 		TorchMesh->SetHiddenInGame(bIsTorchEquipped);
 	}
 
+	bIsTorchEquipped = !bIsTorchEquipped;
+	if (bIsTorchEquipped)
+		CurrentTool = EToolType::Welder;
+	else
+		CurrentTool = EToolType::None;
+
 	if (!HasAuthority())
 	{
 		ServerEquipTorch();
 		return;
 	}
-	CurrentTool = EToolType::Welder;
 
-	bIsTorchEquipped = !bIsTorchEquipped;
-	OnRep_TorchEquipped();
+
+	//OnRep_TorchEquipped();
 }
 
 void AStaffCharacter::TryEquipWrench()
@@ -493,14 +511,20 @@ void AStaffCharacter::TryEquipWrench()
 		WrenchMesh->SetHiddenInGame(bIsWrenchEquipped);
 	}
 
+	bIsWrenchEquipped = !bIsWrenchEquipped;
+	if (bIsWrenchEquipped)
+		CurrentTool = EToolType::Wrench;
+	else
+		CurrentTool = EToolType::None;
+
 	if (!HasAuthority())
 	{
 		ServerEquipWrench();
 		return;
 	}
 
-	bIsWrenchEquipped = !bIsWrenchEquipped;
-	OnRep_WrenchEquipped();
+
+//	OnRep_WrenchEquipped();
 }
 
 void AStaffCharacter::ServerEquipGun_Implementation()
@@ -518,10 +542,15 @@ void AStaffCharacter::ServerEquipGun_Implementation()
 
 void AStaffCharacter::ServerEquipTorch_Implementation()
 {
-	bIsTorchEquipped = true;
+	bIsTorchEquipped = !bIsTorchEquipped;
 	UnequipAll();
-	CurrentTool = EToolType::Welder;
 
+	if (bIsTorchEquipped) {
+		CurrentTool = EToolType::Welder;
+	}
+	else {
+		CurrentTool = EToolType::None;
+	}
 	//bIsGunEquipped = false;
 	//bIsWrenchEquipped = false;
 
@@ -534,9 +563,15 @@ void AStaffCharacter::ServerEquipTorch_Implementation()
 
 void AStaffCharacter::ServerEquipWrench_Implementation()
 {
-	bIsWrenchEquipped = true;
+	bIsWrenchEquipped = !bIsWrenchEquipped;
 	UnequipAll();
-	CurrentTool = EToolType::Wrench;
+
+	if (bIsWrenchEquipped) {
+		CurrentTool = EToolType::Wrench;
+	}
+	else {
+		CurrentTool = EToolType::None;
+	}
 
 	//bIsWrenchEquipped = !bIsWrenchEquipped;
 
@@ -767,7 +802,7 @@ float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 
 void AStaffCharacter::TestHit()
 {
-	
+
 	Server_Hit();
 }
 
@@ -792,8 +827,13 @@ void AStaffCharacter::OnRep_WrenchEquipped()
 		ThirdWrenchMesh->SetVisibility(bIsWrenchEquipped, true);
 		ThirdWrenchMesh->SetHiddenInGame(!bIsWrenchEquipped);
 	}
-	CurrentTool = EToolType::Wrench;
 
+	if (bIsWrenchEquipped) {
+		CurrentTool = EToolType::Wrench;
+	}
+	else {
+		CurrentTool = EToolType::None;
+	}
 }
 
 void AStaffCharacter::OnRep_TorchEquipped()
@@ -803,7 +843,13 @@ void AStaffCharacter::OnRep_TorchEquipped()
 		ThirdTorchMesh->SetVisibility(bIsTorchEquipped, true);
 		ThirdTorchMesh->SetHiddenInGame(!bIsTorchEquipped);
 	}
-	CurrentTool = EToolType::Welder;
+	if (bIsTorchEquipped) {
+		CurrentTool = EToolType::Welder;
+	}
+	else {
+		CurrentTool = EToolType::None;
+
+	}
 
 }
 
@@ -1048,11 +1094,11 @@ void AStaffCharacter::EquipItem(AEquippableItem* Item)
 
 	if (!Item->OwningCharacter)
 	{
-		
+
 		Item->Initialize(nullptr, this);
 	}
 
-	
+
 	Item->Equip();
 	CurrentEquippedItem = Item;
 
@@ -1643,8 +1689,8 @@ void AStaffCharacter::FoundInteractable(AActor* NewInteractable)
 	// Interface 확인 (안전장치)
 	if (!NewInteractable->Implements<UInteractionInterface>())
 	{
-	/*	UE_LOG(LogTemp, Error, TEXT("[Player] Actor does not implement IInteractionInterface!"));
-		UE_LOG(LogTemp, Warning, TEXT("========================================"));*/
+		/*	UE_LOG(LogTemp, Error, TEXT("[Player] Actor does not implement IInteractionInterface!"));
+			UE_LOG(LogTemp, Warning, TEXT("========================================"));*/
 		return;
 	}
 
@@ -1704,10 +1750,10 @@ void AStaffCharacter::EndInteract()
 }
 	*/
 
-	
+
 void AStaffCharacter::EndInteract()
 {
-    GetWorldTimerManager().ClearTimer(TimerHandle_Interaction);
+	GetWorldTimerManager().ClearTimer(TimerHandle_Interaction);
 
 	if (InteractionData.CurrentInteractable &&
 		InteractionData.CurrentInteractable->Implements<UInteractionInterface>())
@@ -1906,7 +1952,7 @@ void AStaffCharacter::Die(AController* KillerController)
 
 	if (AAndroidCharacter* Killer = Cast<AAndroidCharacter>(KillerPawn))
 	{
-		Killer->bHasKilledPlayer = true; 
+		Killer->bHasKilledPlayer = true;
 	}
 
 	// 5. TODO: ��� �ִϸ��̼� ���
@@ -1985,7 +2031,7 @@ void AStaffCharacter::DropCurrentItemInput(const FInputActionValue& InValue)
 
 void AStaffCharacter::OnRep_bHasTorch()
 {
-	
+
 }
 
 void AStaffCharacter::OnRep_bHasWrench()
@@ -2000,7 +2046,7 @@ void AStaffCharacter::OnRep_bHasGun()
 void AStaffCharacter::UnequipAll()
 {
 	UnequipGun();
-	UnequipTorch();	
+	UnequipTorch();
 	UnequipWrench();
 }
 
@@ -2129,17 +2175,17 @@ void AStaffCharacter::KServerDropItem_Implementation()
 	}
 
 	switch (CurrentTool)
-	{	
-	case EToolType::Wrench:			
+	{
+	case EToolType::Wrench:
 		bHasWrench = false;
 		break;
-	case EToolType::Welder:		
+	case EToolType::Welder:
 		bHasTorch = false;
 		break;
 	default:
 		break;
 	}
-	
+
 
 	// 맨손으로 전환
 		// 상태만 변경
@@ -2148,14 +2194,14 @@ void AStaffCharacter::KServerDropItem_Implementation()
 	bIsWrenchEquipped = false;
 
 	bIsGunEquipped = false;
-	
+
 	// 서버는 직접 호출
 	OnRep_TorchEquipped();
 	OnRep_GunEquipped();
 	OnRep_WrenchEquipped();
 
 	CurrentTool = EToolType::None;
-	InventoryDurability = 0;	
+	InventoryDurability = 0;
 
 	UE_LOG(LogTemp, Log, TEXT("Item Dropped."));
 }
