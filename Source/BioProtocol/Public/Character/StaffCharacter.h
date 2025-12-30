@@ -461,6 +461,8 @@ public:
 	void TakeTorch();
 	void TakeGun() { bHasGun = true; }
 
+	bool KServerPickUpItem(EToolType NewItemType, int32 NewDurability);
+
 
 	void SetItemMesh();
 protected:

@@ -1,6 +1,7 @@
 ﻿#include "Daeho/DH_PickupItem.h"
 #include "Components/BoxComponent.h"
 #include "Net/UnrealNetwork.h"
+#include <Character/StaffCharacter.h>
 
 ADH_PickupItem::ADH_PickupItem()
 {
@@ -77,10 +78,10 @@ void ADH_PickupItem::Interact_Implementation(APawn* InstigatorPawn)
 {
 	if (!HasAuthority()) return;
 
-	ATestCharacter* MyChar = Cast<ATestCharacter>(InstigatorPawn);
+	AStaffCharacter* MyChar = Cast<AStaffCharacter>(InstigatorPawn);
 	if (MyChar)
 	{
-		if (MyChar->ServerPickUpItem(ItemType, Durability))
+		if (MyChar->KServerPickUpItem(ItemType, Durability))
 		{
 			Destroy();
 		}

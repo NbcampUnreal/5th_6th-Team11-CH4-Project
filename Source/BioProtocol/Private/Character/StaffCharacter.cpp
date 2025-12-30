@@ -24,6 +24,7 @@
 #include "BioProtocol/Public/Equippable/EquippableTool/EquippableTool_Welder.h"
 #include "Daeho/MyInteractableInterface.h"
 #include <Character/AndroidCharacter.h>
+#include "Daeho/DH_PickupItem.h"
 
 // Sets default values
 AStaffCharacter::AStaffCharacter()
@@ -430,8 +431,6 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 	UseEquippedItem();
 }
 
-
-
 void AStaffCharacter::PullLever()
 {
 	if (!IsLocallyControlled())
@@ -518,6 +517,7 @@ void AStaffCharacter::TryEquipTorch()
 		ServerEquipTorch();
 		return;
 	}
+	CurrentTool = EToolType::Welder;
 
 	bIsTorchEquipped = !bIsTorchEquipped;
 	OnRep_TorchEquipped();
@@ -561,6 +561,7 @@ void AStaffCharacter::ServerEquipTorch_Implementation()
 {
 	UnequipAll();
 	bIsTorchEquipped = true;
+	CurrentTool = EToolType::Welder;
 
 	//bIsGunEquipped = false;
 	//bIsWrenchEquipped = false;
@@ -576,6 +577,7 @@ void AStaffCharacter::ServerEquipWrench_Implementation()
 {
 	UnequipAll();
 	bIsWrenchEquipped = true;
+	CurrentTool = EToolType::Wrench;
 
 	//bIsWrenchEquipped = !bIsWrenchEquipped;
 
@@ -738,7 +740,22 @@ void AStaffCharacter::ServerItemInteract_Implementation()
 		Params
 	);
 
-
+	if (bHit && HitResult.GetActor())
+	{
+		if (HitResult.GetActor()->IsA(ADH_PickupItem::StaticClass()))
+		{
+			// 인터페이스 호출 -> PickupItem::Interact 실행 -> Character::ServerPickUpItem 실행
+			if (HitResult.GetActor()->GetClass()->ImplementsInterface(UMyInteractableInterface::StaticClass()))
+			{
+				IMyInteractableInterface::Execute_Interact(HitResult.GetActor(), this);
+			}
+		}
+		// 2. TaskObject인 경우 -> 임무 수행
+		else if (HitResult.GetActor()->GetClass()->ImplementsInterface(UMyInteractableInterface::StaticClass()))
+		{
+			IMyInteractableInterface::Execute_Interact(HitResult.GetActor(), this);
+		}
+	}
 }
 
 void AStaffCharacter::ServerMissionInteract_Implementation()
@@ -816,6 +833,8 @@ void AStaffCharacter::OnRep_WrenchEquipped()
 		ThirdWrenchMesh->SetVisibility(bIsWrenchEquipped, true);
 		ThirdWrenchMesh->SetHiddenInGame(!bIsWrenchEquipped);
 	}
+	CurrentTool = EToolType::Wrench;
+
 }
 
 void AStaffCharacter::OnRep_TorchEquipped()
@@ -825,6 +844,8 @@ void AStaffCharacter::OnRep_TorchEquipped()
 		ThirdTorchMesh->SetVisibility(bIsTorchEquipped, true);
 		ThirdTorchMesh->SetHiddenInGame(!bIsTorchEquipped);
 	}
+	CurrentTool = EToolType::Welder;
+
 }
 
 void AStaffCharacter::OnRep_BIsCanAttack()
@@ -1402,75 +1423,83 @@ void AStaffCharacter::EquipSlot1(const FInputActionValue& InValue)
 
 void AStaffCharacter::EquipSlot2(const FInputActionValue& InValue)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
-		TEXT("===== 2 KEY WORKS! CODE IS LOADED! ====="));
-	UE_LOG(LogTemp, Warning, TEXT("========================================"));
-	UE_LOG(LogTemp, Warning, TEXT("[Player] ===== 2 KEY PRESSED ====="));
+	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
+	//	TEXT("===== 2 KEY WORKS! CODE IS LOADED! ====="));
+	//UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	//UE_LOG(LogTemp, Warning, TEXT("[Player] ===== 2 KEY PRESSED ====="));
 
-	if (!Inventory)
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Player] Inventory is NULL!"));
+	//if (!Inventory)
+	//{
+	//	UE_LOG(LogTemp, Error, TEXT("[Player] Inventory is NULL!"));
+	//	return;
+	//}
+
+	//// 인벤토리 전체 출력
+	//const TArray<UItemBase*>& AllItems = Inventory->GetAllItems();
+	//UE_LOG(LogTemp, Warning, TEXT("[Player] Total items in inventory: %d"), AllItems.Num());
+
+	//for (int32 i = 0; i < AllItems.Num(); i++)
+	//{
+	//	if (AllItems[i])
+	//	{
+	//		UE_LOG(LogTemp, Log, TEXT("  Item[%d]: %s (Quantity: %d, ItemClass: %s)"),
+	//			i,
+	//			*AllItems[i]->TextData.Name.ToString(),
+	//			AllItems[i]->Quantity,
+	//			AllItems[i]->ItemClass ? *AllItems[i]->ItemClass->GetName() : TEXT("NULL"));
+	//	}
+	//}
+
+	//// Slot 2 확인
+	//UItemBase* ItemInSlot2 = Inventory->GetItemInSlot(2);
+	//if (ItemInSlot2)
+	//{
+	//	UE_LOG(LogTemp, Warning, TEXT("[Player] Slot 2 has: %s"),
+	//		*ItemInSlot2->TextData.Name.ToString());
+
+	//	if (!ItemInSlot2->ItemClass)
+	//	{
+	//		UE_LOG(LogTemp, Error, TEXT("[Player] ✗ ItemClass is NULL!"));
+	//		UE_LOG(LogTemp, Error, TEXT("[Player] You must set ItemClass in DataTable!"));
+	//		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	//		return;
+	//	}
+
+	//	UE_LOG(LogTemp, Log, TEXT("[Player] ItemClass: %s"),
+	//		*ItemInSlot2->ItemClass->GetName());
+
+	//	UE_LOG(LogTemp, Warning, TEXT("[Player] Calling SwitchToSlot(2)..."));
+	//	SwitchToSlot(2);
+	//}
+	//else
+	//{
+	//	UE_LOG(LogTemp, Error, TEXT("[Player] Slot 2 is EMPTY!"));
+
+	//	// 모든 슬롯 확인
+	//	for (int32 i = 1; i <= 3; i++)
+	//	{
+	//		UItemBase* Item = Inventory->GetItemInSlot(i);
+	//		if (Item)
+	//		{
+	//			UE_LOG(LogTemp, Log, TEXT("[Player] Slot %d: %s"),
+	//				i, *Item->TextData.Name.ToString());
+	//		}
+	//		else
+	//		{
+	//			UE_LOG(LogTemp, Log, TEXT("[Player] Slot %d: EMPTY"), i);
+	//		}
+	//	}
+	//}
+
+	//UE_LOG(LogTemp, Warning, TEXT("========================================"));
+
+	if (!bHasWrench && !bHasTorch) {
 		return;
 	}
-
-	// 인벤토리 전체 출력
-	const TArray<UItemBase*>& AllItems = Inventory->GetAllItems();
-	UE_LOG(LogTemp, Warning, TEXT("[Player] Total items in inventory: %d"), AllItems.Num());
-
-	for (int32 i = 0; i < AllItems.Num(); i++)
-	{
-		if (AllItems[i])
-		{
-			UE_LOG(LogTemp, Log, TEXT("  Item[%d]: %s (Quantity: %d, ItemClass: %s)"),
-				i,
-				*AllItems[i]->TextData.Name.ToString(),
-				AllItems[i]->Quantity,
-				AllItems[i]->ItemClass ? *AllItems[i]->ItemClass->GetName() : TEXT("NULL"));
-		}
-	}
-
-	// Slot 2 확인
-	UItemBase* ItemInSlot2 = Inventory->GetItemInSlot(2);
-	if (ItemInSlot2)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Player] Slot 2 has: %s"),
-			*ItemInSlot2->TextData.Name.ToString());
-
-		if (!ItemInSlot2->ItemClass)
-		{
-			UE_LOG(LogTemp, Error, TEXT("[Player] ✗ ItemClass is NULL!"));
-			UE_LOG(LogTemp, Error, TEXT("[Player] You must set ItemClass in DataTable!"));
-			UE_LOG(LogTemp, Warning, TEXT("========================================"));
-			return;
-		}
-
-		UE_LOG(LogTemp, Log, TEXT("[Player] ItemClass: %s"),
-			*ItemInSlot2->ItemClass->GetName());
-
-		UE_LOG(LogTemp, Warning, TEXT("[Player] Calling SwitchToSlot(2)..."));
-		SwitchToSlot(2);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Player] Slot 2 is EMPTY!"));
-
-		// 모든 슬롯 확인
-		for (int32 i = 1; i <= 3; i++)
-		{
-			UItemBase* Item = Inventory->GetItemInSlot(i);
-			if (Item)
-			{
-				UE_LOG(LogTemp, Log, TEXT("[Player] Slot %d: %s"),
-					i, *Item->TextData.Name.ToString());
-			}
-			else
-			{
-				UE_LOG(LogTemp, Log, TEXT("[Player] Slot %d: EMPTY"), i);
-			}
-		}
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	if (bHasWrench)
+		TryEquipWrench();
+	else if (bHasTorch)
+		TryEquipTorch();
 }
 
 void AStaffCharacter::EquipSlot3(const FInputActionValue& InValue)
@@ -1480,7 +1509,7 @@ void AStaffCharacter::EquipSlot3(const FInputActionValue& InValue)
 
 void AStaffCharacter::InteractPressed(const FInputActionValue& InValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("[Player] ===== E KEY PRESSED ====="));
+	/*UE_LOG(LogTemp, Warning, TEXT("[Player] ===== E KEY PRESSED ====="));
 
 	if (InteractionData.CurrentInteractable)
 	{
@@ -1491,13 +1520,13 @@ void AStaffCharacter::InteractPressed(const FInputActionValue& InValue)
 	else
 	{
 		UE_LOG(LogTemp, Error, TEXT("[Player] No CurrentInteractable! Cannot interact!"));
-	}
+	}*/
 
 	//템수집
 	ItemInteract();
 
 	//미션수집
-	MissionInteract();
+	//MissionInteract();
 }
 
 void AStaffCharacter::InteractReleased(const FInputActionValue& InValue)
@@ -2038,6 +2067,31 @@ void AStaffCharacter::TakeTorch()
 {
 	if (bHasWrench) {
 
+	}
+}
+
+bool AStaffCharacter::KServerPickUpItem(EToolType NewItemType, int32 NewDurability)
+{
+	switch (NewItemType)
+	{
+	case EToolType::None:
+		return 0;
+	case EToolType::Wrench:
+		if (bHasWrench || bHasTorch)
+			return 0;
+		bHasWrench = true;
+		return 1;
+
+		break;
+	case EToolType::Welder:
+		if (bHasWrench || bHasTorch)
+			return 0;
+		bHasTorch = true;
+		return 1;
+		break;
+	default:
+		return 0;
+		break;
 	}
 }
 
