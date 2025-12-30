@@ -53,23 +53,9 @@ AStaffCharacter::AStaffCharacter()
 	FirstPersonMesh->SetOnlyOwnerSee(true);
 	FirstPersonMesh->bCastDynamicShadow = false;
 	FirstPersonMesh->CastShadow = false;	
-
-	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
-	WeaponMesh->SetupAttachment(FirstPersonMesh, TEXT("hand_r"));
-
-	WeaponMesh->SetHiddenInGame(true);
-	WeaponMesh->SetVisibility(false, true);
-
-	WeaponMesh->SetCastShadow(false);
-
-	// 3��Ī �޽��� ���ο��� �� ���̰�
 	GetMesh()->SetOwnerNoSee(true);
-	ThirdWeaponMesh= CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ThirdWeaponMesh"));
-	ThirdWeaponMesh->SetupAttachment(GetMesh(), TEXT("hand_r"));
-	ThirdWeaponMesh->SetHiddenInGame(true);
-	ThirdWeaponMesh->SetVisibility(false, true);
-	ThirdWeaponMesh->SetCastShadow(false);
-	ThirdWeaponMesh->SetOwnerNoSee(true);
+
+	SetItemMesh();
 
 	// ������ �ɼ�
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
@@ -205,7 +191,48 @@ void AStaffCharacter::Tick(float DeltaTime)
 	//);
 
 	// 디버그 라인 그리기 (개발 확인용)
+	if (!IsLocallyControlled())
+		return;
 
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC)
+		return;
+
+	// ========================
+	// 장비 획득 (Has)
+	// ========================
+	if (PC->IsInputKeyDown(EKeys::NumPadFour))
+	{
+		bHasGun = true;
+	}
+
+	if (PC->IsInputKeyDown(EKeys::NumPadFive))
+	{
+		bHasWrench = true;
+	}
+
+	if (PC->IsInputKeyDown(EKeys::NumPadSix))
+	{
+		bHasTorch = true;
+	}
+
+	// ========================
+	// 장비 장착 (Equip)
+	// ========================
+	if (PC->WasInputKeyJustPressed(EKeys::NumPadOne))
+	{
+		TryEquipGun();
+	}
+
+	if (PC->WasInputKeyJustPressed(EKeys::NumPadTwo))
+	{
+		TryEquipWrench();
+	}
+
+	if (PC->WasInputKeyJustPressed(EKeys::NumPadThree))
+	{
+		TryEquipTorch();
+	}
 }
 
 // Called to bind functionality to input
@@ -260,10 +287,17 @@ void AStaffCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AStaffCharacter, MaterialIndex);
 	DOREPLIFETIME(AStaffCharacter, bIsCanAttack);
-	DOREPLIFETIME(AStaffCharacter, bIsGunEquipped);
 	DOREPLIFETIME(AStaffCharacter, CurrentEquippedItem);
 	DOREPLIFETIME(AStaffCharacter, CurrentSlot);
 	DOREPLIFETIME(AStaffCharacter, Inventory);
+
+	DOREPLIFETIME(AStaffCharacter, bHasTorch);
+	DOREPLIFETIME(AStaffCharacter, bHasWrench);
+	DOREPLIFETIME(AStaffCharacter, bHasGun);
+
+	DOREPLIFETIME(AStaffCharacter, bIsGunEquipped);
+	DOREPLIFETIME(AStaffCharacter, bIsTorchEquipped);
+	DOREPLIFETIME(AStaffCharacter, bIsWrenchEquipped);
 
 }
 
@@ -445,38 +479,109 @@ void AStaffCharacter::TestUpdateLeverGauge()
 	}
 }
 
-void AStaffCharacter::TestItemSlot1()
+void AStaffCharacter::TryEquipGun()
 {	
+	if (!bHasGun)
+		return;
 	if (WeaponMesh)
 	{
+		UnequipAll();
+
 		WeaponMesh->SetVisibility(!bIsGunEquipped, true);
 		WeaponMesh->SetHiddenInGame(bIsGunEquipped);
 	}
 
-	//무기인벤에 있는지확인 필요
 	if (!HasAuthority())
 	{
-		ServerTestItemSlot1();
+		ServerEquipGun();
 		return;
 	}
 
 	bIsGunEquipped = !bIsGunEquipped;
-	OnRep_GunEquipped();
-
-	/*if (HasAuthority())
-	{
-		bIsGunEquipped = !bIsGunEquipped;
-	}
-	else
-	{
-		ServerTestItemSlot1();
-	}*/
+	OnRep_GunEquipped();	
 }
 
-void AStaffCharacter::ServerTestItemSlot1_Implementation()
+void AStaffCharacter::TryEquipTorch()
 {
-	bIsGunEquipped = !bIsGunEquipped;
+	if (!bHasTorch)
+		return;
+	if (TorchMesh)
+	{
+		UnequipAll();
+
+		TorchMesh->SetVisibility(!bIsTorchEquipped, true);
+		TorchMesh->SetHiddenInGame(bIsTorchEquipped);
+	}
+
+	if (!HasAuthority())
+	{
+		ServerEquipTorch();
+		return;
+	}
+
+	bIsTorchEquipped = !bIsTorchEquipped;
+	OnRep_TorchEquipped();
+}
+
+void AStaffCharacter::TryEquipWrench()
+{
+	if (!bHasWrench)
+		return;
+	if (WrenchMesh)
+	{
+		UnequipAll();
+		WrenchMesh->SetVisibility(!bIsWrenchEquipped, true);
+		WrenchMesh->SetHiddenInGame(bIsWrenchEquipped);
+	}
+
+	if (!HasAuthority())
+	{
+		ServerEquipWrench();
+		return;
+	}
+
+	bIsWrenchEquipped = !bIsWrenchEquipped;
+	OnRep_WrenchEquipped();
+}
+
+void AStaffCharacter::ServerEquipGun_Implementation()
+{
+	UnequipAll();
+
+	bIsGunEquipped = true;
+
+	//bIsGunEquipped = !bIsGunEquipped;
+
+	OnRep_TorchEquipped();
+	OnRep_WrenchEquipped();
 	OnRep_GunEquipped();
+}
+
+void AStaffCharacter::ServerEquipTorch_Implementation()
+{
+	UnequipAll();
+	bIsTorchEquipped = true;
+
+	//bIsGunEquipped = false;
+	//bIsWrenchEquipped = false;
+
+	//bIsTorchEquipped = !bIsTorchEquipped;
+
+	OnRep_GunEquipped();
+	OnRep_WrenchEquipped();
+	OnRep_TorchEquipped();
+}
+
+void AStaffCharacter::ServerEquipWrench_Implementation()
+{
+	UnequipAll();
+	bIsWrenchEquipped = true;
+
+	//bIsWrenchEquipped = !bIsWrenchEquipped;
+
+	OnRep_GunEquipped();
+	OnRep_TorchEquipped();
+	OnRep_WrenchEquipped();
 }
 
 void AStaffCharacter::ReleaseLever()
@@ -671,6 +776,24 @@ void AStaffCharacter::OnRep_GunEquipped()
 	{
 		ThirdWeaponMesh->SetVisibility(bIsGunEquipped, true);
 		ThirdWeaponMesh->SetHiddenInGame(!bIsGunEquipped);
+	}
+}
+
+void AStaffCharacter::OnRep_WrenchEquipped()
+{
+	if (ThirdWrenchMesh)
+	{
+		ThirdWrenchMesh->SetVisibility(bIsWrenchEquipped, true);
+		ThirdWrenchMesh->SetHiddenInGame(!bIsWrenchEquipped);
+	}
+}
+
+void AStaffCharacter::OnRep_TorchEquipped()
+{
+	if (ThirdTorchMesh)
+	{
+		ThirdTorchMesh->SetVisibility(bIsTorchEquipped, true);
+		ThirdTorchMesh->SetHiddenInGame(!bIsTorchEquipped);
 	}
 }
 
@@ -1244,7 +1367,7 @@ void AStaffCharacter::OnRep_CurrentSlot()
 void AStaffCharacter::EquipSlot1(const FInputActionValue& InValue)
 {
 	SwitchToSlot(1);
-	TestItemSlot1();
+	TryEquipGun();
 }
 
 void AStaffCharacter::EquipSlot2(const FInputActionValue& InValue)
@@ -1838,4 +1961,80 @@ void AStaffCharacter::DropCurrentItemInput(const FInputActionValue& InValue)
 	}
 
 	DropCurrentItem();
+}
+
+void AStaffCharacter::OnRep_bHasTorch()
+{
+	
+}
+
+void AStaffCharacter::OnRep_bHasWrench()
+{
+
+}
+
+void AStaffCharacter::OnRep_bHasGun()
+{
+}
+
+void AStaffCharacter::UnequipAll()
+{
+	WeaponMesh->SetHiddenInGame(true);
+	WeaponMesh->SetVisibility(false, true);
+	WeaponMesh->SetCastShadow(false);
+	TorchMesh->SetHiddenInGame(true);
+	TorchMesh->SetVisibility(false, true);
+	TorchMesh->SetCastShadow(false);
+	WrenchMesh->SetHiddenInGame(true);
+	WrenchMesh->SetVisibility(false, true);
+	WrenchMesh->SetCastShadow(false);
+
+	bIsGunEquipped = false;
+	bIsWrenchEquipped = false;
+	bIsTorchEquipped = false;
+}
+
+void AStaffCharacter::SetItemMesh()
+{
+	////////////////////////////////////////////////////////////////////////////////
+	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+	WeaponMesh->SetupAttachment(FirstPersonMesh, TEXT("hand_r"));
+	WeaponMesh->SetHiddenInGame(true);
+	WeaponMesh->SetVisibility(false, true);
+	WeaponMesh->SetCastShadow(false);
+
+	// 3��Ī �޽��� ���ο��� �� ���̰�
+	ThirdWeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ThirdWeaponMesh"));
+	ThirdWeaponMesh->SetupAttachment(GetMesh(), TEXT("hand_r"));
+	ThirdWeaponMesh->SetHiddenInGame(true);
+	ThirdWeaponMesh->SetVisibility(false, true);
+	ThirdWeaponMesh->SetCastShadow(false);
+	ThirdWeaponMesh->SetOwnerNoSee(true);
+
+	TorchMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("TorchMesh"));
+	TorchMesh->SetupAttachment(FirstPersonMesh, TEXT("hand_r"));
+	TorchMesh->SetHiddenInGame(true);
+	TorchMesh->SetVisibility(false, true);
+	TorchMesh->SetCastShadow(false);
+
+	ThirdTorchMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ThirdTorchMesh"));
+	ThirdTorchMesh->SetupAttachment(GetMesh(), TEXT("hand_r"));
+	ThirdTorchMesh->SetHiddenInGame(true);
+	ThirdTorchMesh->SetVisibility(false, true);
+	ThirdTorchMesh->SetCastShadow(false);
+	ThirdTorchMesh->SetOwnerNoSee(true);
+
+	WrenchMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WrenchMesh"));
+	WrenchMesh->SetupAttachment(FirstPersonMesh, TEXT("hand_r"));
+	WrenchMesh->SetHiddenInGame(true);
+	WrenchMesh->SetVisibility(false, true);
+	WrenchMesh->SetCastShadow(false);
+
+	ThirdWrenchMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ThirdWrenchMesh"));
+	ThirdWrenchMesh->SetupAttachment(GetMesh(), TEXT("hand_r"));
+	ThirdWrenchMesh->SetHiddenInGame(true);
+	ThirdWrenchMesh->SetVisibility(false, true);
+	ThirdWrenchMesh->SetCastShadow(false);
+	ThirdWrenchMesh->SetOwnerNoSee(true);
+
 }
