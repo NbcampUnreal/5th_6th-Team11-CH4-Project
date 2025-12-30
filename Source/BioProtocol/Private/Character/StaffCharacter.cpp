@@ -2127,9 +2127,35 @@ void AStaffCharacter::KConsumeToolDurability(int32 Amount)
 	if (InventoryDurability <= 0)
 	{
 		// 내구도 0 -> 아이템 파괴
+		switch (CurrentTool)
+		{
+		case EToolType::Wrench:
+			bHasWrench = false;
+			break;
+		case EToolType::Welder:
+			bHasTorch = false;
+			break;
+		default:
+			break;
+		}
+
+
+		// 맨손으로 전환
+			// 상태만 변경
+		bIsTorchEquipped = false;
+		bIsGunEquipped = false;
+		bIsWrenchEquipped = false;
+
+		bIsGunEquipped = false;
+
+		// 서버는 직접 호출
+		OnRep_TorchEquipped();
+		OnRep_GunEquipped();
+		OnRep_WrenchEquipped();
+
 		CurrentTool = EToolType::None;
 		InventoryDurability = 0;
-		UnequipAll();
+		Client_OnToolBroken();
 
 		UE_LOG(LogTemp, Warning, TEXT("Tool Broken!"));
 	}
@@ -2204,6 +2230,11 @@ void AStaffCharacter::KServerDropItem_Implementation()
 	InventoryDurability = 0;
 
 	UE_LOG(LogTemp, Log, TEXT("Item Dropped."));
+}
+
+void AStaffCharacter::Client_OnToolBroken_Implementation()
+{
+	UnequipAll();
 }
 
 void AStaffCharacter::SetItemMesh()

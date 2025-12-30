@@ -471,6 +471,9 @@ public:
 	void KServerDropItem();
 
 	void SetItemMesh();
+
+	UFUNCTION(Client, Reliable)
+	void Client_OnToolBroken();
 protected:
 	//템소지 여부 bool
 	UPROPERTY(ReplicatedUsing = OnRep_bHasTorch, BlueprintReadOnly, Category = "Equipment")

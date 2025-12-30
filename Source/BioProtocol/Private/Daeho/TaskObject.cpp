@@ -96,6 +96,10 @@ void ATaskObject::Interact_Implementation(APawn* InstigatorPawn)
 		}
 
 		OnRep_IsCompleted();
+		if (RequiredTool != EToolType::None)
+		{
+			MyChar->KConsumeToolDurability(1);
+		}
 
 		UE_LOG(LogTemp, Log, TEXT("도구가 일치합니다! 임무 완료!"));
 	}
