@@ -381,6 +381,11 @@ void ABioPlayerController::JoinLobbyChannel_Local(const FString& ChannelName, co
 	);
 }
 
+void ABioPlayerController::Client_LeaveGameChannels_Implementation()
+{
+	LeaveGameChannels();
+}
+
 void ABioPlayerController::LeaveLobbyChannel()
 {
 	if (!IsLocalController())
