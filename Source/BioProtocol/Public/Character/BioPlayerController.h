@@ -54,6 +54,9 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_JoinGameChannel(const FString& ChannelName, const FString& ClientBaseUrl, const FString& ParticipantToken);
 
+	UFUNCTION(Client, Reliable)
+	void Client_LeaveGameChannels();
+
 	UFUNCTION(BlueprintCallable, Category = "Voice")
 	void LeaveLobbyChannel();
 
@@ -61,6 +64,10 @@ public:
 	void LeaveGameChannels();
 
 	// Voice Transmission Control
+
+	UFUNCTION(BlueprintCallable, Category = "Voice")
+	void VoiceTransmitToALL();
+
 	UFUNCTION(BlueprintCallable, Category = "Voice")
 	void VoiceTransmitToPublic();
 

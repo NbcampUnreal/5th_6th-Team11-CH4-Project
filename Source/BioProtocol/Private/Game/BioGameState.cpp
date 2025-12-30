@@ -2,6 +2,7 @@
 
 #include "Game/BioGameState.h"
 #include "Net/UnrealNetwork.h"
+#include "Game/BioGameMode.h"
 
 ABioGameState::ABioGameState()
 {

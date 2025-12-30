@@ -351,6 +351,14 @@ void ABioGameMode::EndGame()
 	{
 		if (UVoiceChannelManager* VCM = GI->GetSubsystem<UVoiceChannelManager>())
 		{
+			for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+			{
+				if (ABioPlayerController* BioPC = Cast<ABioPlayerController>(It->Get()))
+				{
+					BioPC->Client_LeaveGameChannels();
+				}
+			}
+
 			VCM->OnGameEnd();
 		}
 	}
