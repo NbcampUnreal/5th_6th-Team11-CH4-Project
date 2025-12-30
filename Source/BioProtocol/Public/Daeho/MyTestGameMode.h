@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -17,13 +17,13 @@ class BIOPROTOCOL_API AMyTestGameMode : public AGameModeBase
 public:
 	AMyTestGameMode();
 
-	// 임무 객체가 스폰될 때 호출하여 전체 개수 증가
+	// ?꾨Т 媛앹껜媛 ?ㅽ룿?????몄텧?섏뿬 ?꾩껜 媛쒖닔 利앷?
 	void RegisterTask(class ATaskObject* Task);
 
-	// 임무가 완료되었을 때 호출하여 승리 조건 체크
+	// ?꾨Т媛 ?꾨즺?섏뿀?????몄텧?섏뿬 ?밸━ 議곌굔 泥댄겕
 	void OnTaskCompleted();
 
 protected:
-	// 시민 승리 처리
+	// ?쒕? ?밸━ 泥섎━
 	void CivilianWin();
 };

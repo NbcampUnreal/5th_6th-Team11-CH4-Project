@@ -16,21 +16,21 @@ class BIOPROTOCOL_API AMyGameStateBase : public AGameStateBase
 public:
 	AMyGameStateBase();
 
-	// ë³€ìˆ˜ ë³µì œë¥¼ ìœ„í•´ í•„ìš”í•œ í•¨ìˆ˜
+	// º¯¼ö º¹Á¦¸¦ À§ÇØ ÇÊ¿äÇÑ ÇÔ¼ö
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	// ì „ì²´ ì„ë¬´ ê°œìˆ˜ (ì„œë²„ë§Œ ìˆ˜ì •, í´ë¼ëŠ” ì½ê¸°ë§Œ)
+	// ÀüÃ¼ ÀÓ¹« °³¼ö (¼­¹ö¸¸ ¼öÁ¤, Å¬¶ó´Â ÀĞ±â¸¸)
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Mafia Game")
 	int32 TotalTasks;
 
-	// ì™„ë£Œëœ ì„ë¬´ ê°œìˆ˜ (ì„œë²„ë§Œ ìˆ˜ì •, í´ë¼ëŠ” ì½ê¸°ë§Œ)
+	// ¿Ï·áµÈ ÀÓ¹« °³¼ö (¼­¹ö¸¸ ¼öÁ¤, Å¬¶ó´Â ÀĞ±â¸¸)
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Mafia Game")
 	int32 CompletedTasks;
 
-	// ì„ë¬´ ì§„í–‰ ìƒí™© ì—…ë°ì´íŠ¸ (ì„œë²„ì—ì„œ í˜¸ì¶œ)
+	// ÀÓ¹« ÁøÇà »óÈ² ¾÷µ¥ÀÌÆ® (¼­¹ö¿¡¼­ È£Ãâ)
 	void AddCompletedTask();
 
-	// í˜„ì¬ ì§„í–‰ë¥ (0.0 ~ 1.0) ë°˜í™˜ í—¬í¼ í•¨ìˆ˜
+	// ÇöÀç ÁøÇà·ü(0.0 ~ 1.0) ¹İÈ¯ ÇïÆÛ ÇÔ¼ö
 	UFUNCTION(BlueprintCallable, Category = "Mafia Game")
 	float GetTaskProgress() const;
 };

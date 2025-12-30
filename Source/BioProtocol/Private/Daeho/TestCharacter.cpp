@@ -1,4 +1,4 @@
-#include "Daeho/TestCharacter.h"
+﻿#include "Daeho/TestCharacter.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
@@ -8,56 +8,52 @@
 #include "EnhancedInputSubsystems.h"
 #include "Daeho/MyInteractableInterface.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
+#include "DrawDebugHelpers.h"
+#include "Daeho/DH_PickupItem.h"
 
 // Sets default values
 ATestCharacter::ATestCharacter()
 {
-    // Tick 활성화 (필요 없다면 false로 해도 되지만 기본적으로 둡니다)
     PrimaryActorTick.bCanEverTick = true;
-
-    // 멀티플레이어에서 이 캐릭터가 네트워크로 복제되도록 설정
     bReplicates = true;
 
-    // 1. 캡슐 컴포넌트 크기 설정 (기본값)
     GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
 
-    // 2. 1인칭 카메라 생성 및 설정
     FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
-    FirstPersonCameraComponent->SetupAttachment(GetCapsuleComponent()); // 캡슐에 부착
-    FirstPersonCameraComponent->SetRelativeLocation(FVector(-10.f, 0.f, 60.f)); // 눈 높이 설정
-    FirstPersonCameraComponent->bUsePawnControlRotation = true; // 컨트롤러 회전(마우스)을 따름
+    FirstPersonCameraComponent->SetupAttachment(GetCapsuleComponent());
+    FirstPersonCameraComponent->SetRelativeLocation(FVector(-10.f, 0.f, 60.f));
+    FirstPersonCameraComponent->bUsePawnControlRotation = true;
 
-    // 3. 캐릭터 무브먼트 설정 (멀티플레이어 동기화는 기본적으로 CharacterMovementComponent가 처리함)
     GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 
-    // 1. 주인(나)에게는 이 메쉬를 렌더링하지 않습니다.
     GetMesh()->SetOwnerNoSee(true);
-    // 2. 하지만 그림자는 주인에게도 보이게 합니다 (몸은 투명해도 그림자는 있어야 리얼함).
     GetMesh()->bCastHiddenShadow = true;
 
-    // 기본 도구는 맨손
-    CurrentTool = EToolType::None;
+    bIsToolEquipped = false;
+    InventoryItemType = EToolType::None;
+    InventoryDurability = 0;
 }
 
 void ATestCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-    // CurrentTool 변수가 변경되면 클라이언트에 복제됨
-    DOREPLIFETIME(ATestCharacter, CurrentTool);
+    DOREPLIFETIME(ATestCharacter, bIsToolEquipped);
+    DOREPLIFETIME(ATestCharacter, InventoryItemType);
+    DOREPLIFETIME(ATestCharacter, InventoryDurability);
 }
 
 void ATestCharacter::BeginPlay()
 {
     Super::BeginPlay();
 
-    // Enhanced Input 시스템에 매핑 컨텍스트 추가 (로컬 플레이어인 경우에만)
+    // Enhanced Input ?쒖뒪?쒖뿉 留ㅽ븨 而⑦뀓?ㅽ듃 異붽? (濡쒖뺄 ?뚮젅?댁뼱??寃쎌슦?먮쭔)
     if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
     {
         if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
         {
-            // 컨텍스트가 유효하다면 시스템에 추가
+            // 而⑦뀓?ㅽ듃媛 ?좏슚?섎떎硫??쒖뒪?쒖뿉 異붽?
             if (DefaultMappingContext)
             {
                 Subsystem->AddMappingContext(DefaultMappingContext, 0);
@@ -75,140 +71,233 @@ void ATestCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-    // 기존 InputComponent를 EnhancedInputComponent로 캐스팅
+    // 湲곗〈 InputComponent瑜?EnhancedInputComponent濡?罹먯뒪??
     if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
     {
-        // 점프 바인딩
+        // ?먰봽 諛붿씤??
         if (JumpAction)
         {
             EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
             EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
         }
 
-        // 이동 바인딩
+        // ?대룞 諛붿씤??
         if (MoveAction)
         {
             EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ATestCharacter::Move);
         }
 
-        // 시선 처리 바인딩
+        // ?쒖꽑 泥섎━ 諛붿씤??
         if (LookAction)
         {
             EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ATestCharacter::Look);
         }
 
-		// 상호작용 바인딩
+		// ?곹샇?묒슜 諛붿씤??
         if (InteractAction)
         {
             EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &ATestCharacter::Interact);
         }
 
-        // 도구 변경 (1, 2, 3 키)
-        if (EquipSlot1Action)
+        // ?꾧뎄 蹂寃?(1, 2, 3 ??
+        if (Slot1Action)
         {
-            EnhancedInputComponent->BindAction(EquipSlot1Action, ETriggerEvent::Started, this, &ATestCharacter::OnEquipSlot1);
+            EnhancedInputComponent->BindAction(Slot1Action, ETriggerEvent::Started, this, &ATestCharacter::OnSlot1);
         }
-        if (EquipSlot2Action)
+        if (Slot2Action)
         {
-            EnhancedInputComponent->BindAction(EquipSlot2Action, ETriggerEvent::Started, this, &ATestCharacter::OnEquipSlot2);
+            EnhancedInputComponent->BindAction(Slot2Action, ETriggerEvent::Started, this, &ATestCharacter::OnSlot2);
         }
-        if (EquipSlot3Action)
+        if (DropAction)
         {
-            EnhancedInputComponent->BindAction(EquipSlot3Action, ETriggerEvent::Started, this, &ATestCharacter::OnEquipSlot3);
+            EnhancedInputComponent->BindAction(DropAction, ETriggerEvent::Started, this, &ATestCharacter::OnDrop);
         }
     }
 }
 
 void ATestCharacter::Move(const FInputActionValue& Value)
 {
-    // 입력값 가져오기 (Vector2D: X=전후, Y=좌우)
+    // ?낅젰媛?媛?몄삤湲?(Vector2D: X=?꾪썑, Y=醫뚯슦)
     FVector2D MovementVector = Value.Get<FVector2D>();
 
     if (Controller != nullptr)
     {
-        // 카메라가 바라보는 방향을 기준으로 이동
-        AddMovementInput(GetActorForwardVector(), MovementVector.Y); // 전후 (Y축이 Forward/Backward)
-        AddMovementInput(GetActorRightVector(), MovementVector.X);   // 좌우 (X축이 Right/Left)
+        // 移대찓?쇨? 諛붾씪蹂대뒗 諛⑺뼢??湲곗??쇰줈 ?대룞
+        AddMovementInput(GetActorForwardVector(), MovementVector.Y); // ?꾪썑 (Y異뺤씠 Forward/Backward)
+        AddMovementInput(GetActorRightVector(), MovementVector.X);   // 醫뚯슦 (X異뺤씠 Right/Left)
     }
 }
 
 void ATestCharacter::Look(const FInputActionValue& Value)
 {
-    // 입력값 가져오기 (Vector2D: X=Yaw, Y=Pitch)
+    // ?낅젰媛?媛?몄삤湲?(Vector2D: X=Yaw, Y=Pitch)
     FVector2D LookAxisVector = Value.Get<FVector2D>();
 
     if (Controller != nullptr)
     {
-        // 마우스 X 이동 -> 캐릭터 회전 (Yaw)
+        // 留덉슦??X ?대룞 -> 罹먮┃???뚯쟾 (Yaw)
         AddControllerYawInput(LookAxisVector.X);
-        // 마우스 Y 이동 -> 카메라 상하 (Pitch)
+        // 留덉슦??Y ?대룞 -> 移대찓???곹븯 (Pitch)
         AddControllerPitchInput(LookAxisVector.Y);
     }
 }
 
-// --- 도구 변경 로직 ---
+// --- ?꾧뎄 蹂寃?濡쒖쭅 ---
 
-void ATestCharacter::OnEquipSlot1(const FInputActionValue& Value)
+EToolType ATestCharacter::GetCurrentActiveTool() const
 {
-    // 1번: 맨손
-    ServerEquipTool(EToolType::None);
+    // 도구 장착 모드이고, 인벤토리에 아이템이 있어야만 도구로 인정
+    if (bIsToolEquipped && InventoryItemType != EToolType::None)
+    {
+        return InventoryItemType;
+    }
+    return EToolType::None; // 그 외엔 맨손
 }
 
-void ATestCharacter::OnEquipSlot2(const FInputActionValue& Value)
+void ATestCharacter::OnSlot1(const FInputActionValue& Value)
 {
-    // 2번: 렌치
-    ServerEquipTool(EToolType::Wrench);
+    ServerSetEquipState(false); // 맨손 모드
 }
 
-void ATestCharacter::OnEquipSlot3(const FInputActionValue& Value)
+void ATestCharacter::OnSlot2(const FInputActionValue& Value)
 {
-    // 3번: 용접기
-    ServerEquipTool(EToolType::Welder);
+    ServerSetEquipState(true); // 도구 장착 모드
 }
 
-void ATestCharacter::ServerEquipTool_Implementation(EToolType NewTool)
+void ATestCharacter::ServerSetEquipState_Implementation(bool bEquip)
 {
-    // 서버에서 변수 변경 -> Replicated되어 클라에도 전파됨
-    CurrentTool = NewTool;
+    bIsToolEquipped = bEquip;
 
-    // 로그로 확인
-    const UEnum* ToolEnum = StaticEnum<EToolType>();
-    UE_LOG(LogTemp, Log, TEXT("Equipped Tool: %s"), *ToolEnum->GetNameStringByValue((int64)CurrentTool));
+    // 로그 출력
+    EToolType Current = GetCurrentActiveTool();
+    const UEnum* EnumPtr = StaticEnum<EToolType>();
+    UE_LOG(LogTemp, Log, TEXT("Current Tool State: %s"), *EnumPtr->GetNameStringByValue((int64)Current));
+}
+
+bool ATestCharacter::ServerPickUpItem(EToolType NewItemType, int32 NewDurability)
+{
+    // 이미 인벤토리에 아이템이 있으면 못 줍습니다.
+    if (InventoryItemType != EToolType::None)
+    {
+        return false;
+    }
+
+    // 아이템 획득
+    InventoryItemType = NewItemType;
+    InventoryDurability = NewDurability;
+
+    // 자동으로 도구를 든 상태로 전환해줍니다.
+    bIsToolEquipped = true;
+
+    UE_LOG(LogTemp, Log, TEXT("Picked Up: %d (Dur: %d)"), (int32)NewItemType, NewDurability);
+    return true;
+}
+
+void ATestCharacter::OnDrop(const FInputActionValue& Value)
+{
+    ServerDropItem();
+}
+
+void ATestCharacter::ServerDropItem_Implementation()
+{
+    // 인벤토리가 비었으면 아무것도 안 함
+    if (InventoryItemType == EToolType::None) return;
+
+    // 스폰 위치: 캐릭터 앞 100cm
+    FVector SpawnLoc = GetActorLocation() + (GetActorForwardVector() * 100.0f);
+    FRotator SpawnRot = GetActorRotation();
+
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+    // 아이템 액터 스폰 (Deferred Spawn 사용: 스폰 전에 변수 설정을 위해)
+    if (PickupItemClass)
+    {
+        ADH_PickupItem* DroppedItem = GetWorld()->SpawnActorDeferred<ADH_PickupItem>(
+            PickupItemClass,
+            FTransform(SpawnRot, SpawnLoc),
+            nullptr,
+            nullptr,
+            ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn
+        );
+
+        if (DroppedItem)
+        {
+            // 버리는 아이템의 정보 그대로 전달
+            DroppedItem->InitializeDrop(InventoryItemType, InventoryDurability);
+
+            // 스폰 완료
+            UGameplayStatics::FinishSpawningActor(DroppedItem, FTransform(SpawnRot, SpawnLoc));
+        }
+    }
+
+    // 인벤토리 비우기
+    InventoryItemType = EToolType::None;
+    InventoryDurability = 0;
+    bIsToolEquipped = false; // 맨손으로 전환
+
+    UE_LOG(LogTemp, Log, TEXT("Item Dropped."));
+}
+
+void ATestCharacter::ConsumeToolDurability(int32 Amount)
+{
+    // 맨손이면 내구도 없음
+    if (InventoryItemType == EToolType::None) return;
+
+    InventoryDurability -= Amount;
+
+    UE_LOG(LogTemp, Log, TEXT("Tool Used. Remaining Durability: %d"), InventoryDurability);
+
+    if (InventoryDurability <= 0)
+    {
+        // 내구도 0 -> 아이템 파괴
+        InventoryItemType = EToolType::None;
+        InventoryDurability = 0;
+        bIsToolEquipped = false;
+
+        UE_LOG(LogTemp, Warning, TEXT("Tool Broken!"));
+    }
 }
 
 void ATestCharacter::Interact(const FInputActionValue& Value)
 {
-    // 클라이언트에서 키를 누르면 서버에게 처리 요청
     ServerInteract();
 }
 
 void ATestCharacter::ServerInteract_Implementation()
 {
-    // 서버에서 실행되는 로직: 카메라 앞쪽으로 레이저 발사
+    // ?쒕쾭?먯꽌 ?ㅽ뻾?섎뒗 濡쒖쭅: 移대찓???욎そ?쇰줈 ?덉씠? 諛쒖궗
     FVector Start = FirstPersonCameraComponent->GetComponentLocation();
-    FVector End = Start + (FirstPersonCameraComponent->GetForwardVector() * 250.0f); // 250cm 거리
+    FVector End = Start + (FirstPersonCameraComponent->GetForwardVector() * 250.0f); // 250cm 嫄곕━
 
     FHitResult HitResult;
     FCollisionQueryParams Params;
-    Params.AddIgnoredActor(this); // 내 몸은 무시
+    Params.AddIgnoredActor(this); // ??紐몄? 臾댁떆
 
     bool bHit = GetWorld()->LineTraceSingleByChannel(
         HitResult,
         Start,
         End,
-        ECC_Visibility, // 보이는 물체 대상
+        ECC_Visibility, // 蹂댁씠??臾쇱껜 ???
         Params
     );
 
-    // 디버그 라인 그리기 (개발 확인용)
+    // ?붾쾭洹??쇱씤 洹몃━湲?(媛쒕컻 ?뺤씤??
     DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 1.0f);
 
     if (bHit && HitResult.GetActor())
     {
-        // 맞은 물체가 인터페이스를 구현하고 있는지 확인
-        if (HitResult.GetActor()->GetClass()->ImplementsInterface(UMyInteractableInterface::StaticClass()))
+        if (HitResult.GetActor()->IsA(ADH_PickupItem::StaticClass()))
         {
-            // 인터페이스 함수 호출 (IInteractableInterface::Execute_함수이름)
+            // 인터페이스 호출 -> PickupItem::Interact 실행 -> Character::ServerPickUpItem 실행
+            if (HitResult.GetActor()->GetClass()->ImplementsInterface(UMyInteractableInterface::StaticClass()))
+            {
+                IMyInteractableInterface::Execute_Interact(HitResult.GetActor(), this);
+            }
+        }
+        // 2. TaskObject인 경우 -> 임무 수행
+        else if (HitResult.GetActor()->GetClass()->ImplementsInterface(UMyInteractableInterface::StaticClass()))
+        {
             IMyInteractableInterface::Execute_Interact(HitResult.GetActor(), this);
         }
     }
