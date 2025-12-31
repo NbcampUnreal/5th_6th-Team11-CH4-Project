@@ -95,26 +95,6 @@ void AAndroidCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 
 }
 
-void AAndroidCharacter::EquipSlot1(const FInputActionValue& InValue)
-{
-	if (!bIsHunter) {
-		Super::EquipSlot1(1);
-	}
-}
-
-void AAndroidCharacter::EquipSlot2(const FInputActionValue& InValue)
-{
-	if (!bIsHunter) {
-		Super::EquipSlot2(1);
-	}
-}
-
-void AAndroidCharacter::EquipSlot3(const FInputActionValue& InValue)
-{
-	if (!bIsHunter) {
-		Super::EquipSlot2(1);
-	}
-}
 
 void AAndroidCharacter::OnDash()
 {
@@ -312,6 +292,27 @@ void AAndroidCharacter::UpdateEyeFX(int8 val)
 		AndroidFX->Deactivate();
 		AndroidFX2->Deactivate();
 
+	}
+}
+
+void AAndroidCharacter::EquipSlot1(const FInputActionValue& InValue)
+{
+	if (!bIsHunter) {
+		Super::EquipSlot1(1);
+	}
+}
+
+void AAndroidCharacter::EquipSlot2(const FInputActionValue& InValue)
+{
+	if (!bIsHunter) {
+		Super::EquipSlot2(2);
+	}
+}
+
+void AAndroidCharacter::EquipSlot3(const FInputActionValue& InValue)
+{
+	if (!bIsHunter) {
+		Super::EquipSlot3(3);
 	}
 }
 

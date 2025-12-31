@@ -30,6 +30,10 @@ public:
 	int8 bHasKilledPlayer = false;
 
 	void UpdateEyeFX(int8 val);
+	
+	virtual void EquipSlot1(const FInputActionValue& InValue) override;
+	virtual void EquipSlot2(const FInputActionValue& InValue) override;
+	virtual void EquipSlot3(const FInputActionValue& InValue) override;
 
 protected:	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PostProcess")

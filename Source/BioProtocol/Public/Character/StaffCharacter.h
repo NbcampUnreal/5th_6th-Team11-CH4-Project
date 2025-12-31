@@ -309,13 +309,13 @@ public:
 
 
 	UFUNCTION(BlueprintCallable, Category = "Slots")
-	void EquipSlot1(const FInputActionValue& InValue);
+	virtual void EquipSlot1(const FInputActionValue& InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Slots")
-	void EquipSlot2(const FInputActionValue& InValue);
+	virtual void EquipSlot2(const FInputActionValue& InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Slots")
-	void EquipSlot3(const FInputActionValue& InValue);
+	virtual void EquipSlot3(const FInputActionValue& InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Slots")
 	void SwitchToSlot(int32 SlotNumber);
