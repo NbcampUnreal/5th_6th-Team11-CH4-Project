@@ -393,6 +393,10 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 	}
 	//UseEquippedItem();
 
+	if (CurrentTool == EToolType::None) {
+		MulticastRPCMeleeAttack();
+		return;
+	}
 	if (Ammo > 0 && CurrentTool == EToolType::Gun) {
 		if (!bCanFire) return;
 
@@ -899,7 +903,6 @@ float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 
 void AStaffCharacter::TestHit()
 {
-
 	Server_Hit();
 }
 
@@ -1093,11 +1096,20 @@ void AStaffCharacter::Server_Hit_Implementation()
 	AActor* HitActor = Hit.GetActor();
 	if (!HitActor) 	return;
 
+	float DamageAmount = 10.f; // 기본 데미지
+
+	if (AAndroidCharacter* Android = Cast<AAndroidCharacter>(this))
+	{
+		if (Android->bIsHunter)
+		{
+			DamageAmount = 50.f;
+		}
+	}
 	UE_LOG(LogTemp, Warning, TEXT("Hit %s"), *HitActor->GetName());
 
 	UGameplayStatics::ApplyDamage(
 		HitActor,
-		50,
+		DamageAmount,
 		GetController(),
 		this,
 		UDamageType::StaticClass()
