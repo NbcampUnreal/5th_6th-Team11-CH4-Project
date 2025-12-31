@@ -21,6 +21,9 @@ class AEquippableItem;
 class UItemBase;
 class IInteractionInterface;
 class UChildActorComponent;
+class USoundBase;
+class USoundAttenuation;
+class UStaticMeshComponent;
 //class EToolType; //테스트
 
 USTRUCT()
@@ -82,12 +85,35 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_Hit();
+	UFUNCTION(Server, Reliable)
+	void Server_GunHit();
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetTestMaterial();
 
+	UFUNCTION(NetMulticast, Reliable)
+
+	void Multicast_PlayGunSound();
+	UFUNCTION(Client, Reliable)
+	void Client_PlayHitSound();
+
 	UFUNCTION(Server, Reliable)
 	void ServerSetCanAttack(bool bCanAttack);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound|Gun")
+	USoundBase* GunFireSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound|Gun")
+	USoundBase* GunEmptySound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound|Gun")
+	USoundBase* TakeDamageSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Sound")
+	USoundAttenuation* GunShotAttenuation;
+	UPROPERTY(EditDefaultsOnly, Category = "Sound")
+	USoundAttenuation* FootStepAttenuation;
+
 protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Tool")
 	EToolType CurrentTool;//테스트
@@ -305,14 +331,17 @@ public:
 	UFUNCTION()
 	void OnRep_CurrentSlot();
 
-	UFUNCTION(BlueprintCallable, Category = "Slots")
-	void EquipSlot1(const FInputActionValue& InValue);
+	virtual void EquipSlot1ForAnodroid(const FInputActionValue& InValue);
+
 
 	UFUNCTION(BlueprintCallable, Category = "Slots")
-	void EquipSlot2(const FInputActionValue& InValue);
+	virtual void EquipSlot1(const FInputActionValue& InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Slots")
-	void EquipSlot3(const FInputActionValue& InValue);
+	virtual void EquipSlot2(const FInputActionValue& InValue);
+
+	UFUNCTION(BlueprintCallable, Category = "Slots")
+	virtual void EquipSlot3(const FInputActionValue& InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Slots")
 	void SwitchToSlot(int32 SlotNumber);
@@ -340,7 +369,7 @@ public:
 	float InteractionCheckDistance;
 
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
-	void InteractPressed(const FInputActionValue& InValue);
+	virtual void InteractPressed(const FInputActionValue& InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
 	void InteractReleased(const FInputActionValue& InValue);
@@ -442,11 +471,19 @@ public:
 	void OnRep_WrenchEquipped();
 	UFUNCTION()
 	void OnRep_TorchEquipped();
+	UFUNCTION()
+	void OnRep_PotionEquipped();
 
+
+	void TryEquipPotion();
 	void TryEquipGun();
 	void TryEquipTorch();
 	void TryEquipWrench();
 
+	UFUNCTION(Server, Reliable)
+	void ServerUsePotion();
+	UFUNCTION(Server, Reliable)
+	void ServerEquipPotion();
 	UFUNCTION(Server, Reliable)
 	void ServerEquipGun();
 	UFUNCTION(Server, Reliable)
@@ -458,6 +495,7 @@ public:
 	void UnequipGun();
 	void UnequipTorch();
 	void UnequipWrench();
+	void UnequipPotion();
 
 
 	void TakeWrench();
@@ -469,6 +507,9 @@ public:
 	void KOnDrop();
 	UFUNCTION(Server, Reliable)
 	void KServerDropItem();
+	UFUNCTION(Server, Reliable)
+
+	void ServerCleanHands();
 
 	void SetItemMesh();
 
@@ -478,6 +519,8 @@ protected:
 	//템소지 여부 bool
 	UPROPERTY(ReplicatedUsing = OnRep_bHasTorch, BlueprintReadOnly, Category = "Equipment")
 	uint8 bHasTorch;	
+	UPROPERTY(ReplicatedUsing = OnRep_bHasTorch, BlueprintReadOnly, Category = "Equipment")
+	uint8 bHasPotion;
 	UPROPERTY(ReplicatedUsing = OnRep_bHasWrench, BlueprintReadOnly, Category = "Equipment")
 	uint8 bHasWrench;
 	UPROPERTY(ReplicatedUsing = OnRep_bHasGun, BlueprintReadOnly, Category = "Equipment")
@@ -492,9 +535,12 @@ protected:
 	bool bIsTorchEquipped = false;
 	UPROPERTY(ReplicatedUsing = OnRep_WrenchEquipped)
 	bool bIsWrenchEquipped = false;
+	UPROPERTY(ReplicatedUsing = OnRep_PotionEquipped)
+	bool bIsPotionEquipped = false;
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory")
 	int32 InventoryDurability;
-
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory")
+	int32 Ammo=0;
 	/// <summary>
 	/// 손에붙일 템메쉬 (1인칭/다른클라3인칭)
 	/// </summary>
@@ -516,4 +562,10 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* ThirdWrenchMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* PotionMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* ThirdPotionMesh;
 };
