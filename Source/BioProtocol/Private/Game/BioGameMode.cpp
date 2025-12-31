@@ -50,6 +50,17 @@ void ABioGameMode::BeginPlay()
 	{
 		return;
 	}
+
+	// SpawnPoint 세팅
+	TArray<AActor*> Found;
+	UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName("SpawnPoint"), Found);
+
+	SpawnPointArray.Reset();
+	for (AActor* A : Found)
+	{
+		SpawnPointArray.Add(A);
+	}
+
 	UWorld* World = GetWorld();
 	if (!World)
 	{
@@ -257,7 +268,22 @@ void ABioGameMode::AssignRoles()
 			}
 
 			UE_LOG(LogTemp, Log, TEXT("[GameMode] RestartPlayer"));
-			RestartPlayer(OwnerController);
+
+			if (SpawnPointArray.Num() > 0)
+			{
+				const int32 Index = FMath::RandHelper(SpawnPointArray.Num());
+				if (AActor* StartSpot = SpawnPointArray[Index])
+				{
+					RestartPlayerAtPlayerStart(OwnerController, StartSpot);
+
+					SpawnPointArray.RemoveAtSwap(Index);
+				}
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("SpawnPointArray is empty"));
+				RestartPlayer(OwnerController);
+			}
 		}
 	}
 }
