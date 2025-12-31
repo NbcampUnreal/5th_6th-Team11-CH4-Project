@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Game/BioProtocolTypes.h"
+#include "Daeho/TestCharacter.h"
 #include "BioPlayerHUD.generated.h"
 
 class ACharacter;

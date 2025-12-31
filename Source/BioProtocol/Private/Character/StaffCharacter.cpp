@@ -24,6 +24,7 @@
 #include "BioProtocol/Public/Equippable/EquippableTool/EquippableTool_Welder.h"
 #include "Daeho/MyInteractableInterface.h"
 #include <Character/AndroidCharacter.h>
+#include "Daeho/DH_PickupItem.h"
 
 // Sets default values
 AStaffCharacter::AStaffCharacter()
@@ -52,24 +53,10 @@ AStaffCharacter::AStaffCharacter()
 	// ���ο��Ը� ���̱�
 	FirstPersonMesh->SetOnlyOwnerSee(true);
 	FirstPersonMesh->bCastDynamicShadow = false;
-	FirstPersonMesh->CastShadow = false;	
-
-	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
-	WeaponMesh->SetupAttachment(FirstPersonMesh, TEXT("hand_r"));
-
-	WeaponMesh->SetHiddenInGame(true);
-	WeaponMesh->SetVisibility(false, true);
-
-	WeaponMesh->SetCastShadow(false);
-
-	// 3��Ī �޽��� ���ο��� �� ���̰�
+	FirstPersonMesh->CastShadow = false;
 	GetMesh()->SetOwnerNoSee(true);
-	ThirdWeaponMesh= CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ThirdWeaponMesh"));
-	ThirdWeaponMesh->SetupAttachment(GetMesh(), TEXT("hand_r"));
-	ThirdWeaponMesh->SetHiddenInGame(true);
-	ThirdWeaponMesh->SetVisibility(false, true);
-	ThirdWeaponMesh->SetCastShadow(false);
-	ThirdWeaponMesh->SetOwnerNoSee(true);
+
+	SetItemMesh();
 
 	// ������ �ɼ�
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
@@ -183,7 +170,7 @@ void AStaffCharacter::Tick(float DeltaTime)
 	{
 		PerformInteractionCheck();
 	}
-
+	
 	/*if (IsLocallyControlled()) {
 		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::FromInt(Status->CurrentStamina));
 	}*/
@@ -236,7 +223,7 @@ void AStaffCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	EIC->BindAction(TestPullLever, ETriggerEvent::Started, this, &ThisClass::InteractPressed);
 	//EIC->BindAction(TestPullLever, ETriggerEvent::Completed, this, &ThisClass::EndInteract);
 	EIC->BindAction(TestPullLever, ETriggerEvent::Completed, this, &ThisClass::InteractReleased);
-	EIC->BindAction(DropAction, ETriggerEvent::Started, this, &ThisClass::DropCurrentItemInput);
+	EIC->BindAction(DropAction, ETriggerEvent::Started, this, &ThisClass::KOnDrop);
 
 	EIC->BindAction(Item1, ETriggerEvent::Started, this, &ThisClass::EquipSlot1);
 	EIC->BindAction(Item2, ETriggerEvent::Started, this, &ThisClass::EquipSlot2);
@@ -260,11 +247,18 @@ void AStaffCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AStaffCharacter, MaterialIndex);
 	DOREPLIFETIME(AStaffCharacter, bIsCanAttack);
-	DOREPLIFETIME(AStaffCharacter, bIsGunEquipped);
 	DOREPLIFETIME(AStaffCharacter, CurrentEquippedItem);
 	DOREPLIFETIME(AStaffCharacter, CurrentSlot);
 	DOREPLIFETIME(AStaffCharacter, Inventory);
 
+	DOREPLIFETIME(AStaffCharacter, bHasTorch);
+	DOREPLIFETIME(AStaffCharacter, bHasWrench);
+	DOREPLIFETIME(AStaffCharacter, bHasGun);
+
+	DOREPLIFETIME(AStaffCharacter, bIsGunEquipped);
+	DOREPLIFETIME(AStaffCharacter, bIsTorchEquipped);
+	DOREPLIFETIME(AStaffCharacter, bIsWrenchEquipped);
+	DOREPLIFETIME(AStaffCharacter, InventoryDurability);
 }
 
 void AStaffCharacter::SetMaterialByIndex(int32 NewIndex)
@@ -396,8 +390,6 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 	UseEquippedItem();
 }
 
-
-
 void AStaffCharacter::PullLever()
 {
 	if (!IsLocallyControlled())
@@ -427,8 +419,8 @@ void AStaffCharacter::ServerPullLever_Internal()
 			GaugeTimerHandle,
 			this,
 			&AStaffCharacter::TestUpdateLeverGauge,
-			0.1f,   
-			true    
+			0.1f,
+			true
 		);
 	}
 
@@ -445,38 +437,134 @@ void AStaffCharacter::TestUpdateLeverGauge()
 	}
 }
 
-void AStaffCharacter::TestItemSlot1()
-{	
+void AStaffCharacter::TryEquipGun()
+{
+	if (!bHasGun)
+		return;
 	if (WeaponMesh)
 	{
+		UnequipAll();
+
 		WeaponMesh->SetVisibility(!bIsGunEquipped, true);
 		WeaponMesh->SetHiddenInGame(bIsGunEquipped);
 	}
 
-	//무기인벤에 있는지확인 필요
 	if (!HasAuthority())
 	{
-		ServerTestItemSlot1();
+		ServerEquipGun();
 		return;
 	}
 
 	bIsGunEquipped = !bIsGunEquipped;
 	OnRep_GunEquipped();
-
-	/*if (HasAuthority())
-	{
-		bIsGunEquipped = !bIsGunEquipped;
-	}
-	else
-	{
-		ServerTestItemSlot1();
-	}*/
 }
 
-void AStaffCharacter::ServerTestItemSlot1_Implementation()
+void AStaffCharacter::TryEquipTorch()
 {
-	bIsGunEquipped = !bIsGunEquipped;
+	if (!bHasTorch)
+		return;
+	if (TorchMesh)
+	{
+		UnequipAll();
+
+		TorchMesh->SetVisibility(!bIsTorchEquipped, true);
+		TorchMesh->SetHiddenInGame(bIsTorchEquipped);
+	}
+
+	bIsTorchEquipped = !bIsTorchEquipped;
+	if (bIsTorchEquipped)
+		CurrentTool = EToolType::Welder;
+	else
+		CurrentTool = EToolType::None;
+
+	if (!HasAuthority())
+	{
+		ServerEquipTorch();
+		return;
+	}
+
+
+	//OnRep_TorchEquipped();
+}
+
+void AStaffCharacter::TryEquipWrench()
+{
+	if (!bHasWrench)
+		return;
+	if (WrenchMesh)
+	{
+		UnequipAll();
+		WrenchMesh->SetVisibility(!bIsWrenchEquipped, true);
+		WrenchMesh->SetHiddenInGame(bIsWrenchEquipped);
+	}
+
+	bIsWrenchEquipped = !bIsWrenchEquipped;
+	if (bIsWrenchEquipped)
+		CurrentTool = EToolType::Wrench;
+	else
+		CurrentTool = EToolType::None;
+
+	if (!HasAuthority())
+	{
+		ServerEquipWrench();
+		return;
+	}
+
+
+//	OnRep_WrenchEquipped();
+}
+
+void AStaffCharacter::ServerEquipGun_Implementation()
+{
+
+	bIsGunEquipped = true;
+	UnequipAll();
+
+	//bIsGunEquipped = !bIsGunEquipped;
+
+	OnRep_TorchEquipped();
+	OnRep_WrenchEquipped();
 	OnRep_GunEquipped();
+}
+
+void AStaffCharacter::ServerEquipTorch_Implementation()
+{
+	bIsTorchEquipped = !bIsTorchEquipped;
+	UnequipAll();
+
+	if (bIsTorchEquipped) {
+		CurrentTool = EToolType::Welder;
+	}
+	else {
+		CurrentTool = EToolType::None;
+	}
+	//bIsGunEquipped = false;
+	//bIsWrenchEquipped = false;
+
+	//bIsTorchEquipped = !bIsTorchEquipped;
+
+	OnRep_GunEquipped();
+	OnRep_WrenchEquipped();
+	OnRep_TorchEquipped();
+}
+
+void AStaffCharacter::ServerEquipWrench_Implementation()
+{
+	bIsWrenchEquipped = !bIsWrenchEquipped;
+	UnequipAll();
+
+	if (bIsWrenchEquipped) {
+		CurrentTool = EToolType::Wrench;
+	}
+	else {
+		CurrentTool = EToolType::None;
+	}
+
+	//bIsWrenchEquipped = !bIsWrenchEquipped;
+
+	OnRep_GunEquipped();
+	OnRep_TorchEquipped();
+	OnRep_WrenchEquipped();
 }
 
 void AStaffCharacter::ReleaseLever()
@@ -606,6 +694,51 @@ void AStaffCharacter::MissionInteract()
 	ServerMissionInteract();
 }
 
+void AStaffCharacter::ItemInteract()
+{
+	ServerItemInteract();
+}
+
+void AStaffCharacter::ServerItemInteract_Implementation()
+{
+	FVector Start;
+	FRotator ControlRot;
+
+	Controller->GetPlayerViewPoint(Start, ControlRot);
+	// 또는 GetActorEyesViewPoint(Start, ControlRot);
+
+	FVector End = Start + (ControlRot.Vector() * 250.f);
+
+	FHitResult HitResult;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		Start,
+		End,
+		ECC_Visibility,
+		Params
+	);
+
+	if (bHit && HitResult.GetActor())
+	{
+		if (HitResult.GetActor()->IsA(ADH_PickupItem::StaticClass()))
+		{
+			// 인터페이스 호출 -> PickupItem::Interact 실행 -> Character::ServerPickUpItem 실행
+			if (HitResult.GetActor()->GetClass()->ImplementsInterface(UMyInteractableInterface::StaticClass()))
+			{
+				IMyInteractableInterface::Execute_Interact(HitResult.GetActor(), this);
+			}
+		}
+		// 2. TaskObject인 경우 -> 임무 수행
+		else if (HitResult.GetActor()->GetClass()->ImplementsInterface(UMyInteractableInterface::StaticClass()))
+		{
+			IMyInteractableInterface::Execute_Interact(HitResult.GetActor(), this);
+		}
+	}
+}
+
 void AStaffCharacter::ServerMissionInteract_Implementation()
 {
 	//UE_LOG(LogTemp, Log, TEXT("1"));
@@ -656,7 +789,7 @@ float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 
 void AStaffCharacter::TestHit()
 {
-	
+
 	Server_Hit();
 }
 
@@ -672,6 +805,39 @@ void AStaffCharacter::OnRep_GunEquipped()
 		ThirdWeaponMesh->SetVisibility(bIsGunEquipped, true);
 		ThirdWeaponMesh->SetHiddenInGame(!bIsGunEquipped);
 	}
+}
+
+void AStaffCharacter::OnRep_WrenchEquipped()
+{
+	if (ThirdWrenchMesh)
+	{
+		ThirdWrenchMesh->SetVisibility(bIsWrenchEquipped, true);
+		ThirdWrenchMesh->SetHiddenInGame(!bIsWrenchEquipped);
+	}
+
+	if (bIsWrenchEquipped) {
+		CurrentTool = EToolType::Wrench;
+	}
+	else {
+		CurrentTool = EToolType::None;
+	}
+}
+
+void AStaffCharacter::OnRep_TorchEquipped()
+{
+	if (ThirdTorchMesh)
+	{
+		ThirdTorchMesh->SetVisibility(bIsTorchEquipped, true);
+		ThirdTorchMesh->SetHiddenInGame(!bIsTorchEquipped);
+	}
+	if (bIsTorchEquipped) {
+		CurrentTool = EToolType::Welder;
+	}
+	else {
+		CurrentTool = EToolType::None;
+
+	}
+
 }
 
 void AStaffCharacter::OnRep_BIsCanAttack()
@@ -915,11 +1081,11 @@ void AStaffCharacter::EquipItem(AEquippableItem* Item)
 
 	if (!Item->OwningCharacter)
 	{
-		
+
 		Item->Initialize(nullptr, this);
 	}
 
-	
+
 	Item->Equip();
 	CurrentEquippedItem = Item;
 
@@ -1244,80 +1410,88 @@ void AStaffCharacter::OnRep_CurrentSlot()
 void AStaffCharacter::EquipSlot1(const FInputActionValue& InValue)
 {
 	SwitchToSlot(1);
-	TestItemSlot1();
+	TryEquipGun();
 }
 
 void AStaffCharacter::EquipSlot2(const FInputActionValue& InValue)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
-		TEXT("===== 2 KEY WORKS! CODE IS LOADED! ====="));
-	UE_LOG(LogTemp, Warning, TEXT("========================================"));
-	UE_LOG(LogTemp, Warning, TEXT("[Player] ===== 2 KEY PRESSED ====="));
+	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
+	//	TEXT("===== 2 KEY WORKS! CODE IS LOADED! ====="));
+	//UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	//UE_LOG(LogTemp, Warning, TEXT("[Player] ===== 2 KEY PRESSED ====="));
 
-	if (!Inventory)
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Player] Inventory is NULL!"));
+	//if (!Inventory)
+	//{
+	//	UE_LOG(LogTemp, Error, TEXT("[Player] Inventory is NULL!"));
+	//	return;
+	//}
+
+	//// 인벤토리 전체 출력
+	//const TArray<UItemBase*>& AllItems = Inventory->GetAllItems();
+	//UE_LOG(LogTemp, Warning, TEXT("[Player] Total items in inventory: %d"), AllItems.Num());
+
+	//for (int32 i = 0; i < AllItems.Num(); i++)
+	//{
+	//	if (AllItems[i])
+	//	{
+	//		UE_LOG(LogTemp, Log, TEXT("  Item[%d]: %s (Quantity: %d, ItemClass: %s)"),
+	//			i,
+	//			*AllItems[i]->TextData.Name.ToString(),
+	//			AllItems[i]->Quantity,
+	//			AllItems[i]->ItemClass ? *AllItems[i]->ItemClass->GetName() : TEXT("NULL"));
+	//	}
+	//}
+
+	//// Slot 2 확인
+	//UItemBase* ItemInSlot2 = Inventory->GetItemInSlot(2);
+	//if (ItemInSlot2)
+	//{
+	//	UE_LOG(LogTemp, Warning, TEXT("[Player] Slot 2 has: %s"),
+	//		*ItemInSlot2->TextData.Name.ToString());
+
+	//	if (!ItemInSlot2->ItemClass)
+	//	{
+	//		UE_LOG(LogTemp, Error, TEXT("[Player] ✗ ItemClass is NULL!"));
+	//		UE_LOG(LogTemp, Error, TEXT("[Player] You must set ItemClass in DataTable!"));
+	//		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	//		return;
+	//	}
+
+	//	UE_LOG(LogTemp, Log, TEXT("[Player] ItemClass: %s"),
+	//		*ItemInSlot2->ItemClass->GetName());
+
+	//	UE_LOG(LogTemp, Warning, TEXT("[Player] Calling SwitchToSlot(2)..."));
+	//	SwitchToSlot(2);
+	//}
+	//else
+	//{
+	//	UE_LOG(LogTemp, Error, TEXT("[Player] Slot 2 is EMPTY!"));
+
+	//	// 모든 슬롯 확인
+	//	for (int32 i = 1; i <= 3; i++)
+	//	{
+	//		UItemBase* Item = Inventory->GetItemInSlot(i);
+	//		if (Item)
+	//		{
+	//			UE_LOG(LogTemp, Log, TEXT("[Player] Slot %d: %s"),
+	//				i, *Item->TextData.Name.ToString());
+	//		}
+	//		else
+	//		{
+	//			UE_LOG(LogTemp, Log, TEXT("[Player] Slot %d: EMPTY"), i);
+	//		}
+	//	}
+	//}
+
+	//UE_LOG(LogTemp, Warning, TEXT("========================================"));
+
+	if (!bHasWrench && !bHasTorch) {
 		return;
 	}
-
-	// 인벤토리 전체 출력
-	const TArray<UItemBase*>& AllItems = Inventory->GetAllItems();
-	UE_LOG(LogTemp, Warning, TEXT("[Player] Total items in inventory: %d"), AllItems.Num());
-
-	for (int32 i = 0; i < AllItems.Num(); i++)
-	{
-		if (AllItems[i])
-		{
-			UE_LOG(LogTemp, Log, TEXT("  Item[%d]: %s (Quantity: %d, ItemClass: %s)"),
-				i,
-				*AllItems[i]->TextData.Name.ToString(),
-				AllItems[i]->Quantity,
-				AllItems[i]->ItemClass ? *AllItems[i]->ItemClass->GetName() : TEXT("NULL"));
-		}
-	}
-
-	// Slot 2 확인
-	UItemBase* ItemInSlot2 = Inventory->GetItemInSlot(2);
-	if (ItemInSlot2)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Player] Slot 2 has: %s"),
-			*ItemInSlot2->TextData.Name.ToString());
-
-		if (!ItemInSlot2->ItemClass)
-		{
-			UE_LOG(LogTemp, Error, TEXT("[Player] ✗ ItemClass is NULL!"));
-			UE_LOG(LogTemp, Error, TEXT("[Player] You must set ItemClass in DataTable!"));
-			UE_LOG(LogTemp, Warning, TEXT("========================================"));
-			return;
-		}
-
-		UE_LOG(LogTemp, Log, TEXT("[Player] ItemClass: %s"),
-			*ItemInSlot2->ItemClass->GetName());
-
-		UE_LOG(LogTemp, Warning, TEXT("[Player] Calling SwitchToSlot(2)..."));
-		SwitchToSlot(2);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Player] Slot 2 is EMPTY!"));
-
-		// 모든 슬롯 확인
-		for (int32 i = 1; i <= 3; i++)
-		{
-			UItemBase* Item = Inventory->GetItemInSlot(i);
-			if (Item)
-			{
-				UE_LOG(LogTemp, Log, TEXT("[Player] Slot %d: %s"),
-					i, *Item->TextData.Name.ToString());
-			}
-			else
-			{
-				UE_LOG(LogTemp, Log, TEXT("[Player] Slot %d: EMPTY"), i);
-			}
-		}
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	if (bHasWrench)
+		TryEquipWrench();
+	else if (bHasTorch)
+		TryEquipTorch();
 }
 
 void AStaffCharacter::EquipSlot3(const FInputActionValue& InValue)
@@ -1327,7 +1501,7 @@ void AStaffCharacter::EquipSlot3(const FInputActionValue& InValue)
 
 void AStaffCharacter::InteractPressed(const FInputActionValue& InValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("[Player] ===== E KEY PRESSED ====="));
+	/*UE_LOG(LogTemp, Warning, TEXT("[Player] ===== E KEY PRESSED ====="));
 
 	if (InteractionData.CurrentInteractable)
 	{
@@ -1338,11 +1512,13 @@ void AStaffCharacter::InteractPressed(const FInputActionValue& InValue)
 	else
 	{
 		UE_LOG(LogTemp, Error, TEXT("[Player] No CurrentInteractable! Cannot interact!"));
-	}
+	}*/
 
+	//템수집
+	ItemInteract();
 
 	//미션수집
-	MissionInteract();
+	//MissionInteract();
 }
 
 void AStaffCharacter::InteractReleased(const FInputActionValue& InValue)
@@ -1500,8 +1676,8 @@ void AStaffCharacter::FoundInteractable(AActor* NewInteractable)
 	// Interface 확인 (안전장치)
 	if (!NewInteractable->Implements<UInteractionInterface>())
 	{
-	/*	UE_LOG(LogTemp, Error, TEXT("[Player] Actor does not implement IInteractionInterface!"));
-		UE_LOG(LogTemp, Warning, TEXT("========================================"));*/
+		/*	UE_LOG(LogTemp, Error, TEXT("[Player] Actor does not implement IInteractionInterface!"));
+			UE_LOG(LogTemp, Warning, TEXT("========================================"));*/
 		return;
 	}
 
@@ -1561,10 +1737,10 @@ void AStaffCharacter::EndInteract()
 }
 	*/
 
-	
+
 void AStaffCharacter::EndInteract()
 {
-    GetWorldTimerManager().ClearTimer(TimerHandle_Interaction);
+	GetWorldTimerManager().ClearTimer(TimerHandle_Interaction);
 
 	if (InteractionData.CurrentInteractable &&
 		InteractionData.CurrentInteractable->Implements<UInteractionInterface>())
@@ -1763,7 +1939,7 @@ void AStaffCharacter::Die(AController* KillerController)
 
 	if (AAndroidCharacter* Killer = Cast<AAndroidCharacter>(KillerPawn))
 	{
-		Killer->bHasKilledPlayer = true; 
+		Killer->bHasKilledPlayer = true;
 	}
 
 	// 5. TODO: ��� �ִϸ��̼� ���
@@ -1838,4 +2014,257 @@ void AStaffCharacter::DropCurrentItemInput(const FInputActionValue& InValue)
 	}
 
 	DropCurrentItem();
+}
+
+void AStaffCharacter::OnRep_bHasTorch()
+{
+
+}
+
+void AStaffCharacter::OnRep_bHasWrench()
+{
+
+}
+
+void AStaffCharacter::OnRep_bHasGun()
+{
+}
+
+void AStaffCharacter::UnequipAll()
+{
+	UnequipGun();
+	UnequipTorch();
+	UnequipWrench();
+}
+
+void AStaffCharacter::UnequipGun()
+{
+	WeaponMesh->SetHiddenInGame(true);
+	WeaponMesh->SetVisibility(false, true);
+	WeaponMesh->SetCastShadow(false);
+	//bIsGunEquipped = false;
+}
+
+void AStaffCharacter::UnequipTorch()
+{
+	TorchMesh->SetHiddenInGame(true);
+	TorchMesh->SetVisibility(false, true);
+	TorchMesh->SetCastShadow(false);
+
+	//bIsWrenchEquipped = false;
+}
+
+void AStaffCharacter::UnequipWrench()
+{
+	WrenchMesh->SetHiddenInGame(true);
+	WrenchMesh->SetVisibility(false, true);
+	WrenchMesh->SetCastShadow(false);
+
+
+	//bIsTorchEquipped = false;
+}
+
+void AStaffCharacter::TakeWrench()
+{
+	if (bHasTorch)
+		return;
+
+	bHasWrench = true;
+}
+
+void AStaffCharacter::TakeTorch()
+{
+	if (bHasWrench) {
+
+	}
+}
+
+bool AStaffCharacter::KServerPickUpItem(EToolType NewItemType, int32 NewDurability)
+{
+	switch (NewItemType)
+	{
+	case EToolType::None:
+		return 0;
+	case EToolType::Wrench:
+		if (bHasWrench || bHasTorch)
+			return 0;
+		bHasWrench = true;
+		return 1;
+
+		break;
+	case EToolType::Welder:
+		if (bHasWrench || bHasTorch)
+			return 0;
+		bHasTorch = true;
+		return 1;
+		break;
+	default:
+		return 0;
+		break;
+	}
+}
+
+void AStaffCharacter::KConsumeToolDurability(int32 Amount)
+{
+	if (CurrentTool == EToolType::None) return;
+	InventoryDurability -= Amount;
+
+	UE_LOG(LogTemp, Log, TEXT("Tool Used. Remaining Durability: %d"), InventoryDurability);
+
+	if (InventoryDurability <= 0)
+	{
+		// 내구도 0 -> 아이템 파괴
+		switch (CurrentTool)
+		{
+		case EToolType::Wrench:
+			bHasWrench = false;
+			break;
+		case EToolType::Welder:
+			bHasTorch = false;
+			break;
+		default:
+			break;
+		}
+
+
+		// 맨손으로 전환
+			// 상태만 변경
+		bIsTorchEquipped = false;
+		bIsGunEquipped = false;
+		bIsWrenchEquipped = false;
+
+		bIsGunEquipped = false;
+
+		// 서버는 직접 호출
+		OnRep_TorchEquipped();
+		OnRep_GunEquipped();
+		OnRep_WrenchEquipped();
+
+		CurrentTool = EToolType::None;
+		InventoryDurability = 0;
+		Client_OnToolBroken();
+
+		UE_LOG(LogTemp, Warning, TEXT("Tool Broken!"));
+	}
+
+}
+
+void AStaffCharacter::KOnDrop()
+{
+	if (CurrentTool == EToolType::None) return;
+	UnequipAll();
+	KServerDropItem();
+
+}
+
+void AStaffCharacter::KServerDropItem_Implementation()
+{
+	if (CurrentTool == EToolType::None) return;
+	FVector SpawnLoc = GetActorLocation() + (GetActorForwardVector() * 100.0f);
+	FRotator SpawnRot = GetActorRotation();
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	// 아이템 액터 스폰 (Deferred Spawn 사용: 스폰 전에 변수 설정을 위해)
+	if (PickupItemClass)
+	{
+		ADH_PickupItem* DroppedItem = GetWorld()->SpawnActorDeferred<ADH_PickupItem>(
+			PickupItemClass,
+			FTransform(SpawnRot, SpawnLoc),
+			nullptr,
+			nullptr,
+			ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn
+		);
+
+		if (DroppedItem)
+		{
+			// 버리는 아이템의 정보 그대로 전달
+			DroppedItem->InitializeDrop(CurrentTool, InventoryDurability);
+
+			// 스폰 완료
+			UGameplayStatics::FinishSpawningActor(DroppedItem, FTransform(SpawnRot, SpawnLoc));
+		}
+	}
+
+	switch (CurrentTool)
+	{
+	case EToolType::Wrench:
+		bHasWrench = false;
+		break;
+	case EToolType::Welder:
+		bHasTorch = false;
+		break;
+	default:
+		break;
+	}
+
+
+	// 맨손으로 전환
+		// 상태만 변경
+	bIsTorchEquipped = false;
+	bIsGunEquipped = false;
+	bIsWrenchEquipped = false;
+
+	bIsGunEquipped = false;
+
+	// 서버는 직접 호출
+	OnRep_TorchEquipped();
+	OnRep_GunEquipped();
+	OnRep_WrenchEquipped();
+
+	CurrentTool = EToolType::None;
+	InventoryDurability = 0;
+
+	UE_LOG(LogTemp, Log, TEXT("Item Dropped."));
+}
+
+void AStaffCharacter::Client_OnToolBroken_Implementation()
+{
+	UnequipAll();
+}
+
+void AStaffCharacter::SetItemMesh()
+{
+	////////////////////////////////////////////////////////////////////////////////
+	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+	WeaponMesh->SetupAttachment(FirstPersonMesh, TEXT("hand_r"));
+	WeaponMesh->SetHiddenInGame(true);
+	WeaponMesh->SetVisibility(false, true);
+	WeaponMesh->SetCastShadow(false);
+
+	// 3��Ī �޽��� ���ο��� �� ���̰�
+	ThirdWeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ThirdWeaponMesh"));
+	ThirdWeaponMesh->SetupAttachment(GetMesh(), TEXT("hand_r"));
+	ThirdWeaponMesh->SetHiddenInGame(true);
+	ThirdWeaponMesh->SetVisibility(false, true);
+	ThirdWeaponMesh->SetCastShadow(false);
+	ThirdWeaponMesh->SetOwnerNoSee(true);
+
+	TorchMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("TorchMesh"));
+	TorchMesh->SetupAttachment(FirstPersonMesh, TEXT("hand_r"));
+	TorchMesh->SetHiddenInGame(true);
+	TorchMesh->SetVisibility(false, true);
+	TorchMesh->SetCastShadow(false);
+
+	ThirdTorchMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ThirdTorchMesh"));
+	ThirdTorchMesh->SetupAttachment(GetMesh(), TEXT("hand_r"));
+	ThirdTorchMesh->SetHiddenInGame(true);
+	ThirdTorchMesh->SetVisibility(false, true);
+	ThirdTorchMesh->SetCastShadow(false);
+	ThirdTorchMesh->SetOwnerNoSee(true);
+
+	WrenchMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WrenchMesh"));
+	WrenchMesh->SetupAttachment(FirstPersonMesh, TEXT("hand_r"));
+	WrenchMesh->SetHiddenInGame(true);
+	WrenchMesh->SetVisibility(false, true);
+	WrenchMesh->SetCastShadow(false);
+
+	ThirdWrenchMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ThirdWrenchMesh"));
+	ThirdWrenchMesh->SetupAttachment(GetMesh(), TEXT("hand_r"));
+	ThirdWrenchMesh->SetHiddenInGame(true);
+	ThirdWrenchMesh->SetVisibility(false, true);
+	ThirdWrenchMesh->SetCastShadow(false);
+	ThirdWrenchMesh->SetOwnerNoSee(true);
+
 }

@@ -65,10 +65,12 @@ public:
 	bool IsGunEquipped() const { return bIsGunEquipped; };
 	void PlayMeleeAttackMontage(UAnimMontage* Montage);
 	void MissionInteract();
+	void ItemInteract();
 	UFUNCTION(Server, Reliable)
 	void ServerMissionInteract();
-
-	EToolType GetCurrentTool() {return CurrentTool;};
+	UFUNCTION(Server, Reliable)
+	void ServerItemInteract();
+	EToolType GetCurrentTool() { return CurrentTool; };
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerRPCMeleeAttack();
@@ -90,18 +92,12 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Tool")
 	EToolType CurrentTool;//테스트
 
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* FirstPersonMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	UCameraComponent* FirstPersonCamera;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
-	USkeletalMeshComponent* WeaponMesh;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
-	USkeletalMeshComponent* ThirdWeaponMesh;
+	
 
 private:
 	void HandleMoveInput(const FInputActionValue& InValue);
@@ -118,7 +114,7 @@ private:
 
 	void HandleStand(const FInputActionValue& InValue);
 
-	
+
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
@@ -185,13 +181,10 @@ protected:
 	void TestUpdateLeverGauge(); //������ ���°� �׽�Ʈ��(���� �����ۿ��ϴ� ������Ʈ�� ����)
 	float TestGuage = 0;//�׽�Ʈ������
 
-	void TestItemSlot1();
 
-	UFUNCTION(Server, Reliable)
-	void ServerTestItemSlot1();
 
 	FTimerHandle GaugeTimerHandle;
-	
+
 private:
 	uint8 bIsRunning = false;
 	uint8 bHoldingLever = false;
@@ -218,8 +211,6 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerStopJump();
 
-	
-
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastRPCMeleeAttack();
 
@@ -228,11 +219,6 @@ private:
 
 	//UFUNCTION(Server, Reliable, WithValidation)
 	//void ServerRPCTakeDamage(float DamageAmount);
-
-	
-	
-	UFUNCTION()
-	void OnRep_GunEquipped();
 
 	UFUNCTION()
 	void OnRep_BIsCanAttack();
@@ -262,8 +248,7 @@ protected:
 	TArray<UMaterialInterface*>mat;
 
 protected:
-	UPROPERTY(ReplicatedUsing = OnRep_GunEquipped)
-	bool bIsGunEquipped=false;
+
 
 	UPROPERTY(ReplicatedUsing = OnRep_BIsCanAttack)
 	bool bIsCanAttack = true;
@@ -417,9 +402,9 @@ public:
 	void OnRep_CurrentEquippedItem();
 	void DropCurrentItemInput(const FInputActionValue& InValue);
 
-//==========================================
-// HEALTH
-//==========================================
+	//==========================================
+	// HEALTH
+	//==========================================
 public:
 
 	UFUNCTION(BlueprintCallable, Category = "Health")
@@ -439,4 +424,96 @@ protected:
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Health")
 	float Health = 100.f;
 
+
+
+
+	//////////////////////////temp템
+public:
+	UFUNCTION()
+	void OnRep_bHasTorch();
+	UFUNCTION()
+	void OnRep_bHasWrench();
+	UFUNCTION()
+	void OnRep_bHasGun();
+
+	UFUNCTION()
+	void OnRep_GunEquipped(); //다른클라에서 내 메쉬 on/off
+	UFUNCTION()
+	void OnRep_WrenchEquipped();
+	UFUNCTION()
+	void OnRep_TorchEquipped();
+
+	void TryEquipGun();
+	void TryEquipTorch();
+	void TryEquipWrench();
+
+	UFUNCTION(Server, Reliable)
+	void ServerEquipGun();
+	UFUNCTION(Server, Reliable)
+	void ServerEquipTorch();
+	UFUNCTION(Server, Reliable)
+	void ServerEquipWrench();
+
+	void UnequipAll();
+	void UnequipGun();
+	void UnequipTorch();
+	void UnequipWrench();
+
+
+	void TakeWrench();
+	void TakeTorch();
+	void TakeGun() { bHasGun = true; }
+
+	bool KServerPickUpItem(EToolType NewItemType, int32 NewDurability);
+	void KConsumeToolDurability(int32 Amount);
+	void KOnDrop();
+	UFUNCTION(Server, Reliable)
+	void KServerDropItem();
+
+	void SetItemMesh();
+
+	UFUNCTION(Client, Reliable)
+	void Client_OnToolBroken();
+protected:
+	//템소지 여부 bool
+	UPROPERTY(ReplicatedUsing = OnRep_bHasTorch, BlueprintReadOnly, Category = "Equipment")
+	uint8 bHasTorch;	
+	UPROPERTY(ReplicatedUsing = OnRep_bHasWrench, BlueprintReadOnly, Category = "Equipment")
+	uint8 bHasWrench;
+	UPROPERTY(ReplicatedUsing = OnRep_bHasGun, BlueprintReadOnly, Category = "Equipment")
+	uint8 bHasGun;
+	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
+	TSubclassOf<ADH_PickupItem> PickupItemClass;
+
+	//지금 손에 가지고있냐 여부 bool 이 변수값 바뀌면 다른 플레이어가 내 캐릭 손에 템 쥐고있는거 봄(OnRep_GunEquipped)
+	UPROPERTY(ReplicatedUsing = OnRep_GunEquipped)
+	bool bIsGunEquipped = false;
+	UPROPERTY(ReplicatedUsing = OnRep_TorchEquipped)
+	bool bIsTorchEquipped = false;
+	UPROPERTY(ReplicatedUsing = OnRep_WrenchEquipped)
+	bool bIsWrenchEquipped = false;
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory")
+	int32 InventoryDurability;
+
+	/// <summary>
+	/// 손에붙일 템메쉬 (1인칭/다른클라3인칭)
+	/// </summary>
+	//총
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* WeaponMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* ThirdWeaponMesh;
+	//토치
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* TorchMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* ThirdTorchMesh;
+	//렌치
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* WrenchMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* ThirdWrenchMesh;
 };
