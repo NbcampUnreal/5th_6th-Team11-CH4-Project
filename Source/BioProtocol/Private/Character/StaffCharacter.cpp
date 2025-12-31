@@ -172,8 +172,11 @@ void AStaffCharacter::Tick(float DeltaTime)
 		PerformInteractionCheck();
 	}
 
-
-
+	//if (IsLocallyControlled()) {
+	//	GEngine->AddOnScreenDebugMessage(
+	//		-1, 3.f, FColor::Yellow,
+	//		FString::Printf(TEXT("Multicast | Local=%d"), bIsGunEquipped));
+	//}
 
 	//FVector Start = FirstPersonCamera->GetComponentLocation();
 	//FVector End = Start + (FirstPersonCamera->GetForwardVector() * 250.0f); // 250cm 거리
@@ -393,10 +396,10 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 	}
 	//UseEquippedItem();
 
-	if (CurrentTool == EToolType::None) {
-		MulticastRPCMeleeAttack();
-		return;
-	}
+	//if (CurrentTool == EToolType::None&&!bIsGunEquipped) {
+	//	MulticastRPCMeleeAttack();
+	//	return;
+	//}
 	if (Ammo > 0 && CurrentTool == EToolType::Gun) {
 		if (!bCanFire) return;
 
