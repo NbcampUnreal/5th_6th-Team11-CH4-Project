@@ -394,6 +394,10 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 	//UseEquippedItem();
 
 	if (Ammo > 0 && CurrentTool == EToolType::Gun) {
+		if (!bCanFire) return;
+
+		bCanFire = false;
+
 		if (IsLocallyControlled())
 		{
 			UGameplayStatics::PlaySoundAtLocation(
@@ -403,6 +407,13 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 			);
 		}
 		Server_GunHit();
+		GetWorldTimerManager().SetTimer(
+			FireCooldownHandle,
+			this,
+			&AStaffCharacter::ResetFire,
+			FireInterval,
+			false
+		);
 	}
 	else if (Ammo <= 0 && CurrentTool == EToolType::Gun) {
 		if (IsLocallyControlled())
@@ -925,6 +936,12 @@ void AStaffCharacter::Multicast_PlayGunSound_Implementation()
 
 void AStaffCharacter::Server_GunHit_Implementation()
 {
+	float Now = GetWorld()->GetTimeSeconds();
+	if (Now - LastFireTime < FireInterval)
+		return;
+
+	LastFireTime = Now;
+
 	FVector Start;
 	FRotator ControlRot;
 	--Ammo;
@@ -2558,4 +2575,9 @@ void AStaffCharacter::SetItemMesh()
 	ThirdPotionMesh->SetCastShadow(false);
 	ThirdPotionMesh->SetOwnerNoSee(true);
 
+}
+
+void AStaffCharacter::ResetFire()
+{
+	bCanFire = true;
 }

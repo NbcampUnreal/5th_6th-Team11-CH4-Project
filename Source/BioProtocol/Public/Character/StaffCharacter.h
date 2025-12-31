@@ -515,6 +515,15 @@ public:
 
 	UFUNCTION(Client, Reliable)
 	void Client_OnToolBroken();
+
+	UPROPERTY(EditDefaultsOnly, Category = "Gun")
+	float FireInterval = 0.3f;
+
+	bool bCanFire = true;
+	FTimerHandle FireCooldownHandle;
+	void ResetFire();
+	float LastFireTime = 0.f;
+
 protected:
 	//템소지 여부 bool
 	UPROPERTY(ReplicatedUsing = OnRep_bHasTorch, BlueprintReadOnly, Category = "Equipment")
