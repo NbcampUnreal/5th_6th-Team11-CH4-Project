@@ -99,7 +99,7 @@ void ABioPlayerController::BeginPlay()
 			MapName = MapName.RightChop(LastSlashIndex + 1);
 		}
 
-		if (MapName.Contains(TEXT("TestSession")) || MapName.Contains(TEXT("GameMap")))
+		if (MapName.Contains(TEXT("MainLevel")) || MapName.Contains(TEXT("GameMap")))
 		{
 			VoiceTransmitToNone();
 		}

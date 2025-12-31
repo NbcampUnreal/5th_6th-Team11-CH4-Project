@@ -227,12 +227,12 @@ void USessionSubsystem::StartGameSession()
     }
 
     FString CurrentMap = World->GetMapName();
-    if (CurrentMap.Contains(TEXT("TestSession")))
+    if (CurrentMap.Contains(TEXT("MainLevel")))
     {
         return;
     }
 
-    FString TravelURL = TEXT("/Game/Level/MainLevel?listen");
+    FString TravelURL = TEXT("/Game/Level/MainLevel");
     UE_LOG(LogTemp, Warning, TEXT("[Session] ✓ Starting game session"));
     World->ServerTravel(TravelURL, false);
 }

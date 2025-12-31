@@ -78,7 +78,7 @@ void ABioGameMode::BeginPlay()
 		MapName = MapName.RightChop(LastSlashIndex + 1);
 	}
 
-	bool bIsGameMap = MapName.Contains(TEXT("TestSession")) || MapName.Contains(TEXT("GameMap"));
+	bool bIsGameMap = MapName.Contains(TEXT("MainLevel")) || MapName.Contains(TEXT("GameMap"));
 
 	if (bIsGameMap)
 	{
@@ -98,7 +98,7 @@ void ABioGameMode::BeginPlay()
 				else if (PlayerCount == 0)
 				{
 					UE_LOG(LogTemp, Error, TEXT("[GameMode] ✗ No players found, returning to lobby"));
-					GetWorld()->ServerTravel("/Game/Level/Lobby?listen");
+					GetWorld()->ServerTravel("/Game/Level/Lobby");
 				}
 			}, 15.0f, false);
 	}
@@ -366,7 +366,7 @@ void ABioGameMode::EndGame()
 	FTimerHandle TimerHandle;
 	GetWorldTimerManager().SetTimer(TimerHandle, [this]()
 		{
-			GetWorld()->ServerTravel("/Game/Level/Lobby?listen");
+			GetWorld()->ServerTravel("/Game/Level/Lobby");
 		}, 2.0f, false);
 }
 
