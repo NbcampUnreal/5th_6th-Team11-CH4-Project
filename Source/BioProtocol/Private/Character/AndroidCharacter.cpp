@@ -316,6 +316,13 @@ void AAndroidCharacter::EquipSlot3(const FInputActionValue& InValue)
 	}
 }
 
+void AAndroidCharacter::InteractPressed(const FInputActionValue& InValue)
+{
+	if (!bIsHunter) {
+		Super::InteractPressed(3);
+	}
+}
+
 void AAndroidCharacter::ServerSwitchToStaff_Implementation()
 {
 }

@@ -343,7 +343,7 @@ public:
 	float InteractionCheckDistance;
 
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
-	void InteractPressed(const FInputActionValue& InValue);
+	virtual void InteractPressed(const FInputActionValue& InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
 	void InteractReleased(const FInputActionValue& InValue);
