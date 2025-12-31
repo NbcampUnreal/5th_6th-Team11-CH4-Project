@@ -180,8 +180,8 @@ void AAndroidCharacter::OnRep_CharacterScale()
 
 void AAndroidCharacter::Server_OnChangeMode_Implementation()
 {
-	/*if (!IsNightPhase())
-		return;*/
+	if (!IsNightPhase())
+		return;
 
 	if (HasAuthority())
 	{
