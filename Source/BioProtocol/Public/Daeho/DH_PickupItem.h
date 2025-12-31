@@ -60,7 +60,8 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Visuals")
 	UStaticMesh* GunMesh;
-
+	UPROPERTY(EditDefaultsOnly, Category = "Visuals")
+	UStaticMesh* PotionMesh;
 	UFUNCTION()
 	void OnRep_ItemType(); // 클라이언트용
 

@@ -172,7 +172,7 @@ void AStaffCharacter::Tick(float DeltaTime)
 		PerformInteractionCheck();
 	}
 
-	
+
 
 
 	//FVector Start = FirstPersonCamera->GetComponentLocation();
@@ -253,8 +253,10 @@ void AStaffCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AStaffCharacter, bHasTorch);
 	DOREPLIFETIME(AStaffCharacter, bHasWrench);
 	DOREPLIFETIME(AStaffCharacter, bHasGun);
+	DOREPLIFETIME(AStaffCharacter, bHasPotion);
 
 	DOREPLIFETIME(AStaffCharacter, bIsGunEquipped);
+	DOREPLIFETIME(AStaffCharacter, bIsPotionEquipped);
 	DOREPLIFETIME(AStaffCharacter, bIsTorchEquipped);
 	DOREPLIFETIME(AStaffCharacter, bIsWrenchEquipped);
 	DOREPLIFETIME(AStaffCharacter, InventoryDurability);
@@ -412,6 +414,12 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 			);
 		}
 	}
+
+	if (bHasPotion && CurrentTool == EToolType::Potion) {
+		ServerUsePotion();
+		UnequipAll();//손 템 치우기
+		bHasPotion = false;
+	}
 }
 
 void AStaffCharacter::PullLever()
@@ -458,6 +466,30 @@ void AStaffCharacter::TestUpdateLeverGauge()
 	if (TestGuage >= 100.f)
 	{
 		GetWorld()->GetTimerManager().ClearTimer(GaugeTimerHandle);
+	}
+}
+
+void AStaffCharacter::TryEquipPotion()
+{
+	if (!bHasPotion)
+		return;
+	if (PotionMesh) {
+		UnequipAll();
+
+		PotionMesh->SetVisibility(!bIsPotionEquipped, true);
+		PotionMesh->SetHiddenInGame(bIsPotionEquipped);
+	}
+
+	bIsPotionEquipped = !bIsPotionEquipped;
+	if (bIsPotionEquipped)
+		CurrentTool = EToolType::Potion;
+	else
+		CurrentTool = EToolType::None;
+
+	if (!HasAuthority())
+	{
+		ServerEquipPotion();
+		return;
 	}
 }
 
@@ -545,10 +577,29 @@ void AStaffCharacter::TryEquipWrench()
 	//	OnRep_WrenchEquipped();
 }
 
+void AStaffCharacter::ServerUsePotion_Implementation()
+{
+	Status->SetFullCurrentHP();
+	bIsPotionEquipped = false;
+	bHasPotion = false;
+}
+
+void AStaffCharacter::ServerEquipPotion_Implementation()
+{
+	bIsPotionEquipped = !bIsPotionEquipped;
+	UnequipAll();
+	bIsGunEquipped = false;
+	bIsTorchEquipped = false;
+	bIsWrenchEquipped = false;
+
+
+}
+
 void AStaffCharacter::ServerEquipGun_Implementation()
 {
 	bIsGunEquipped = !bIsGunEquipped;
 	UnequipAll();
+	bIsPotionEquipped = false;
 	bIsTorchEquipped = false;
 	bIsWrenchEquipped = false;
 
@@ -571,6 +622,7 @@ void AStaffCharacter::ServerEquipTorch_Implementation()
 	bIsTorchEquipped = !bIsTorchEquipped;
 	UnequipAll();
 	bIsGunEquipped = false;
+	bIsPotionEquipped = false;
 
 	if (bIsTorchEquipped) {
 		CurrentTool = EToolType::Welder;
@@ -593,6 +645,7 @@ void AStaffCharacter::ServerEquipWrench_Implementation()
 	bIsWrenchEquipped = !bIsWrenchEquipped;
 	UnequipAll();
 	bIsGunEquipped = false;
+	bIsPotionEquipped = false;
 
 	if (bIsWrenchEquipped) {
 		CurrentTool = EToolType::Wrench;
@@ -961,6 +1014,22 @@ void AStaffCharacter::OnRep_TorchEquipped()
 
 	}
 
+}
+
+void AStaffCharacter::OnRep_PotionEquipped()
+{
+	if (ThirdPotionMesh)
+	{
+		ThirdPotionMesh->SetVisibility(bIsPotionEquipped, true);
+		ThirdPotionMesh->SetHiddenInGame(!bIsPotionEquipped);
+	}
+	if (bIsTorchEquipped) {
+		CurrentTool = EToolType::Welder;
+	}
+	else {
+		CurrentTool = EToolType::None;
+
+	}
 }
 
 void AStaffCharacter::OnRep_BIsCanAttack()
@@ -1625,7 +1694,8 @@ void AStaffCharacter::EquipSlot2(const FInputActionValue& InValue)
 
 void AStaffCharacter::EquipSlot3(const FInputActionValue& InValue)
 {
-	SwitchToSlot(3);
+	//SwitchToSlot(3);
+	TryEquipPotion();
 }
 
 void AStaffCharacter::InteractPressed(const FInputActionValue& InValue)
@@ -2164,6 +2234,7 @@ void AStaffCharacter::UnequipAll()
 	UnequipGun();
 	UnequipTorch();
 	UnequipWrench();
+	UnequipPotion();
 }
 
 void AStaffCharacter::UnequipGun()
@@ -2191,6 +2262,13 @@ void AStaffCharacter::UnequipWrench()
 
 
 	//bIsTorchEquipped = false;
+}
+
+void AStaffCharacter::UnequipPotion()
+{
+	PotionMesh->SetHiddenInGame(true);
+	PotionMesh->SetVisibility(false, true);
+	PotionMesh->SetCastShadow(false);
 }
 
 void AStaffCharacter::TakeWrench()
@@ -2236,6 +2314,12 @@ bool AStaffCharacter::KServerPickUpItem(EToolType NewItemType, int32 NewDurabili
 		UE_LOG(LogTemp, Log, TEXT("now ammo: %d"), Ammo);
 
 		return 1;
+	case EToolType::Potion:
+		if (bHasPotion)
+			return 0;
+		bHasPotion = true;
+		return 1;
+
 	default:
 		return 0;
 		break;
@@ -2278,12 +2362,13 @@ void AStaffCharacter::KConsumeToolDurability(int32 Amount)
 		bIsTorchEquipped = false;
 		//bIsGunEquipped = false;
 		bIsWrenchEquipped = false;
-
+		bIsPotionEquipped = false;
 
 		// 서버는 직접 호출
 		OnRep_TorchEquipped();
 		OnRep_GunEquipped();
 		OnRep_WrenchEquipped();
+		OnRep_PotionEquipped();
 
 		InventoryDurability = 0;
 		Client_OnToolBroken();
@@ -2350,6 +2435,10 @@ void AStaffCharacter::KServerDropItem_Implementation()
 		bHasGun = false;
 		Ammo = 0;
 	}
+	case EToolType::Potion: {
+		bHasPotion = false;
+		//Ammo = 0;
+	}
 	default:
 		break;
 	}
@@ -2360,13 +2449,14 @@ void AStaffCharacter::KServerDropItem_Implementation()
 	bIsTorchEquipped = false;
 	bIsGunEquipped = false;
 	bIsWrenchEquipped = false;
-
+	bIsPotionEquipped = false;
 	//bIsGunEquipped = false;
 
 	// 서버는 직접 호출
 	OnRep_TorchEquipped();
 	OnRep_GunEquipped();
 	OnRep_WrenchEquipped();
+	OnRep_PotionEquipped();
 
 	CurrentTool = EToolType::None;
 	InventoryDurability = 0;
@@ -2381,37 +2471,36 @@ void AStaffCharacter::Client_OnToolBroken_Implementation()
 
 void AStaffCharacter::ServerCleanHands_Implementation()
 {
-	if (InventoryDurability <= 0)
-	{
-		// 내구도 0 -> 아이템 파괴
-		//switch (CurrentTool)
-		//{
-		//case EToolType::Wrench:
-		//	//bHasWrench = false;
-		//	break;
-		//case EToolType::Welder:
-		//	//bHasTorch = false;
-		//	break;
-		//default:
-		//	break;
-		//}
 
-		// 맨손으로 전환
-			// 상태만 변경
-		bIsTorchEquipped = false;
-		bIsGunEquipped = false;
-		bIsWrenchEquipped = false;
+	// 내구도 0 -> 아이템 파괴
+	//switch (CurrentTool)
+	//{
+	//case EToolType::Wrench:
+	//	//bHasWrench = false;
+	//	break;
+	//case EToolType::Welder:
+	//	//bHasTorch = false;
+	//	break;
+	//default:
+	//	break;
+	//}
 
-		bIsGunEquipped = false;
+	// 맨손으로 전환
+		// 상태만 변경
+	bIsTorchEquipped = false;
+	bIsGunEquipped = false;
+	bIsWrenchEquipped = false;
+	bIsPotionEquipped = false;
 
-		// 서버는 직접 호출
-		OnRep_TorchEquipped();
-		OnRep_GunEquipped();
-		OnRep_WrenchEquipped();
+	// 서버는 직접 호출
+	OnRep_TorchEquipped();
+	OnRep_GunEquipped();
+	OnRep_WrenchEquipped();
+	OnRep_PotionEquipped();
 
-		CurrentTool = EToolType::None;
-		InventoryDurability = 0;
-	}
+	CurrentTool = EToolType::None;
+	//IventoryDurability = 0;
+
 }
 void AStaffCharacter::SetItemMesh()
 {
@@ -2455,5 +2544,18 @@ void AStaffCharacter::SetItemMesh()
 	ThirdWrenchMesh->SetVisibility(false, true);
 	ThirdWrenchMesh->SetCastShadow(false);
 	ThirdWrenchMesh->SetOwnerNoSee(true);
+
+	PotionMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("PotionMesh"));
+	PotionMesh->SetupAttachment(FirstPersonMesh, TEXT("hand_r"));
+	PotionMesh->SetHiddenInGame(true);
+	PotionMesh->SetVisibility(false, true);
+	PotionMesh->SetCastShadow(false);
+
+	ThirdPotionMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ThirdPotionMesh"));
+	ThirdPotionMesh->SetupAttachment(GetMesh(), TEXT("hand_r"));
+	ThirdPotionMesh->SetHiddenInGame(true);
+	ThirdPotionMesh->SetVisibility(false, true);
+	ThirdPotionMesh->SetCastShadow(false);
+	ThirdPotionMesh->SetOwnerNoSee(true);
 
 }

@@ -130,6 +130,7 @@ public:
 	void SetRevived();
 
 	float GetCurrentHP() { return CurrentHP; }
+	void SetFullCurrentHP() { CurrentHP = MaxHP; }
 
 private:
 	FTimerHandle TimerHandle_SetRunable;

@@ -23,6 +23,7 @@ class IInteractionInterface;
 class UChildActorComponent;
 class USoundBase;
 class USoundAttenuation;
+class UStaticMeshComponent;
 //class EToolType; //테스트
 
 USTRUCT()
@@ -470,11 +471,19 @@ public:
 	void OnRep_WrenchEquipped();
 	UFUNCTION()
 	void OnRep_TorchEquipped();
+	UFUNCTION()
+	void OnRep_PotionEquipped();
 
+
+	void TryEquipPotion();
 	void TryEquipGun();
 	void TryEquipTorch();
 	void TryEquipWrench();
 
+	UFUNCTION(Server, Reliable)
+	void ServerUsePotion();
+	UFUNCTION(Server, Reliable)
+	void ServerEquipPotion();
 	UFUNCTION(Server, Reliable)
 	void ServerEquipGun();
 	UFUNCTION(Server, Reliable)
@@ -486,6 +495,7 @@ public:
 	void UnequipGun();
 	void UnequipTorch();
 	void UnequipWrench();
+	void UnequipPotion();
 
 
 	void TakeWrench();
@@ -509,6 +519,8 @@ protected:
 	//템소지 여부 bool
 	UPROPERTY(ReplicatedUsing = OnRep_bHasTorch, BlueprintReadOnly, Category = "Equipment")
 	uint8 bHasTorch;	
+	UPROPERTY(ReplicatedUsing = OnRep_bHasTorch, BlueprintReadOnly, Category = "Equipment")
+	uint8 bHasPotion;
 	UPROPERTY(ReplicatedUsing = OnRep_bHasWrench, BlueprintReadOnly, Category = "Equipment")
 	uint8 bHasWrench;
 	UPROPERTY(ReplicatedUsing = OnRep_bHasGun, BlueprintReadOnly, Category = "Equipment")
@@ -523,6 +535,8 @@ protected:
 	bool bIsTorchEquipped = false;
 	UPROPERTY(ReplicatedUsing = OnRep_WrenchEquipped)
 	bool bIsWrenchEquipped = false;
+	UPROPERTY(ReplicatedUsing = OnRep_PotionEquipped)
+	bool bIsPotionEquipped = false;
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory")
 	int32 InventoryDurability;
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory")
@@ -548,4 +562,10 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* ThirdWrenchMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* PotionMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* ThirdPotionMesh;
 };

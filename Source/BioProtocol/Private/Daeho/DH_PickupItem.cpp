@@ -76,6 +76,9 @@ void ADH_PickupItem::UpdateMesh()
 		MeshComponent->SetStaticMesh(GunMesh);
 
 	}
+	else if (ItemType == EToolType::Potion && PotionMesh) {
+		MeshComponent->SetStaticMesh(PotionMesh);
+	}
 }
 
 void ADH_PickupItem::Interact_Implementation(APawn* InstigatorPawn)
