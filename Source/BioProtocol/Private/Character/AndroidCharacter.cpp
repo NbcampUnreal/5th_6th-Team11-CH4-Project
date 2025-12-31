@@ -95,6 +95,27 @@ void AAndroidCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 
 }
 
+void AAndroidCharacter::EquipSlot1(const FInputActionValue& InValue)
+{
+	if (!bIsHunter) {
+		Super::EquipSlot1(1);
+	}
+}
+
+void AAndroidCharacter::EquipSlot2(const FInputActionValue& InValue)
+{
+	if (!bIsHunter) {
+		Super::EquipSlot2(1);
+	}
+}
+
+void AAndroidCharacter::EquipSlot3(const FInputActionValue& InValue)
+{
+	if (!bIsHunter) {
+		Super::EquipSlot2(1);
+	}
+}
+
 void AAndroidCharacter::OnDash()
 {
 	if (HasAuthority())
@@ -105,6 +126,8 @@ void AAndroidCharacter::OnDash()
 
 void AAndroidCharacter::OnChangeMode(float scale)
 {
+	UnequipAll();
+
 	UCapsuleComponent* Capsule = GetCapsuleComponent();
 	UCharacterMovementComponent* Move = GetCharacterMovement();
 
@@ -135,15 +158,17 @@ void AAndroidCharacter::OnRep_CharacterScale()
 {
 	OnChangeMode(CharacterScale);
 	UpdateEyeFX(bIsHunter);
-
+	UnequipAll();
 }
 
 void AAndroidCharacter::Server_OnChangeMode_Implementation()
 {
 	if (HasAuthority())
 	{
-		if (!bIsHunter)
+		if (!bIsHunter) {
 			CharacterScale = HunterScale;
+			ServerCleanHands();
+		}
 		else
 			CharacterScale = NormalScale;
 

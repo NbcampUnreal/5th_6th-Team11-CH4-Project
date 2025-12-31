@@ -170,7 +170,7 @@ void AStaffCharacter::Tick(float DeltaTime)
 	{
 		PerformInteractionCheck();
 	}
-	
+
 	/*if (IsLocallyControlled()) {
 		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::FromInt(Status->CurrentStamina));
 	}*/
@@ -511,7 +511,7 @@ void AStaffCharacter::TryEquipWrench()
 	}
 
 
-//	OnRep_WrenchEquipped();
+	//	OnRep_WrenchEquipped();
 }
 
 void AStaffCharacter::ServerEquipGun_Implementation()
@@ -1407,6 +1407,11 @@ void AStaffCharacter::OnRep_CurrentSlot()
 	UE_LOG(LogTemp, Log, TEXT("[Player] OnRep_CurrentSlot: %d"), CurrentSlot);
 }
 
+void AStaffCharacter::EquipSlot1ForAnodroid(const FInputActionValue& InValue)
+{
+
+}
+
 void AStaffCharacter::EquipSlot1(const FInputActionValue& InValue)
 {
 	SwitchToSlot(1);
@@ -2224,6 +2229,40 @@ void AStaffCharacter::Client_OnToolBroken_Implementation()
 	UnequipAll();
 }
 
+void AStaffCharacter::ServerCleanHands_Implementation()
+{
+	if (InventoryDurability <= 0)
+	{
+		// 내구도 0 -> 아이템 파괴
+		//switch (CurrentTool)
+		//{
+		//case EToolType::Wrench:
+		//	//bHasWrench = false;
+		//	break;
+		//case EToolType::Welder:
+		//	//bHasTorch = false;
+		//	break;
+		//default:
+		//	break;
+		//}
+
+		// 맨손으로 전환
+			// 상태만 변경
+		bIsTorchEquipped = false;
+		bIsGunEquipped = false;
+		bIsWrenchEquipped = false;
+
+		bIsGunEquipped = false;
+
+		// 서버는 직접 호출
+		OnRep_TorchEquipped();
+		OnRep_GunEquipped();
+		OnRep_WrenchEquipped();
+
+		CurrentTool = EToolType::None;
+		InventoryDurability = 0;
+	}
+}
 void AStaffCharacter::SetItemMesh()
 {
 	////////////////////////////////////////////////////////////////////////////////

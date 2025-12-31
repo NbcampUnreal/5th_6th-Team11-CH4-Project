@@ -305,6 +305,9 @@ public:
 	UFUNCTION()
 	void OnRep_CurrentSlot();
 
+	virtual void EquipSlot1ForAnodroid(const FInputActionValue& InValue);
+
+
 	UFUNCTION(BlueprintCallable, Category = "Slots")
 	void EquipSlot1(const FInputActionValue& InValue);
 
@@ -469,6 +472,9 @@ public:
 	void KOnDrop();
 	UFUNCTION(Server, Reliable)
 	void KServerDropItem();
+	UFUNCTION(Server, Reliable)
+
+	void ServerCleanHands();
 
 	void SetItemMesh();
 
