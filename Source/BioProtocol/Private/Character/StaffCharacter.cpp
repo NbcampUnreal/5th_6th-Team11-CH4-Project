@@ -172,8 +172,11 @@ void AStaffCharacter::Tick(float DeltaTime)
 		PerformInteractionCheck();
 	}
 
-
-
+	//if (IsLocallyControlled()) {
+	//	GEngine->AddOnScreenDebugMessage(
+	//		-1, 3.f, FColor::Yellow,
+	//		FString::Printf(TEXT("Multicast | Local=%d"), bIsGunEquipped));
+	//}
 
 	//FVector Start = FirstPersonCamera->GetComponentLocation();
 	//FVector End = Start + (FirstPersonCamera->GetForwardVector() * 250.0f); // 250cm 거리
@@ -393,6 +396,10 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 	}
 	//UseEquippedItem();
 
+	//if (CurrentTool == EToolType::None&&!bIsGunEquipped) {
+	//	MulticastRPCMeleeAttack();
+	//	return;
+	//}
 	if (Ammo > 0 && CurrentTool == EToolType::Gun) {
 		if (!bCanFire) return;
 
@@ -494,9 +501,9 @@ void AStaffCharacter::TryEquipPotion()
 	bIsPotionEquipped = !bIsPotionEquipped;
 	if (bIsPotionEquipped)
 		CurrentTool = EToolType::Potion;
-	else
+	else {
 		CurrentTool = EToolType::None;
-
+	}
 	if (!HasAuthority())
 	{
 		ServerEquipPotion();
@@ -516,10 +523,12 @@ void AStaffCharacter::TryEquipGun()
 		WeaponMesh->SetHiddenInGame(bIsGunEquipped);
 	}
 	bIsGunEquipped = !bIsGunEquipped;
-	if (bIsGunEquipped)
+	if (bIsGunEquipped) {
 		CurrentTool = EToolType::Gun;
-	else
+	}
+	else {
 		CurrentTool = EToolType::None;
+	}
 
 	if (!HasAuthority())
 	{
@@ -544,11 +553,12 @@ void AStaffCharacter::TryEquipTorch()
 	bIsGunEquipped = false;
 
 	bIsTorchEquipped = !bIsTorchEquipped;
-	if (bIsTorchEquipped)
+	if (bIsTorchEquipped) {
 		CurrentTool = EToolType::Welder;
-	else
+	}
+	else {
 		CurrentTool = EToolType::None;
-
+	}
 	if (!HasAuthority())
 	{
 		ServerEquipTorch();
@@ -573,11 +583,12 @@ void AStaffCharacter::TryEquipWrench()
 	bIsGunEquipped = false;
 
 	bIsWrenchEquipped = !bIsWrenchEquipped;
-	if (bIsWrenchEquipped)
+	if (bIsWrenchEquipped) {
 		CurrentTool = EToolType::Wrench;
-	else
+	}
+	else {
 		CurrentTool = EToolType::None;
-
+	}
 	if (!HasAuthority())
 	{
 		ServerEquipWrench();
@@ -899,7 +910,6 @@ float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 
 void AStaffCharacter::TestHit()
 {
-
 	Server_Hit();
 }
 
@@ -995,7 +1005,7 @@ void AStaffCharacter::OnRep_GunEquipped()
 	if (bIsGunEquipped) {
 		CurrentTool = EToolType::Gun;
 	}
-	else {
+	else if(CurrentTool!=EToolType::Potion){
 		CurrentTool = EToolType::None;
 	}
 }
@@ -1011,7 +1021,9 @@ void AStaffCharacter::OnRep_WrenchEquipped()
 	if (bIsWrenchEquipped) {
 		CurrentTool = EToolType::Wrench;
 	}
-	else {
+	else if(CurrentTool!=EToolType::Gun&& CurrentTool != EToolType::Potion){
+		//fuck
+
 		CurrentTool = EToolType::None;
 	}
 }
@@ -1026,7 +1038,7 @@ void AStaffCharacter::OnRep_TorchEquipped()
 	if (bIsTorchEquipped) {
 		CurrentTool = EToolType::Welder;
 	}
-	else {
+	else if (CurrentTool != EToolType::Gun && CurrentTool != EToolType::Potion) {
 		CurrentTool = EToolType::None;
 
 	}
@@ -1043,7 +1055,7 @@ void AStaffCharacter::OnRep_PotionEquipped()
 	if (bIsTorchEquipped) {
 		CurrentTool = EToolType::Welder;
 	}
-	else {
+	else if (CurrentTool != EToolType::Gun) {
 		CurrentTool = EToolType::None;
 
 	}
@@ -1093,11 +1105,20 @@ void AStaffCharacter::Server_Hit_Implementation()
 	AActor* HitActor = Hit.GetActor();
 	if (!HitActor) 	return;
 
+	float DamageAmount = 10.f; // 기본 데미지
+
+	if (AAndroidCharacter* Android = Cast<AAndroidCharacter>(this))
+	{
+		if (Android->bIsHunter)
+		{
+			DamageAmount = 50.f;
+		}
+	}
 	UE_LOG(LogTemp, Warning, TEXT("Hit %s"), *HitActor->GetName());
 
 	UGameplayStatics::ApplyDamage(
 		HitActor,
-		50,
+		DamageAmount,
 		GetController(),
 		this,
 		UDamageType::StaticClass()

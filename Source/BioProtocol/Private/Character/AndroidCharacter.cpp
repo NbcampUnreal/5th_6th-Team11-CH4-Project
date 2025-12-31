@@ -41,7 +41,7 @@ AAndroidCharacter::AAndroidCharacter()
 	BreathAudio = CreateDefaultSubobject<UAudioComponent>(TEXT("BreathAudio"));
 	BreathAudio->SetupAttachment(RootComponent);
 
-	BreathAudio->bAutoActivate = false;      
+	BreathAudio->bAutoActivate = false;
 	BreathAudio->bIsUISound = false;
 }
 
@@ -126,7 +126,7 @@ void AAndroidCharacter::UpdateBreathSound()
 	{
 		if (BreathAudio->IsPlaying())
 		{
-			BreathAudio->FadeOut(0.3f, 0.f); 
+			BreathAudio->FadeOut(0.3f, 0.f);
 		}
 	}
 }
@@ -180,8 +180,8 @@ void AAndroidCharacter::OnRep_CharacterScale()
 
 void AAndroidCharacter::Server_OnChangeMode_Implementation()
 {
-	/*if (!IsNightPhase())
-		return;*/
+	if (!IsNightPhase())
+		return;
 
 	if (HasAuthority())
 	{
@@ -227,7 +227,7 @@ void AAndroidCharacter::Server_Dash_Implementation()
 
 void AAndroidCharacter::Xray()
 {
-	if (!PostProcessComp||!bIsHunter) return;
+	if (!PostProcessComp || !bIsHunter) return;
 
 	PostProcessComp->bEnabled = !PostProcessComp->bEnabled;
 
@@ -251,13 +251,15 @@ void AAndroidCharacter::AndroidArmAttack()
 
 void AAndroidCharacter::AttackInput(const FInputActionValue& InValue)
 {
-	if (!bIsCanAttack || bHasKilledPlayer)
-		return;
-	if (!bIsHunter) {
-		Super::AttackInput(1);
+	if (bIsHunter && bHasKilledPlayer) {
 		return;
 	}
-	ServerRPCMeleeAttack();
+	else if (bIsHunter && !bHasKilledPlayer) {
+		ServerRPCMeleeAttack();
+		return;
+	}
+	Super::AttackInput(1);
+
 }
 
 void AAndroidCharacter::ServerPullLever_Internal()
@@ -278,7 +280,7 @@ void AAndroidCharacter::PullLever()
 
 void AAndroidCharacter::OnRep_IsHunter()
 {
-	UpdateBreathSound(); 
+	UpdateBreathSound();
 }
 
 void AAndroidCharacter::OnRep_IsAndroid()
@@ -379,7 +381,7 @@ void AAndroidCharacter::ServerSwitchAndroid_Implementation()
 
 void AAndroidCharacter::SwitchAndroidMode()
 {
-	
+
 	bool bMode = !bIsAndroid;
 
 	// --- 서버가 아닌 경우 RPC 호출 ---
