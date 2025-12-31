@@ -98,6 +98,8 @@ void AAndroidCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 
 void AAndroidCharacter::OnDash()
 {
+	if (!bIsHunter) return;
+
 	if (HasAuthority())
 		Server_Dash();
 	else
@@ -187,7 +189,7 @@ void AAndroidCharacter::Server_Dash_Implementation()
 
 void AAndroidCharacter::Xray()
 {
-	if (!PostProcessComp) return;
+	if (!PostProcessComp||!bIsHunter) return;
 
 	PostProcessComp->bEnabled = !PostProcessComp->bEnabled;
 
