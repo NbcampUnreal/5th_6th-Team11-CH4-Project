@@ -501,9 +501,9 @@ void AStaffCharacter::TryEquipPotion()
 	bIsPotionEquipped = !bIsPotionEquipped;
 	if (bIsPotionEquipped)
 		CurrentTool = EToolType::Potion;
-	else
+	else {
 		CurrentTool = EToolType::None;
-
+	}
 	if (!HasAuthority())
 	{
 		ServerEquipPotion();
@@ -523,10 +523,12 @@ void AStaffCharacter::TryEquipGun()
 		WeaponMesh->SetHiddenInGame(bIsGunEquipped);
 	}
 	bIsGunEquipped = !bIsGunEquipped;
-	if (bIsGunEquipped)
+	if (bIsGunEquipped) {
 		CurrentTool = EToolType::Gun;
-	else
+	}
+	else {
 		CurrentTool = EToolType::None;
+	}
 
 	if (!HasAuthority())
 	{
@@ -551,11 +553,12 @@ void AStaffCharacter::TryEquipTorch()
 	bIsGunEquipped = false;
 
 	bIsTorchEquipped = !bIsTorchEquipped;
-	if (bIsTorchEquipped)
+	if (bIsTorchEquipped) {
 		CurrentTool = EToolType::Welder;
-	else
+	}
+	else {
 		CurrentTool = EToolType::None;
-
+	}
 	if (!HasAuthority())
 	{
 		ServerEquipTorch();
@@ -580,11 +583,12 @@ void AStaffCharacter::TryEquipWrench()
 	bIsGunEquipped = false;
 
 	bIsWrenchEquipped = !bIsWrenchEquipped;
-	if (bIsWrenchEquipped)
+	if (bIsWrenchEquipped) {
 		CurrentTool = EToolType::Wrench;
-	else
+	}
+	else {
 		CurrentTool = EToolType::None;
-
+	}
 	if (!HasAuthority())
 	{
 		ServerEquipWrench();
@@ -1001,7 +1005,7 @@ void AStaffCharacter::OnRep_GunEquipped()
 	if (bIsGunEquipped) {
 		CurrentTool = EToolType::Gun;
 	}
-	else {
+	else if(CurrentTool!=EToolType::Potion){
 		CurrentTool = EToolType::None;
 	}
 }
@@ -1017,7 +1021,9 @@ void AStaffCharacter::OnRep_WrenchEquipped()
 	if (bIsWrenchEquipped) {
 		CurrentTool = EToolType::Wrench;
 	}
-	else {
+	else if(CurrentTool!=EToolType::Gun&& CurrentTool != EToolType::Potion){
+		//fuck
+
 		CurrentTool = EToolType::None;
 	}
 }
@@ -1032,7 +1038,7 @@ void AStaffCharacter::OnRep_TorchEquipped()
 	if (bIsTorchEquipped) {
 		CurrentTool = EToolType::Welder;
 	}
-	else {
+	else if (CurrentTool != EToolType::Gun && CurrentTool != EToolType::Potion) {
 		CurrentTool = EToolType::None;
 
 	}
@@ -1049,7 +1055,7 @@ void AStaffCharacter::OnRep_PotionEquipped()
 	if (bIsTorchEquipped) {
 		CurrentTool = EToolType::Welder;
 	}
-	else {
+	else if (CurrentTool != EToolType::Gun) {
 		CurrentTool = EToolType::None;
 
 	}
