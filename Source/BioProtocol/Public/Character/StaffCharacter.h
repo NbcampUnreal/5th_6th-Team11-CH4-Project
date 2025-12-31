@@ -110,6 +110,8 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Sound")
 	USoundAttenuation* GunShotAttenuation;
+	UPROPERTY(EditDefaultsOnly, Category = "Sound")
+	USoundAttenuation* FootStepAttenuation;
 
 protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Tool")

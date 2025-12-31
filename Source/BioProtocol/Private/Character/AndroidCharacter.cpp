@@ -10,6 +10,7 @@
 #include "Game/BioGameState.h"
 #include "Game/BioProtocolTypes.h"
 #include "NiagaraComponent.h"
+#include "Components/AudioComponent.h"
 
 AAndroidCharacter::AAndroidCharacter()
 {
@@ -36,6 +37,12 @@ AAndroidCharacter::AAndroidCharacter()
 	AndroidFX2->SetRelativeLocation(FVector::ZeroVector);
 	AndroidFX2->SetRelativeRotation(FRotator::ZeroRotator);
 	AndroidFX2->bAutoActivate = false;
+
+	BreathAudio = CreateDefaultSubobject<UAudioComponent>(TEXT("BreathAudio"));
+	BreathAudio->SetupAttachment(RootComponent);
+
+	BreathAudio->bAutoActivate = false;      
+	BreathAudio->bIsUISound = false;
 }
 
 void AAndroidCharacter::BeginPlay()
@@ -68,6 +75,17 @@ void AAndroidCharacter::BeginPlay()
 	BaseMeshOffset = GetMesh()->GetRelativeLocation();
 	BaseMeshScale = GetMesh()->GetRelativeScale3D();
 	BaseCameraOffset = FirstPersonCamera->GetRelativeLocation();
+
+	if (AndroidBreathSound)
+	{
+		BreathAudio->SetSound(AndroidBreathSound);
+	}
+
+	if (BreathAtt)
+	{
+		BreathAudio->AttenuationSettings = BreathAtt;
+	}
+
 }
 
 void AAndroidCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -92,9 +110,26 @@ void AAndroidCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(AAndroidCharacter, CharacterScale);
 	DOREPLIFETIME(AAndroidCharacter, bIsHunter);
 	DOREPLIFETIME(AAndroidCharacter, bHasKilledPlayer);
-
 }
 
+
+void AAndroidCharacter::UpdateBreathSound()
+{
+	if (bIsHunter)
+	{
+		if (!BreathAudio->IsPlaying())
+		{
+			BreathAudio->Play();
+		}
+	}
+	else
+	{
+		if (BreathAudio->IsPlaying())
+		{
+			BreathAudio->FadeOut(0.3f, 0.f); 
+		}
+	}
+}
 
 void AAndroidCharacter::OnDash()
 {
@@ -145,6 +180,9 @@ void AAndroidCharacter::OnRep_CharacterScale()
 
 void AAndroidCharacter::Server_OnChangeMode_Implementation()
 {
+	/*if (!IsNightPhase())
+		return;*/
+
 	if (HasAuthority())
 	{
 		if (!bIsHunter) {
@@ -236,6 +274,11 @@ void AAndroidCharacter::PullLever()
 		return;
 
 	Super::PullLever();
+}
+
+void AAndroidCharacter::OnRep_IsHunter()
+{
+	UpdateBreathSound(); 
 }
 
 void AAndroidCharacter::OnRep_IsAndroid()
@@ -336,9 +379,7 @@ void AAndroidCharacter::ServerSwitchAndroid_Implementation()
 
 void AAndroidCharacter::SwitchAndroidMode()
 {
-	/*if (!IsNightPhase())
-		return;*/
-
+	
 	bool bMode = !bIsAndroid;
 
 	// --- 서버가 아닌 경우 RPC 호출 ---

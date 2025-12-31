@@ -12,6 +12,7 @@
  */
 class UPostProcessComponent;
 class UNiagaraComponent;
+class UAudioComponent;
 
 UCLASS()
 class BIOPROTOCOL_API AAndroidCharacter : public AStaffCharacter
@@ -64,7 +65,9 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void ServerSwitchToStaff();
 	// ================================
-	
+	UFUNCTION()
+	void OnRep_IsHunter();
+	void UpdateBreathSound();
 
 	void OnDash();
 
@@ -115,6 +118,14 @@ protected:
 
 	virtual void AttackInput(const FInputActionValue& InValue) override;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound|Gun")
+	USoundBase* AndroidBreathSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Sound")
+	USoundAttenuation* BreathAtt;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sound")
+	UAudioComponent* BreathAudio;
 protected:
 	virtual void ServerPullLever_Internal() override;
 	virtual void PullLever() override;
@@ -135,7 +146,9 @@ private:
 	FVector BaseMeshOffset;
 	float NormalScale = 1.0f;
 	float HunterScale = 1.5f;
-	UPROPERTY(Replicated);
-	int8 bIsHunter = false;
+	UPROPERTY(ReplicatedUsing = OnRep_IsHunter)
+	uint8 bIsHunter=false;
+
+
 
 };
