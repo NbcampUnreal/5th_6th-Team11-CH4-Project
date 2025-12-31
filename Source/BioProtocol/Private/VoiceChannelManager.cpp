@@ -2,11 +2,6 @@
 #include "Character/BioPlayerController.h"
 #include "Engine/World.h"
 
-void UVoiceChannelManager::RegisterLobbyChannel(const FString& ChannelName)
-{
-    LobbyChannelName = ChannelName;
-    UE_LOG(LogTemp, Warning, TEXT("[VoiceManager] ✓ Lobby channel registered"));
-}
 
 void UVoiceChannelManager::OnGameStart()
 {

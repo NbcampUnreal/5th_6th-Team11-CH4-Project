@@ -40,9 +40,6 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Voice")
     void OnGameEnd();
 
-    // 로비 채널 이름 등록 (SessionSubsystem에서 호출)
-    void RegisterLobbyChannel(const FString& ChannelName);
-
     // 현재 페이즈 확인
     UFUNCTION(BlueprintPure, Category = "Voice")
     EGamePhase GetCurrentPhase() const { return CurrentPhase; }

@@ -9,6 +9,7 @@
 
 class ABioGameState;
 class ABioPlayerState;
+class ABioPlayerController;
 class AThirdSpectatorPawn;
 
 UCLASS()
@@ -80,9 +81,14 @@ protected:
 	void CreateMafiaGameChannel(const TArray<APlayerController*>& Players);
 	void CreateGameChannel(EBioPlayerRole Team, const TArray<APlayerController*>& Players, const FString& ChannelName);
 
+	void CreateLobbyVoiceChannel(const TArray<APlayerController*>& Players);
+
+	void AddPlayerToExistingChannel(ABioPlayerController* BioPC, ABioPlayerState* PS, const FString& ChannelName);
+
 	FString TrustedServerUrl = TEXT("http://localhost:3000");
 
 	bool bGameVoiceStarted = false;  // 게임 시작 중복 방지
+	bool bLobbyVoiceStarted = false;
 
-
+	FString LobbyChannelName;
 };

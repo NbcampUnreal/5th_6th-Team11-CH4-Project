@@ -86,7 +86,7 @@ void USessionSubsystem::CreateLobbyForDedicated(const FString& ServerIp, int32 S
     Settings.bShouldAdvertise = true;
     Settings.bAllowJoinInProgress = true;
     Settings.bUseLobbiesIfAvailable = true;
-    Settings.bUseLobbiesVoiceChatIfAvailable = true;
+    Settings.bUseLobbiesVoiceChatIfAvailable = false;
     Settings.bUsesPresence = true;
     Settings.bAllowJoinViaPresence = true;
     Settings.NumPublicConnections = PublicConnections;

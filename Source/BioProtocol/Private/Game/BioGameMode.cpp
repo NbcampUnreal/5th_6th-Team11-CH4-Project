@@ -126,6 +126,77 @@ UClass* ABioGameMode::GetDefaultPawnClassForController_Implementation(AControlle
 void ABioGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
+
+	// 로비 맵인 경우에만 실행
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	FString MapName = World->GetMapName();
+	if (MapName.StartsWith(TEXT("UEDPIE_")))
+	{
+		int32 UnderscoreIndex;
+		if (MapName.FindChar('_', UnderscoreIndex))
+		{
+			MapName = MapName.RightChop(UnderscoreIndex + 1);
+		}
+	}
+
+	bool bIsLobby = MapName.Contains(TEXT("Lobby"));
+
+	if (bIsLobby)
+	{
+		// 로비 채널이 이미 생성되어 있으면 새 플레이어를 추가
+		if (bLobbyVoiceStarted)
+		{
+			ABioPlayerController* BioPC = Cast<ABioPlayerController>(NewPlayer);
+			if (BioPC)
+			{
+				FTimerHandle TimerHandle;
+				GetWorldTimerManager().SetTimer(TimerHandle, [this, BioPC]()
+					{
+						ABioPlayerState* PS = BioPC->GetPlayerState<ABioPlayerState>();
+						if (PS && !PS->EOSPlayerName.IsEmpty())
+						{
+							const FString ChannelName = FString::Printf(TEXT("Lobby_Voice_%s"),
+								*FGuid::NewGuid().ToString(EGuidFormats::Short));
+							UE_LOG(LogTemp, Log, TEXT("AddPlayerToExistingChannel Start"));
+							AddPlayerToExistingChannel(BioPC, PS, LobbyChannelName);
+						}
+					}, 2.0f, false);
+			}
+		}
+		else if (!bLobbyVoiceStarted)
+		{
+			// 첫 플레이어들 - 로비 채널 생성
+			FTimerHandle TimerHandle;
+			GetWorldTimerManager().SetTimer(TimerHandle, [this]()
+				{
+					TArray<APlayerController*> AllPlayers;
+					for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+					{
+						if (APlayerController* PC = It->Get())
+						{
+							ABioPlayerController* BioPC = Cast<ABioPlayerController>(PC);
+							if (BioPC)
+							{
+								ABioPlayerState* PS = BioPC->GetPlayerState<ABioPlayerState>();
+								if (PS && !PS->EOSPlayerName.IsEmpty())
+								{
+									AllPlayers.Add(PC);
+								}
+							}
+						}
+					}
+
+					if (AllPlayers.Num() > 0 && !bLobbyVoiceStarted)
+					{
+						bLobbyVoiceStarted = true;
+						UE_LOG(LogTemp, Log, TEXT("CreateLobbyVoiceChannel Start"));
+						CreateLobbyVoiceChannel(AllPlayers);
+					}
+				}, 2.0f, false);
+		}
+	}
 }
 
 void ABioGameMode::AssignRoles()
@@ -361,6 +432,15 @@ void ABioGameMode::StartGame()
 
 	UE_LOG(LogTemp, Warning, TEXT("[GameMode] ✓ Game starting..."));
 
+	// 모든 플레이어가 로비 채널을 떠나도록 명령
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ABioPlayerController* BioPC = Cast<ABioPlayerController>(It->Get()))
+		{
+			BioPC->LeaveLobbyChannel();
+		}
+	}
+
 	if (UGameInstance* GI = GetGameInstance())
 	{
 		if (UVoiceChannelManager* VCM = GI->GetSubsystem<UVoiceChannelManager>())
@@ -489,6 +569,138 @@ void ABioGameMode::CreateMafiaGameChannel(const TArray<APlayerController*>& Play
 	CreateGameChannel(EBioPlayerRole::Cleaner, Players, ChannelName);
 }
 
+void ABioGameMode::CreateLobbyVoiceChannel(const TArray<APlayerController*>& Players)
+{
+	FString ChannelName = FString::Printf(TEXT("Lobby_Voice_%s"),
+		*FGuid::NewGuid().ToString(EGuidFormats::Short));
+
+	LobbyChannelName = ChannelName;
+
+	TArray<ABioPlayerState*> ValidPlayerStates;
+	TArray<APlayerController*> ValidControllers;
+
+	for (APlayerController* PC : Players)
+	{
+		ABioPlayerController* BioPC = Cast<ABioPlayerController>(PC);
+		if (!BioPC) continue;
+
+		ABioPlayerState* PS = BioPC->GetPlayerState<ABioPlayerState>();
+		if (!PS || PS->EOSPlayerName.IsEmpty()) continue;
+
+		ValidPlayerStates.Add(PS);
+		ValidControllers.Add(PC);
+	}
+
+	if (ValidPlayerStates.Num() == 0)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[GameMode] ✗ No valid players for lobby voice"));
+		return;
+	}
+
+	const FString RoomId = ChannelName;
+	ABioPlayerState* FirstPS = ValidPlayerStates[0];
+
+	// 첫 번째 플레이어로 채널 생성
+	TSharedRef<IHttpRequest> CreateRequest = FHttpModule::Get().CreateRequest();
+	CreateRequest->SetURL(TrustedServerUrl + TEXT("/voice/create-channel"));
+	CreateRequest->SetVerb(TEXT("POST"));
+	CreateRequest->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+
+	TSharedPtr<FJsonObject> CreateJson = MakeShareable(new FJsonObject);
+	CreateJson->SetStringField(TEXT("channelName"), ChannelName);
+	CreateJson->SetStringField(TEXT("productUserId"), FirstPS->EOSPlayerName);
+	CreateJson->SetStringField(TEXT("roomId"), RoomId);
+
+	FString CreateContent;
+	TSharedRef<TJsonWriter<>> CreateWriter = TJsonWriterFactory<>::Create(&CreateContent);
+	FJsonSerializer::Serialize(CreateJson.ToSharedRef(), CreateWriter);
+	CreateRequest->SetContentAsString(CreateContent);
+
+	CreateRequest->OnProcessRequestComplete().BindLambda(
+		[this, ValidControllers, ValidPlayerStates, ChannelName, RoomId]
+	(FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
+		{
+			if (!bSuccess || !Res.IsValid())
+			{
+				UE_LOG(LogTemp, Error, TEXT("[GameMode] ✗ Failed to create lobby channel"));
+				return;
+			}
+
+			TSharedPtr<FJsonObject> JsonResponse;
+			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Res->GetContentAsString());
+
+			if (!FJsonSerializer::Deserialize(Reader, JsonResponse) || !JsonResponse->GetBoolField(TEXT("success")))
+			{
+				UE_LOG(LogTemp, Error, TEXT("[GameMode] ✗ Lobby channel creation failed"));
+				return;
+			}
+
+			const FString ClientBaseUrl = JsonResponse->GetStringField(TEXT("clientBaseUrl"));
+			const FString FirstToken = JsonResponse->GetStringField(TEXT("participantToken"));
+
+			UE_LOG(LogTemp, Warning, TEXT("[GameMode] ✓ Lobby voice channel created: %s"), *ChannelName);
+
+			// 첫 번째 플레이어 참가
+			if (ValidControllers.Num() > 0)
+			{
+				if (ABioPlayerController* FirstPC = Cast<ABioPlayerController>(ValidControllers[0]))
+				{
+					FirstPC->Client_JoinLobbyChannel(ChannelName, ClientBaseUrl, FirstToken);
+				}
+			}
+
+			// 나머지 플레이어들 추가
+			for (int32 i = 1; i < ValidPlayerStates.Num(); i++)
+			{
+				ABioPlayerState* PS = ValidPlayerStates[i];
+
+				TSharedRef<IHttpRequest> AddRequest = FHttpModule::Get().CreateRequest();
+				AddRequest->SetURL(TrustedServerUrl + TEXT("/voice/add-participant"));
+				AddRequest->SetVerb(TEXT("POST"));
+				AddRequest->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+
+				TSharedPtr<FJsonObject> AddJson = MakeShareable(new FJsonObject);
+				AddJson->SetStringField(TEXT("roomId"), RoomId);
+				AddJson->SetStringField(TEXT("productUserId"), PS->EOSPlayerName);
+
+				FString AddContent;
+				TSharedRef<TJsonWriter<>> AddWriter = TJsonWriterFactory<>::Create(&AddContent);
+				FJsonSerializer::Serialize(AddJson.ToSharedRef(), AddWriter);
+				AddRequest->SetContentAsString(AddContent);
+
+				const int32 PlayerIndex = i;
+				AddRequest->OnProcessRequestComplete().BindLambda(
+					[this, ValidControllers, PlayerIndex, ChannelName, ClientBaseUrl]
+				(FHttpRequestPtr Req2, FHttpResponsePtr Res2, bool bSuccess2)
+					{
+						if (!bSuccess2 || !Res2.IsValid()) return;
+
+						TSharedPtr<FJsonObject> AddResponse;
+						TSharedRef<TJsonReader<>> Reader2 = TJsonReaderFactory<>::Create(Res2->GetContentAsString());
+
+						if (!FJsonSerializer::Deserialize(Reader2, AddResponse) || !AddResponse->GetBoolField(TEXT("success")))
+							return;
+
+						const FString ParticipantToken = AddResponse->GetStringField(TEXT("participantToken"));
+
+						if (PlayerIndex < ValidControllers.Num())
+						{
+							if (ABioPlayerController* PC = Cast<ABioPlayerController>(ValidControllers[PlayerIndex]))
+							{
+								PC->Client_JoinLobbyChannel(ChannelName, ClientBaseUrl, ParticipantToken);
+							}
+						}
+					}
+					);
+
+				AddRequest->ProcessRequest();
+			}
+		}
+		);
+
+	CreateRequest->ProcessRequest();
+}
+
 void ABioGameMode::CreateGameChannel(EBioPlayerRole Team, const TArray<APlayerController*>& Players, const FString& ChannelName)
 {
 	TArray<ABioPlayerState*> ValidPlayerStates;
@@ -614,6 +826,47 @@ void ABioGameMode::CreateGameChannel(EBioPlayerRole Team, const TArray<APlayerCo
 		);
 
 	CreateRequest->ProcessRequest();
+}
+
+
+
+void ABioGameMode::AddPlayerToExistingChannel(ABioPlayerController* BioPC, ABioPlayerState* PS, const FString& ChannelName)
+{
+	TSharedRef<IHttpRequest> AddRequest = FHttpModule::Get().CreateRequest();
+	AddRequest->SetURL(TrustedServerUrl + TEXT("/voice/add-participant"));
+	AddRequest->SetVerb(TEXT("POST"));
+	AddRequest->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+
+	TSharedPtr<FJsonObject> AddJson = MakeShareable(new FJsonObject);
+	AddJson->SetStringField(TEXT("roomId"), ChannelName);
+	AddJson->SetStringField(TEXT("productUserId"), PS->EOSPlayerName);
+
+	FString AddContent;
+	TSharedRef<TJsonWriter<>> AddWriter = TJsonWriterFactory<>::Create(&AddContent);
+	FJsonSerializer::Serialize(AddJson.ToSharedRef(), AddWriter);
+	AddRequest->SetContentAsString(AddContent);
+
+	AddRequest->OnProcessRequestComplete().BindLambda(
+		[BioPC, ChannelName](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
+		{
+			if (!bSuccess || !Res.IsValid()) return;
+
+			TSharedPtr<FJsonObject> Response;
+			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Res->GetContentAsString());
+
+			if (!FJsonSerializer::Deserialize(Reader, Response) || !Response->GetBoolField(TEXT("success")))
+				return;
+
+			const FString ClientBaseUrl = Response->GetStringField(TEXT("clientBaseUrl"));
+			const FString ParticipantToken = Response->GetStringField(TEXT("participantToken"));
+
+			BioPC->Client_JoinLobbyChannel(ChannelName, ClientBaseUrl, ParticipantToken);
+
+			UE_LOG(LogTemp, Warning, TEXT("[GameMode] ✓ Late-joining player added to lobby voice"));
+		}
+	);
+
+	AddRequest->ProcessRequest();
 }
 
 

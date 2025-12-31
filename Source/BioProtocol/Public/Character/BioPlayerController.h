@@ -67,6 +67,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Voice")
 	void VoiceTransmitToALL();
+	UFUNCTION(BlueprintCallable, Category = "Voice")
+	void VoiceTransmitToLobby();
 
 	UFUNCTION(BlueprintCallable, Category = "Voice")
 	void VoiceTransmitToPublic();

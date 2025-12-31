@@ -105,10 +105,10 @@ void ABioPlayerController::BeginPlay()
 			VoiceTransmitToNone();
 		}
 
-		if (IsLocalController() && MapName.Contains(TEXT("Lobby")))
-		{
-			VoiceTransmitToALL();
-		}
+		//if (IsLocalController() && MapName.Contains(TEXT("Lobby")))
+		//{
+		//	VoiceTransmitToALL();
+		//}
 	}
 }
 
@@ -372,7 +372,7 @@ void ABioPlayerController::JoinLobbyChannel_Local(const FString& ChannelName, co
 				if (Result.IsSuccess())
 				{
 					UE_LOG(LogTemp, Warning, TEXT("[Voice] ✓ Joined lobby channel"));
-					VoiceChatUser->TransmitToAllChannels();
+					VoiceTransmitToLobby();
 				}
 				else
 				{
@@ -529,6 +529,24 @@ void ABioPlayerController::VoiceTransmitToALL()
 		return;
 
 	VoiceChatUser->TransmitToAllChannels();
+}
+
+void ABioPlayerController::VoiceTransmitToLobby()
+{
+	CacheVoiceChatUser();
+	if (!VoiceChatUser)
+		return;
+
+	FString ChannelToUse = LobbyChannelName;
+	UE_LOG(LogTemp, Log, TEXT("[Voice] LobbyChannelName : %s"), *LobbyChannelName);
+	if (ChannelToUse.IsEmpty())
+	{
+		UE_LOG(LogTemp, Log, TEXT("[Voice] ChannelToUse.IsEmpty()"));
+		return;
+	}
+
+	TSet<FString> Channels = { ChannelToUse };
+	VoiceChatUser->TransmitToSpecificChannels(Channels);
 }
 
 void ABioPlayerController::VoiceTransmitToPublic()
