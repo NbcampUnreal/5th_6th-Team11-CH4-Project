@@ -170,20 +170,7 @@ void AStaffCharacter::Tick(float DeltaTime)
 	{
 		PerformInteractionCheck();
 	}
-	if (IsLocallyControlled()) {
-		const UEnum* EnumPtr = StaticEnum<EToolType>();
-		if (EnumPtr)
-		{
-			FString ToolName = EnumPtr->GetNameStringByValue((int64)CurrentTool);
-
-			GEngine->AddOnScreenDebugMessage(
-				-1,
-				2.f,
-				FColor::Red,
-				FString::Printf(TEXT("CurrentTool: %s"), *ToolName)
-			);
-		}
-	}
+	
 	/*if (IsLocallyControlled()) {
 		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::FromInt(Status->CurrentStamina));
 	}*/
