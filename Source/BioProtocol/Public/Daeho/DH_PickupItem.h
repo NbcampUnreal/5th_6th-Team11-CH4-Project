@@ -58,6 +58,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Visuals")
 	UStaticMesh* WelderMesh;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Visuals")
+	UStaticMesh* GunMesh;
+
 	UFUNCTION()
 	void OnRep_ItemType(); // 클라이언트용
 

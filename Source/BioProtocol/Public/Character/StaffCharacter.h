@@ -500,7 +500,8 @@ protected:
 	bool bIsWrenchEquipped = false;
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory")
 	int32 InventoryDurability;
-
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory")
+	int32 Ammo=0;
 	/// <summary>
 	/// 손에붙일 템메쉬 (1인칭/다른클라3인칭)
 	/// </summary>

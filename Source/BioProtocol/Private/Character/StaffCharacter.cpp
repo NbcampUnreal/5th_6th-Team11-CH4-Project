@@ -448,6 +448,11 @@ void AStaffCharacter::TryEquipGun()
 		WeaponMesh->SetVisibility(!bIsGunEquipped, true);
 		WeaponMesh->SetHiddenInGame(bIsGunEquipped);
 	}
+	bIsGunEquipped = !bIsGunEquipped;
+	if (bIsGunEquipped)
+		CurrentTool = EToolType::Gun;
+	else
+		CurrentTool = EToolType::None;
 
 	if (!HasAuthority())
 	{
@@ -455,8 +460,7 @@ void AStaffCharacter::TryEquipGun()
 		return;
 	}
 
-	bIsGunEquipped = !bIsGunEquipped;
-	OnRep_GunEquipped();
+	//OnRep_GunEquipped();
 }
 
 void AStaffCharacter::TryEquipTorch()
@@ -470,6 +474,7 @@ void AStaffCharacter::TryEquipTorch()
 		TorchMesh->SetVisibility(!bIsTorchEquipped, true);
 		TorchMesh->SetHiddenInGame(bIsTorchEquipped);
 	}
+	bIsGunEquipped = false;
 
 	bIsTorchEquipped = !bIsTorchEquipped;
 	if (bIsTorchEquipped)
@@ -498,6 +503,8 @@ void AStaffCharacter::TryEquipWrench()
 		WrenchMesh->SetHiddenInGame(bIsWrenchEquipped);
 	}
 
+	bIsGunEquipped = false;
+
 	bIsWrenchEquipped = !bIsWrenchEquipped;
 	if (bIsWrenchEquipped)
 		CurrentTool = EToolType::Wrench;
@@ -516,11 +523,19 @@ void AStaffCharacter::TryEquipWrench()
 
 void AStaffCharacter::ServerEquipGun_Implementation()
 {
-
-	bIsGunEquipped = true;
+	bIsGunEquipped = !bIsGunEquipped;
 	UnequipAll();
+	bIsTorchEquipped = false;
+	bIsWrenchEquipped = false;
 
 	//bIsGunEquipped = !bIsGunEquipped;
+
+	if (bIsGunEquipped) {
+		CurrentTool = EToolType::Gun;
+	}
+	else {
+		CurrentTool = EToolType::None;
+	}
 
 	OnRep_TorchEquipped();
 	OnRep_WrenchEquipped();
@@ -531,6 +546,7 @@ void AStaffCharacter::ServerEquipTorch_Implementation()
 {
 	bIsTorchEquipped = !bIsTorchEquipped;
 	UnequipAll();
+	bIsGunEquipped = false;
 
 	if (bIsTorchEquipped) {
 		CurrentTool = EToolType::Welder;
@@ -552,6 +568,7 @@ void AStaffCharacter::ServerEquipWrench_Implementation()
 {
 	bIsWrenchEquipped = !bIsWrenchEquipped;
 	UnequipAll();
+	bIsGunEquipped = false;
 
 	if (bIsWrenchEquipped) {
 		CurrentTool = EToolType::Wrench;
@@ -804,6 +821,13 @@ void AStaffCharacter::OnRep_GunEquipped()
 	{
 		ThirdWeaponMesh->SetVisibility(bIsGunEquipped, true);
 		ThirdWeaponMesh->SetHiddenInGame(!bIsGunEquipped);
+	}
+
+	if (bIsGunEquipped) {
+		CurrentTool = EToolType::Gun;
+	}
+	else {
+		CurrentTool = EToolType::None;
 	}
 }
 
@@ -1415,6 +1439,7 @@ void AStaffCharacter::EquipSlot1ForAnodroid(const FInputActionValue& InValue)
 void AStaffCharacter::EquipSlot1(const FInputActionValue& InValue)
 {
 	SwitchToSlot(1);
+
 	TryEquipGun();
 }
 
@@ -2094,6 +2119,7 @@ bool AStaffCharacter::KServerPickUpItem(EToolType NewItemType, int32 NewDurabili
 		if (bHasWrench || bHasTorch)
 			return 0;
 		bHasWrench = true;
+		InventoryDurability = NewDurability;
 		return 1;
 
 		break;
@@ -2101,8 +2127,14 @@ bool AStaffCharacter::KServerPickUpItem(EToolType NewItemType, int32 NewDurabili
 		if (bHasWrench || bHasTorch)
 			return 0;
 		bHasTorch = true;
+		InventoryDurability = NewDurability;
+
 		return 1;
 		break;
+	case EToolType::Gun:
+		bHasGun = true;
+		Ammo += NewDurability;
+		return 1;
 	default:
 		return 0;
 		break;
@@ -2112,11 +2144,22 @@ bool AStaffCharacter::KServerPickUpItem(EToolType NewItemType, int32 NewDurabili
 void AStaffCharacter::KConsumeToolDurability(int32 Amount)
 {
 	if (CurrentTool == EToolType::None) return;
-	InventoryDurability -= Amount;
+
+	if (CurrentTool == EToolType::Gun && Ammo > 0) {
+		Ammo -= Amount;
+	}
+	else {
+		InventoryDurability -= Amount;
+	}
 
 	UE_LOG(LogTemp, Log, TEXT("Tool Used. Remaining Durability: %d"), InventoryDurability);
 
-	if (InventoryDurability <= 0)
+	if (CurrentTool == EToolType::Gun && Ammo <= 0)
+	{
+		Ammo = 0;
+
+	}
+	else if (InventoryDurability <= 0)
 	{
 		// 내구도 0 -> 아이템 파괴
 		switch (CurrentTool)
@@ -2135,17 +2178,15 @@ void AStaffCharacter::KConsumeToolDurability(int32 Amount)
 		// 맨손으로 전환
 			// 상태만 변경
 		bIsTorchEquipped = false;
-		bIsGunEquipped = false;
+		//bIsGunEquipped = false;
 		bIsWrenchEquipped = false;
 
-		bIsGunEquipped = false;
 
 		// 서버는 직접 호출
 		OnRep_TorchEquipped();
 		OnRep_GunEquipped();
 		OnRep_WrenchEquipped();
 
-		CurrentTool = EToolType::None;
 		InventoryDurability = 0;
 		Client_OnToolBroken();
 
@@ -2157,6 +2198,7 @@ void AStaffCharacter::KConsumeToolDurability(int32 Amount)
 void AStaffCharacter::KOnDrop()
 {
 	if (CurrentTool == EToolType::None) return;
+	
 	UnequipAll();
 	KServerDropItem();
 
@@ -2184,8 +2226,14 @@ void AStaffCharacter::KServerDropItem_Implementation()
 
 		if (DroppedItem)
 		{
-			// 버리는 아이템의 정보 그대로 전달
-			DroppedItem->InitializeDrop(CurrentTool, InventoryDurability);
+			if (CurrentTool != EToolType::Gun) {
+				// 버리는 아이템의 정보 그대로 전달
+				DroppedItem->InitializeDrop(CurrentTool, InventoryDurability);
+			}
+			else {
+				DroppedItem->InitializeDrop(CurrentTool, Ammo);
+
+			}
 
 			// 스폰 완료
 			UGameplayStatics::FinishSpawningActor(DroppedItem, FTransform(SpawnRot, SpawnLoc));
@@ -2200,6 +2248,8 @@ void AStaffCharacter::KServerDropItem_Implementation()
 	case EToolType::Welder:
 		bHasTorch = false;
 		break;
+	case EToolType::Gun:
+		bHasGun = false;
 	default:
 		break;
 	}
@@ -2211,7 +2261,7 @@ void AStaffCharacter::KServerDropItem_Implementation()
 	bIsGunEquipped = false;
 	bIsWrenchEquipped = false;
 
-	bIsGunEquipped = false;
+	//bIsGunEquipped = false;
 
 	// 서버는 직접 호출
 	OnRep_TorchEquipped();

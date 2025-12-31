@@ -18,7 +18,8 @@ enum class EToolType : uint8
 {
 	None    UMETA(DisplayName = "None (Hands)"),
 	Wrench  UMETA(DisplayName = "Wrench"),
-	Welder  UMETA(DisplayName = "BlowTorch")
+	Welder  UMETA(DisplayName = "BlowTorch"),
+	Gun UMETA(DisplayName = "Gun")
 };
 
 UCLASS()
