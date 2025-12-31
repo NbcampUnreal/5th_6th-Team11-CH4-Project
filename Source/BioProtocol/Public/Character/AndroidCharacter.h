@@ -36,6 +36,8 @@ public:
 	virtual void EquipSlot2(const FInputActionValue& InValue) override;
 	virtual void EquipSlot3(const FInputActionValue& InValue) override;
 	virtual void InteractPressed(const FInputActionValue& InValue) override;
+	UPROPERTY(ReplicatedUsing = OnRep_IsHunter)
+	uint8 bIsHunter = false;
 
 protected:	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PostProcess")
@@ -126,6 +128,7 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sound")
 	UAudioComponent* BreathAudio;
+
 protected:
 	virtual void ServerPullLever_Internal() override;
 	virtual void PullLever() override;
@@ -146,8 +149,6 @@ private:
 	FVector BaseMeshOffset;
 	float NormalScale = 1.0f;
 	float HunterScale = 1.5f;
-	UPROPERTY(ReplicatedUsing = OnRep_IsHunter)
-	uint8 bIsHunter=false;
 
 
 
