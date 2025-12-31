@@ -93,6 +93,8 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 
 	void Multicast_PlayGunSound();
+	UFUNCTION(Client, Reliable)
+	void Client_PlayHitSound();
 
 	UFUNCTION(Server, Reliable)
 	void ServerSetCanAttack(bool bCanAttack);
@@ -102,6 +104,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound|Gun")
 	USoundBase* GunEmptySound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound|Gun")
+	USoundBase* TakeDamageSound;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Sound")
 	USoundAttenuation* GunShotAttenuation;

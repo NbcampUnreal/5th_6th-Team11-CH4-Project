@@ -392,14 +392,14 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 	//UseEquippedItem();
 
 	if (Ammo > 0 && CurrentTool == EToolType::Gun) {
-		/*if (IsLocallyControlled())
+		if (IsLocallyControlled())
 		{
 			UGameplayStatics::PlaySoundAtLocation(
 				this,
 				GunFireSound,
 				GetActorLocation()
 			);
-		}*/
+		}
 		Server_GunHit();
 	}
 	else if (Ammo <= 0 && CurrentTool == EToolType::Gun) {
@@ -818,6 +818,11 @@ float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 	const float ActualDamage =
 		Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
+	if (AStaffCharacter* Victim = Cast<AStaffCharacter>(this))
+	{
+		Victim->Client_PlayHitSound();
+	}
+
 	if (ActualDamage <= 0.f) return 0.f;
 
 	if (Status)
@@ -832,6 +837,17 @@ void AStaffCharacter::TestHit()
 {
 
 	Server_Hit();
+}
+
+void AStaffCharacter::Client_PlayHitSound_Implementation()
+{
+	if (TakeDamageSound)
+	{
+		UGameplayStatics::PlaySound2D(
+			this,
+			TakeDamageSound
+		);
+	}
 }
 
 void AStaffCharacter::Multicast_PlayGunSound_Implementation()
@@ -863,7 +879,7 @@ void AStaffCharacter::Server_GunHit_Implementation()
 
 	Multicast_PlayGunSound();
 
-	FVector End = Start + (ControlRot.Vector() * 2000.f);
+	FVector End = Start + (ControlRot.Vector() * 3000.f);
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
@@ -955,8 +971,8 @@ void AStaffCharacter::OnRep_BIsCanAttack()
 
 void AStaffCharacter::OnRep_MaterialIndex()
 {
-	if (IsLocallyControlled())
-		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::FromInt(MaterialIndex));
+	/*if (IsLocallyControlled())
+		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::FromInt(MaterialIndex));*/
 	if (mat.IsValidIndex(MaterialIndex))
 	{
 		GetMesh()->SetMaterial(0, mat[MaterialIndex]);
