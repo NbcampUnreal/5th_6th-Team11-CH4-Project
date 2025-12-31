@@ -91,4 +91,7 @@ protected:
 	bool bLobbyVoiceStarted = false;
 
 	FString LobbyChannelName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpawnPoint")
+	TArray<TObjectPtr<AActor>> SpawnPointArray;
 };
