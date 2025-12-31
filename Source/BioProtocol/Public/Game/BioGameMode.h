@@ -37,7 +37,6 @@ public:
 	TSubclassOf<AThirdSpectatorPawn> SpectatorPawnClass;
 
 
-
 	// 게임 시작/종료
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void StartGame();
@@ -46,6 +45,17 @@ public:
 	void EndGame();
 
 
+	// 로딩 화면 숨기기
+	void HideLoadingScreenFromAllPlayers();
+
+	UPROPERTY(EditDefaultsOnly, Category = "Bio|Pawn")
+	TSubclassOf<APawn> StaffPawnClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Bio|Pawn")
+	TSubclassOf<APawn> CleanerPawnClass;
+
+	virtual UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
+	
 
 protected:
 	FVector JailLocation;

@@ -32,7 +32,7 @@ void ABioGameMode::StartPlay()
 
 	BioGameState = GetGameState<ABioGameState>();
 
-	AssignRoles();
+	//AssignRoles();
 
 	if (BioGameState)
 	{
@@ -43,24 +43,19 @@ void ABioGameMode::StartPlay()
 	JailLocation = FVector(0, 0, 0);
 }
 
-
 void ABioGameMode::BeginPlay()
 {
 	Super::BeginPlay();
-
 	if (!HasAuthority() || bGameVoiceStarted)
 	{
 		return;
 	}
-
 	UWorld* World = GetWorld();
 	if (!World)
 	{
 		return;
 	}
-
 	FString MapName = World->GetMapName();
-
 	// PIE 프리픽스 제거
 	if (MapName.StartsWith(TEXT("UEDPIE_")))
 	{
@@ -70,38 +65,62 @@ void ABioGameMode::BeginPlay()
 			MapName = MapName.RightChop(UnderscoreIndex + 1);
 		}
 	}
-
 	if (MapName.Contains(TEXT("/")))
 	{
 		int32 LastSlashIndex;
 		MapName.FindLastChar('/', LastSlashIndex);
 		MapName = MapName.RightChop(LastSlashIndex + 1);
 	}
-
 	bool bIsGameMap = MapName.Contains(TEXT("MainLevel")) || MapName.Contains(TEXT("GameMap"));
-
 	if (bIsGameMap)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[GameMode] ✓ Game map loaded, waiting for players..."));
-
 		FTimerHandle TimerHandle;
 		GetWorldTimerManager().SetTimer(TimerHandle, [this]()
 			{
 				const int32 PlayerCount = GetNumPlayers();
-
 				if (PlayerCount > 0 && !bGameVoiceStarted)
 				{
 					bGameVoiceStarted = true;
 					UE_LOG(LogTemp, Warning, TEXT("[GameMode] ✓ Players loaded (%d), starting game"), PlayerCount);
-					StartGame();
+
+
+					// 로딩 화면이 표시될 시간을 주고 게임 시작
+					FTimerHandle GameStartTimer;
+					GetWorldTimerManager().SetTimer(GameStartTimer, [this]()
+						{
+							HideLoadingScreenFromAllPlayers();
+							AssignRoles();
+							StartGame();
+
+						}, 0.5f, false); // 0.5초 후 게임 시작 (필요에 따라 조정)
 				}
 				else if (PlayerCount == 0)
 				{
 					UE_LOG(LogTemp, Error, TEXT("[GameMode] ✗ No players found, returning to lobby"));
 					GetWorld()->ServerTravel("/Game/Level/Lobby");
 				}
-			}, 15.0f, false);
+			}, 10.0f, false);
 	}
+}
+
+UClass* ABioGameMode::GetDefaultPawnClassForController_Implementation(AController* InController)
+{
+	if (!InController) return Super::GetDefaultPawnClassForController_Implementation(InController);
+
+	ABioPlayerState* PS = InController->GetPlayerState<ABioPlayerState>();
+	if (!PS) return Super::GetDefaultPawnClassForController_Implementation(InController);
+
+	if (PS->GameRole == EBioPlayerRole::Cleaner)
+	{
+		if (CleanerPawnClass) return CleanerPawnClass;
+	}
+	else
+	{
+		if (StaffPawnClass) return StaffPawnClass;
+	}
+
+	return Super::GetDefaultPawnClassForController_Implementation(InController);
 }
 
 void ABioGameMode::PostLogin(APlayerController* NewPlayer)
@@ -125,7 +144,7 @@ void ABioGameMode::AssignRoles()
 		TargetCleanerNum = 2;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("Total Players: %d, Cleaner Count: %d"), PlayerCount, TargetCleanerNum);
+	UE_LOG(LogTemp, Log, TEXT("[GameMode] Total Players: %d, Cleaner Count: %d"), PlayerCount, TargetCleanerNum);
 
 	int32 LastIndex = PlayerCount - 1;
 	for (int32 i = 0; i <= LastIndex; ++i)
@@ -145,12 +164,29 @@ void ABioGameMode::AssignRoles()
 		if (i < TargetCleanerNum)
 		{
 			BioPS->GameRole = EBioPlayerRole::Cleaner;
-			UE_LOG(LogTemp, Log, TEXT("-> Player [%s] assigned as CLEANER"), *BioPS->GetPlayerName());
+			UE_LOG(LogTemp, Log, TEXT("[GameMode] -> Player [%s] assigned as CLEANER"), *BioPS->GetPlayerName());
 		}
 		else
 		{
 			BioPS->GameRole = EBioPlayerRole::Staff;
-			UE_LOG(LogTemp, Log, TEXT("-> Player [%s] assigned as STAFF"), *BioPS->GetPlayerName());
+			UE_LOG(LogTemp, Log, TEXT("[GameMode] -> Player [%s] assigned as STAFF"), *BioPS->GetPlayerName());
+		}
+
+
+		BioPS->GameRole = (i < TargetCleanerNum) ? EBioPlayerRole::Cleaner : EBioPlayerRole::Staff;
+		BioPS->ForceNetUpdate();
+
+		// 여기서 실제 Pawn 갈아끼우기
+		if (AController* OwnerController = Cast<AController>(BioPS->GetOwner()))
+		{
+			if (APawn* OldPawn = OwnerController->GetPawn())
+			{
+				OwnerController->UnPossess();
+				OldPawn->Destroy();
+			}
+
+			UE_LOG(LogTemp, Log, TEXT("[GameMode] RestartPlayer"));
+			RestartPlayer(OwnerController);
 		}
 	}
 }
@@ -370,6 +406,25 @@ void ABioGameMode::EndGame()
 		}, 2.0f, false);
 }
 
+void ABioGameMode::HideLoadingScreenFromAllPlayers()
+{
+	UE_LOG(LogTemp, Error, TEXT("[GameMode] Start HideLoadingScreenFromAllPlayers"));
+	for(FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[GameMode] HideLoadingScreenFromAllPlayers for"));
+		APlayerController* PC = It->Get();
+		if (PC)
+		{
+			UE_LOG(LogTemp, Error, TEXT("[GameMode] HideLoadingScreenFromAllPlayers Get Controller"));
+			if (ABioPlayerController* BioPC = Cast<ABioPlayerController>(PC))
+			{
+				UE_LOG(LogTemp, Error, TEXT("[GameMode] HideLoadingScreenFromAllPlayers Cast Controller"));
+				BioPC->ClientHideLoadingScreen();
+			}
+		}
+	}
+}
+
 void ABioGameMode::CreateGameVoiceChannels()
 {
 	TArray<APlayerController*> AllPlayers;
@@ -433,7 +488,6 @@ void ABioGameMode::CreateMafiaGameChannel(const TArray<APlayerController*>& Play
 
 	CreateGameChannel(EBioPlayerRole::Cleaner, Players, ChannelName);
 }
-
 
 void ABioGameMode::CreateGameChannel(EBioPlayerRole Team, const TArray<APlayerController*>& Players, const FString& ChannelName)
 {

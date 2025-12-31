@@ -4,6 +4,7 @@
 #include "Online/OnlineSessionNames.h"
 #include "OnlineSubsystemUtils.h"
 #include "Interfaces/OnlineSessionInterface.h"
+#include "Game/BioGameMode.h"
 
 void USessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -232,10 +233,16 @@ void USessionSubsystem::StartGameSession()
         return;
     }
 
+    // GameMode를 통해 로딩 화면 표시 (있다면)
+
     FString TravelURL = TEXT("/Game/Level/MainLevel");
     UE_LOG(LogTemp, Warning, TEXT("[Session] ✓ Starting game session"));
     World->ServerTravel(TravelURL, false);
+
+
+
 }
+
 
 void USessionSubsystem::TravelToDedicatedFromLobby(const FName& LobbySessionName)
 {

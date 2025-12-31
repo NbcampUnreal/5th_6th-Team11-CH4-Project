@@ -101,6 +101,7 @@ void ABioPlayerController::BeginPlay()
 
 		if (MapName.Contains(TEXT("MainLevel")) || MapName.Contains(TEXT("GameMap")))
 		{
+			ClientShowLoadingScreen();
 			VoiceTransmitToNone();
 		}
 
@@ -175,6 +176,7 @@ void ABioPlayerController::LoginToEOS(int32 Credential)
 
 	Identity->Login(LocalUserNum, Creds);
 }
+
 
 void ABioPlayerController::HandleLoginComplete(int32, bool bOk, const FUniqueNetId& Id, const FString& Err)
 {
@@ -628,7 +630,7 @@ void ABioPlayerController::UpdateProximityVoice()
 
 		float Volume = CalcProxVolume01(Distance, ProxMinDist, ProxMaxDist);
 
-		VoiceChatUser->Set3DPosition(PublicGameChannelName, SpeakerLoc, ListenerLoc, ListenerForward, ListenerUp);
+		//VoiceChatUser->Set3DPosition(PublicGameChannelName, SpeakerLoc, ListenerLoc, ListenerForward, ListenerUp);
 
 		// 마피아끼리는 항상 최대 볼륨
 		if (bIAmCleaner && bOtherIsCleaner)
@@ -647,4 +649,46 @@ float ABioPlayerController::CalcProxVolume01(float Dist, float MinD, float MaxD)
 
 	const float Alpha = (Dist - MinD) / (MaxD - MinD);
 	return FMath::Clamp(1.0f - (Alpha * Alpha), 0.0f, 1.0f);
+}
+
+// ========================================
+// Loading UI
+// ========================================
+
+void ABioPlayerController::ClientShowLoadingScreen_Implementation()
+{
+	if (!LoadingScreenWidgetClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("LoadingScreenWidgetClass is not set!"));
+		return;
+	}
+
+	if (!LoadingScreenWidget)
+	{
+		LoadingScreenWidget = CreateWidget<UUserWidget>(this, LoadingScreenWidgetClass);
+	}
+
+	if (LoadingScreenWidget && !LoadingScreenWidget->IsInViewport())
+	{
+		LoadingScreenWidget->AddToViewport(999);
+
+		// 입력 비활성화
+		DisableInput(this);
+
+
+		UE_LOG(LogTemp, Log, TEXT("Loading screen shown, input disabled"));
+	}
+}
+
+void ABioPlayerController::ClientHideLoadingScreen_Implementation()
+{
+	if (LoadingScreenWidget && LoadingScreenWidget->IsInViewport())
+	{
+		LoadingScreenWidget->RemoveFromParent();
+
+		// 입력 다시 활성화
+		EnableInput(this);
+
+		UE_LOG(LogTemp, Log, TEXT("Loading screen hidden, input enabled"));
+	}
 }

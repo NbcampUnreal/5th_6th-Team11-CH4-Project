@@ -40,6 +40,10 @@
 				"Mac",
 				"Linux"
 			]
+		},
+		{
+			"Name": "UdpMessaging",
+			"Enabled": false
 		}
 	]
 }

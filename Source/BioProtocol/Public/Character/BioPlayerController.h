@@ -90,6 +90,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Voice|Proximity")
 	float ProxMaxDist = 2000.f;
 
+	UFUNCTION(Client, Reliable)
+	void ClientShowLoadingScreen();
+
+	UFUNCTION(Client, Reliable)
+	void ClientHideLoadingScreen();
+
+
 private:
 	// EOS Login
 	bool bLoginInProgress = false;
@@ -114,4 +121,11 @@ private:
 	void StartProximityVoice();
 	void UpdateProximityVoice();
 	static float CalcProxVolume01(float Dist, float MinD, float MaxD);
+
+	// 로딩 UI
+	UPROPERTY()
+	class UUserWidget* LoadingScreenWidget;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> LoadingScreenWidgetClass;
 };
