@@ -171,9 +171,9 @@ void AStaffCharacter::Tick(float DeltaTime)
 		PerformInteractionCheck();
 	}
 
-	/*if (IsLocallyControlled()) {
-		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::FromInt(Status->CurrentStamina));
-	}*/
+	if (IsLocallyControlled()) {
+		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::FromInt(Ammo));
+	}
 
 
 	//FVector Start = FirstPersonCamera->GetComponentLocation();
@@ -259,6 +259,9 @@ void AStaffCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AStaffCharacter, bIsTorchEquipped);
 	DOREPLIFETIME(AStaffCharacter, bIsWrenchEquipped);
 	DOREPLIFETIME(AStaffCharacter, InventoryDurability);
+	DOREPLIFETIME(AStaffCharacter, Ammo);
+
+
 }
 
 void AStaffCharacter::SetMaterialByIndex(int32 NewIndex)
@@ -387,7 +390,11 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 	if (bHoldingLever) {
 		return;
 	}
-	UseEquippedItem();
+	//UseEquippedItem();
+
+	if (Ammo > 0 && CurrentTool == EToolType::Gun) {
+		Server_GunHit();
+	}
 }
 
 void AStaffCharacter::PullLever()
@@ -808,6 +815,43 @@ void AStaffCharacter::TestHit()
 {
 
 	Server_Hit();
+}
+
+void AStaffCharacter::Server_GunHit_Implementation()
+{
+	FVector Start;
+	FRotator ControlRot;
+	--Ammo;
+	Controller->GetPlayerViewPoint(Start, ControlRot);
+
+	FVector End = Start + (ControlRot.Vector() * 2000.f);
+
+	FHitResult Hit;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		Hit,
+		Start,
+		End,
+		ECC_Pawn,
+		Params
+	);
+
+	if (!bHit) return;
+
+	AActor* HitActor = Hit.GetActor();
+	if (!HitActor) 	return;
+
+	UE_LOG(LogTemp, Warning, TEXT("Hit %s"), *HitActor->GetName());
+
+	UGameplayStatics::ApplyDamage(
+		HitActor,
+		30,
+		GetController(),
+		this,
+		UDamageType::StaticClass()
+	);
 }
 
 void AStaffCharacter::ServerSetCanAttack_Implementation(bool bCanAttack)
@@ -2134,6 +2178,8 @@ bool AStaffCharacter::KServerPickUpItem(EToolType NewItemType, int32 NewDurabili
 	case EToolType::Gun:
 		bHasGun = true;
 		Ammo += NewDurability;
+		UE_LOG(LogTemp, Log, TEXT("now ammo: %d"), Ammo);
+
 		return 1;
 	default:
 		return 0;
@@ -2145,12 +2191,9 @@ void AStaffCharacter::KConsumeToolDurability(int32 Amount)
 {
 	if (CurrentTool == EToolType::None) return;
 
-	if (CurrentTool == EToolType::Gun && Ammo > 0) {
-		Ammo -= Amount;
-	}
-	else {
-		InventoryDurability -= Amount;
-	}
+
+	InventoryDurability -= Amount;
+
 
 	UE_LOG(LogTemp, Log, TEXT("Tool Used. Remaining Durability: %d"), InventoryDurability);
 
@@ -2198,7 +2241,7 @@ void AStaffCharacter::KConsumeToolDurability(int32 Amount)
 void AStaffCharacter::KOnDrop()
 {
 	if (CurrentTool == EToolType::None) return;
-	
+
 	UnequipAll();
 	KServerDropItem();
 
@@ -2248,8 +2291,10 @@ void AStaffCharacter::KServerDropItem_Implementation()
 	case EToolType::Welder:
 		bHasTorch = false;
 		break;
-	case EToolType::Gun:
+	case EToolType::Gun: {
 		bHasGun = false;
+		Ammo = 0;
+	}
 	default:
 		break;
 	}

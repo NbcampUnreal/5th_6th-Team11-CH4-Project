@@ -82,6 +82,8 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_Hit();
+	UFUNCTION(Server, Reliable)
+	void Server_GunHit();
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetTestMaterial();
