@@ -21,6 +21,8 @@ class AEquippableItem;
 class UItemBase;
 class IInteractionInterface;
 class UChildActorComponent;
+class USoundBase;
+class USoundAttenuation;
 //class EToolType; //테스트
 
 USTRUCT()
@@ -88,8 +90,22 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetTestMaterial();
 
+	UFUNCTION(NetMulticast, Reliable)
+
+	void Multicast_PlayGunSound();
+
 	UFUNCTION(Server, Reliable)
 	void ServerSetCanAttack(bool bCanAttack);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound|Gun")
+	USoundBase* GunFireSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound|Gun")
+	USoundBase* GunEmptySound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Sound")
+	USoundAttenuation* GunShotAttenuation;
+
 protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Tool")
 	EToolType CurrentTool;//테스트

@@ -72,6 +72,10 @@ void ADH_PickupItem::UpdateMesh()
 	{
 		MeshComponent->SetStaticMesh(WelderMesh);
 	}
+	else if (ItemType == EToolType::Gun && GunMesh) {
+		MeshComponent->SetStaticMesh(GunMesh);
+
+	}
 }
 
 void ADH_PickupItem::Interact_Implementation(APawn* InstigatorPawn)

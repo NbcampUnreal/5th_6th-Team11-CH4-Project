@@ -25,6 +25,7 @@
 #include "Daeho/MyInteractableInterface.h"
 #include <Character/AndroidCharacter.h>
 #include "Daeho/DH_PickupItem.h"
+#include "Sound/SoundBase.h"
 
 // Sets default values
 AStaffCharacter::AStaffCharacter()
@@ -171,9 +172,7 @@ void AStaffCharacter::Tick(float DeltaTime)
 		PerformInteractionCheck();
 	}
 
-	if (IsLocallyControlled()) {
-		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::FromInt(Ammo));
-	}
+	
 
 
 	//FVector Start = FirstPersonCamera->GetComponentLocation();
@@ -393,7 +392,25 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 	//UseEquippedItem();
 
 	if (Ammo > 0 && CurrentTool == EToolType::Gun) {
+		/*if (IsLocallyControlled())
+		{
+			UGameplayStatics::PlaySoundAtLocation(
+				this,
+				GunFireSound,
+				GetActorLocation()
+			);
+		}*/
 		Server_GunHit();
+	}
+	else if (Ammo <= 0 && CurrentTool == EToolType::Gun) {
+		if (IsLocallyControlled())
+		{
+			UGameplayStatics::PlaySoundAtLocation(
+				this,
+				GunEmptySound,
+				GetActorLocation()
+			);
+		}
 	}
 }
 
@@ -817,12 +834,34 @@ void AStaffCharacter::TestHit()
 	Server_Hit();
 }
 
+void AStaffCharacter::Multicast_PlayGunSound_Implementation()
+{
+	GEngine->AddOnScreenDebugMessage(
+		-1, 3.f, FColor::Yellow,
+		FString::Printf(TEXT("Multicast | Local=%d"), IsLocallyControlled())
+	);
+	if (!IsLocallyControlled())
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			GunFireSound,
+			GetActorLocation(),
+			1.f,
+			1.f,
+			0.f,
+			GunShotAttenuation
+		);
+	}
+}
+
 void AStaffCharacter::Server_GunHit_Implementation()
 {
 	FVector Start;
 	FRotator ControlRot;
 	--Ammo;
 	Controller->GetPlayerViewPoint(Start, ControlRot);
+
+	Multicast_PlayGunSound();
 
 	FVector End = Start + (ControlRot.Vector() * 2000.f);
 
