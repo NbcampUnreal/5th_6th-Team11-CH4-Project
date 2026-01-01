@@ -3,12 +3,13 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "StaffCharacter.h"
+#include "Game/BioProtocolTypes.h"
 #include "AndroidCharacter.generated.h"
 
 class UPostProcessComponent;
 class UNiagaraComponent;
 class UAudioComponent;
-
+//class EBioGamePhase;
 UCLASS()
 class BIOPROTOCOL_API AAndroidCharacter : public AStaffCharacter
 {
@@ -109,9 +110,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blink")
 	float BlinkDistance = 800.f;
 
+	void OnGamePhaseChanged(EBioGamePhase NewPhase);
 	bool IsNightPhase();
 
 	void AndroidArmAttack();
+
+	void SetIsNight(bool val);
 
 	virtual void AttackInput(const FInputActionValue& InValue) override;
 

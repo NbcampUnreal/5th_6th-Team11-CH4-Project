@@ -8,7 +8,6 @@
 #include "GameFramework/CharacterMovementComponent.h" 
 #include <Game/BioGameMode.h>
 #include "Game/BioGameState.h"
-#include "Game/BioProtocolTypes.h"
 #include "NiagaraComponent.h"
 #include "Components/AudioComponent.h"
 #include "Game/BioPlayerState.h"
@@ -88,6 +87,14 @@ void AAndroidCharacter::BeginPlay()
 	}
 
 	UpdateCharacterColor();
+
+	if (ABioGameState* GS = GetWorld()->GetGameState<ABioGameState>())
+	{
+		GS->OnPhaseChanged.AddDynamic(
+			this,
+			&AAndroidCharacter::OnGamePhaseChanged
+		);
+	}
 }
 
 void AAndroidCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -236,6 +243,12 @@ void AAndroidCharacter::Xray()
 	bIsXray = PostProcessComp->bEnabled;
 }
 
+void AAndroidCharacter::OnGamePhaseChanged(EBioGamePhase NewPhase)
+{
+	const bool bIsNight = (NewPhase == EBioGamePhase::Night);
+	SetIsNight(bIsNight);
+}
+
 bool AAndroidCharacter::IsNightPhase()
 {
 	if (const ABioGameState* GS = GetWorld()->GetGameState<ABioGameState>())
@@ -249,6 +262,13 @@ void AAndroidCharacter::AndroidArmAttack()
 {
 
 
+}
+
+void AAndroidCharacter::SetIsNight(bool val)
+{
+	if (!val&&bIsHunter) {
+		Server_OnChangeMode();
+	}
 }
 
 void AAndroidCharacter::AttackInput(const FInputActionValue& InValue)
