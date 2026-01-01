@@ -202,11 +202,8 @@ void UStaffStatusComponent::ConsumeJumpStamina()
 }
 
 void UStaffStatusComponent::OnRep_CurrentHP()
-{
-	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow,
-		FString::Printf(TEXT("%s HP: %f (RepNotified)"), *GetOwner()->GetName(), CurrentHP));
+{	
 	OnHPChanged.Broadcast(CurrentHP);
-
 }
 
 void UStaffStatusComponent::OnRep_CurrentStamina()
