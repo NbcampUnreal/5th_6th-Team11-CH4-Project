@@ -5,6 +5,7 @@
 #include "Game/BioGameState.h"
 #include "Game/BioPlayerState.h"
 #include "MyTestGameInstance.h"
+#include "Game/IsolationDoor.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "Character/StaffStatusComponent.h"
@@ -17,6 +18,7 @@
 #include "Interfaces/IHttpResponse.h"
 #include "Json.h"
 #include "JsonUtilities.h"
+#include "EngineUtils.h"
 
 
 
@@ -40,8 +42,6 @@ void ABioGameMode::StartPlay()
 		BioGameState->SetGamePhase(EBioGamePhase::Day);
 		BioGameState->PhaseTimeRemaining = DayDuration;
 	}
-
-	JailLocation = FVector(0, 0, 0);
 }
 
 void ABioGameMode::BeginPlay()
@@ -326,31 +326,106 @@ void ABioGameMode::Tick(float DeltaSeconds)
 	UpdateJailTimers(DeltaSeconds);
 }
 
+void ABioGameMode::SendPlayerToJail(APawn* Victim)
+{
+	if (!Victim) return;
+
+	if (JailTimers.Contains(Victim)) return;
+
+	AIsolationDoor* SelectedDoor = nullptr;
+
+	for (TActorIterator<AIsolationDoor> It(GetWorld()); It; ++It)
+	{
+		AIsolationDoor* Door = *It;
+		if (Door && !Door->IsOccupied())
+		{
+			SelectedDoor = Door;
+			break;
+		}
+	}
+
+	if (SelectedDoor)
+	{
+		FVector SpawnLocation = SelectedDoor->GetJailSpawnLocation();
+
+		Victim->SetActorLocation(SpawnLocation, false, nullptr, ETeleportType::TeleportPhysics);
+
+		SelectedDoor->SetDoorState(false, Victim);
+
+		JailTimers.Add(Victim, MaxJailTime);
+		PlayerJailMap.Add(Victim, SelectedDoor);
+
+		UE_LOG(LogTemp, Warning, TEXT("[GameMode] Player Jailed at Location: %s"), *SpawnLocation.ToString());
+	}
+}
+
 void ABioGameMode::UpdateJailTimers(float DeltaTime)
 {
-	for (APlayerState* PS : GameState->PlayerArray)
+	if (JailTimers.Num() == 0) return;
+
+	for (auto It = JailTimers.CreateIterator(); It; ++It)
 	{
-		APawn* Pawn = PS->GetPawn();
-		if (!Pawn) continue;
+		APawn* Victim = It.Key();
+		float& TimeRemaining = It.Value();
 
-		UStaffStatusComponent* StatusComp = Pawn->FindComponentByClass<UStaffStatusComponent>();
-		if (StatusComp && StatusComp->PlayerStatus == EBioPlayerStatus::Jailed)
+		TimeRemaining -= DeltaTime;
+
+		if (Victim)
 		{
-
+			if (UStaffStatusComponent* StatusComp = Victim->FindComponentByClass<UStaffStatusComponent>())
+			{
+				StatusComp->UpdateJailTime(TimeRemaining);
+			}
+		}
+		if (TimeRemaining <= 0.f)
+		{
+			ExecutePlayer(Victim);
+			It.RemoveCurrent();
 		}
 	}
 }
 
-void ABioGameMode::SendPlayerToJail(AController* PlayerToJail)
+void ABioGameMode::ReleasePlayerFromJail(APawn* Victim)
 {
-	if (!PlayerToJail) return;
+	if (!Victim || !JailTimers.Contains(Victim)) return;
 
-	APawn* Pawn = PlayerToJail->GetPawn();
-	if (Pawn)
+	JailTimers.Remove(Victim);
+
+	if (UStaffStatusComponent* StatusComp = Victim->FindComponentByClass<UStaffStatusComponent>())
 	{
-		Pawn->SetActorLocation(JailLocation);
-
+		StatusComp->SetRevived();
 	}
+
+	if (PlayerJailMap.Contains(Victim))
+	{
+		AIsolationDoor* Door = PlayerJailMap[Victim];
+		if (Door)
+		{
+			Door->SetDoorState(true, nullptr);
+		}
+		PlayerJailMap.Remove(Victim);
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[GameMode] Player Rescued!"));
+}
+
+void ABioGameMode::ExecutePlayer(APawn* Victim)
+{
+	if (!Victim) return;
+
+	UE_LOG(LogTemp, Error, TEXT("[GameMode] Time Over! Incinerating Player."));
+
+	if (PlayerJailMap.Contains(Victim))
+	{
+		AIsolationDoor* Door = PlayerJailMap[Victim];
+		if (Door)
+		{
+			Door->SetDoorState(true, nullptr);
+		}
+		PlayerJailMap.Remove(Victim);
+	}
+
+	Victim->Destroy();
 }
 
 void ABioGameMode::CheckWinConditions()

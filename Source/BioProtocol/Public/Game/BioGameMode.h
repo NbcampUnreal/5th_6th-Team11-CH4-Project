@@ -11,6 +11,7 @@ class ABioGameState;
 class ABioPlayerState;
 class ABioPlayerController;
 class AThirdSpectatorPawn;
+class AIsolationDoor;
 
 UCLASS()
 class BIOPROTOCOL_API ABioGameMode : public AGameModeBase
@@ -25,7 +26,11 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
-	void SendPlayerToJail(AController* PlayerToJail);
+	UFUNCTION(BlueprintCallable, Category = "Bio|Jail")
+	void SendPlayerToJail(APawn* Victim);
+
+	UFUNCTION(BlueprintCallable, Category = "Bio|Jail")
+	void ReleasePlayerFromJail(APawn* Victim);
 
 	void CheckWinConditions();
 
@@ -59,8 +64,16 @@ public:
 	
 
 protected:
-	FVector JailLocation;
+	UPROPERTY()
+	TMap<APawn*, float> JailTimers;
 
+	UPROPERTY()
+	TMap<APawn*, AIsolationDoor*> PlayerJailMap;
+
+	const float MaxJailTime = 60.0f;
+
+	void ExecutePlayer(APawn* Victim);
+	
 	UPROPERTY(EditDefaultsOnly, Category = "Bio|GameRule")
 	float DayDuration = 240.0f;
 

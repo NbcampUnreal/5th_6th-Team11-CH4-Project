@@ -70,7 +70,14 @@ void UBioPlayerHUD::UpdateHP(float NewHP)
 		float MaxHP = CachedStatusComp->MaxHP;
 		float Percent = (MaxHP > 0.f) ? (NewHP / MaxHP) : 0.f;
 		HealthBar->SetPercent(Percent);
+
+		if (HealthText)
+		{
+			FString HPString = FString::Printf(TEXT("%.0f"), NewHP);
+			HealthText->SetText(FText::FromString(HPString));
+		}
 	}
+
 }
 
 void UBioPlayerHUD::UpdateStamina(float NewStamina)

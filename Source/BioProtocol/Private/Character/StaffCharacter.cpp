@@ -396,10 +396,10 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 	}
 	//UseEquippedItem();
 
-	//if (CurrentTool == EToolType::None&&!bIsGunEquipped) {
-	//	MulticastRPCMeleeAttack();
-	//	return;
-	//}
+	if (CurrentTool == EToolType::None&&!bIsGunEquipped) {
+		ServerRPCMeleeAttack();
+		return;
+	}
 	if (Ammo > 0 && CurrentTool == EToolType::Gun) {
 		if (!bCanFire) return;
 
@@ -903,6 +903,18 @@ float AStaffCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 	if (Status)
 	{
 		Status->ApplyDamage(ActualDamage, EventInstigator);
+		if (Status->IsDead()) {
+			Client_OnToolBroken();
+			bHasGun = false;
+			Ammo = 0;
+			bHasPotion = false;
+			bHasWrench = false;
+			bHasTorch = false;
+			bIsGunEquipped = false;
+			bIsWrenchEquipped = false;
+			bIsTorchEquipped = false;
+			bIsPotionEquipped = false;
+		}
 	}
 
 	return ActualDamage;
@@ -925,11 +937,7 @@ void AStaffCharacter::Client_PlayHitSound_Implementation()
 }
 
 void AStaffCharacter::Multicast_PlayGunSound_Implementation()
-{
-	GEngine->AddOnScreenDebugMessage(
-		-1, 3.f, FColor::Yellow,
-		FString::Printf(TEXT("Multicast | Local=%d"), IsLocallyControlled())
-	);
+{	
 	if (!IsLocallyControlled())
 	{
 		UGameplayStatics::PlaySoundAtLocation(

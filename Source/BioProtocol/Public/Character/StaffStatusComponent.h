@@ -53,10 +53,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")
 	float JumpStamina = 20.f;
 
-	UPROPERTY(ReplicatedUsing = OnRep_CurrentHP, BlueprintReadOnly) 
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentHP, BlueprintReadOnly)
 	float CurrentHP;
 
-	UPROPERTY(Replicated, BlueprintReadOnly)
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentStamina, BlueprintReadOnly)
 	float CurrentStamina;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
@@ -110,7 +110,7 @@ public:
 
 	FTimerHandle TimerHandle_ConsumeStamina;
 	FTimerHandle TimerHandle_RegenStamina;
-	FTimerHandle TimerHandle_Jail;
+
 	UFUNCTION()
 	void OnRep_CurrentHP();
 	UFUNCTION()
@@ -123,11 +123,11 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void ServerSetTransform(bool bNewState);
-	
-	void JailTimerTick();
+
 	void SetJailed();
 	void SetDead();
 	void SetRevived();
+	void UpdateJailTime(float NewTime);
 
 	float GetCurrentHP() { return CurrentHP; }
 	void SetFullCurrentHP() { CurrentHP = MaxHP; }
