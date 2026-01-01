@@ -399,6 +399,7 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 	//UseEquippedItem();
 
 	if (CurrentTool == EToolType::None&&!bIsGunEquipped) {
+		if (!bIsCanAttack) return;
 		ServerRPCMeleeAttack();
 		return;
 	}
