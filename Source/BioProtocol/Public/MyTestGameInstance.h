@@ -51,6 +51,18 @@ public:
     bool bIsEndGame = false;
     bool bIsStaffWin = false;
 
+    void SetIsEndGame(bool input)
+    {
+        UE_LOG(LogTemp, Log, TEXT("SetIsEndGame"));
+        bIsEndGame = input;
+    }
+
+    void SetIsStaffWin(bool input)
+    {
+        UE_LOG(LogTemp, Log, TEXT("SetIsStaffWin"));
+        bIsStaffWin = input;
+    }
+
     bool GetIsStaffWin() { return bIsStaffWin; }
     bool GetIsEndGame() { return bIsEndGame; }
 

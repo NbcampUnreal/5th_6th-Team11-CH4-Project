@@ -462,7 +462,8 @@ void ABioGameMode::CheckWinConditions()
 		{
 			if (UMyTestGameInstance* MyGI = Cast<UMyTestGameInstance>(GI))
 			{
-				MyGI->bIsStaffWin = true;
+				UE_LOG(LogTemp, Log, TEXT("MyGI->bIsStaffWin = false"));
+				MyGI->SetIsStaffWin(false);
 			}
 		}
 
@@ -485,7 +486,8 @@ void ABioGameMode::CheckStaffWinConditions()
 		{
 			if (UMyTestGameInstance* MyGI = Cast<UMyTestGameInstance>(GI))
 			{
-				MyGI->bIsStaffWin = true;
+				UE_LOG(LogTemp, Log, TEXT("MyGI->bIsStaffWin = true"));
+				MyGI->SetIsStaffWin(true);
 			}
 		}
 	
@@ -597,7 +599,8 @@ void ABioGameMode::EndGame()
 
 			if (UMyTestGameInstance* MyGI = Cast<UMyTestGameInstance>(GI))
 			{
-				MyGI->bIsEndGame = true;
+				UE_LOG(LogTemp, Log, TEXT("MyGI->bIsEndGame = true"));
+				MyGI->SetIsEndGame(true);
 			}
 		}
 	

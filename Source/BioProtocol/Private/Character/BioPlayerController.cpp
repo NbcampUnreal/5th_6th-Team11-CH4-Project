@@ -108,16 +108,27 @@ void ABioPlayerController::BeginPlay()
 
 		if (UGameInstance* GI = GetGameInstance())
 		{
+			UE_LOG(LogTemp, Log, TEXT("[PC] GetGameInstance"));
+
 			if (UMyTestGameInstance* MyGI = Cast<UMyTestGameInstance>(GI))
 			{
-				if (MapName.Contains(TEXT("MainMenu")) && MyGI->bIsEndGame)
+				UE_LOG(LogTemp, Log, TEXT("[PC] Cast<UMyTestGameInstance>"));
+
+
+				UE_LOG(LogTemp, Warning, TEXT("[PC] Contains = %s , bIsEndGame = %s"), MapName.Contains(TEXT("Lobby")) ? TEXT("True") : TEXT("False") , MyGI->bIsEndGame ? TEXT("True") : TEXT("False"));
+				UE_LOG(LogTemp, Log, TEXT("[PC] MapName = %s"), *MapName);
+				if (MapName.Contains(TEXT("Lobby")) && MyGI->bIsEndGame)
 				{
+					UE_LOG(LogTemp, Log, TEXT("[PC] Contains(TEXT(Lobby)"));
+
 					ClientShowWinScreen(MyGI->bIsStaffWin);
 					MyGI->bIsEndGame = false;
 
 					FTimerHandle TimerHandle;
 					GetWorldTimerManager().SetTimer(TimerHandle, [this]()
 						{
+							UE_LOG(LogTemp, Log, TEXT("[PC] SetTimer"));
+
 							this->ClientHideWinScreen();
 						}, 3.0f, false);
 				}
