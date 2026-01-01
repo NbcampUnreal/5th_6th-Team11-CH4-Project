@@ -710,3 +710,15 @@ void ABioPlayerController::ClientHideLoadingScreen_Implementation()
 		UE_LOG(LogTemp, Log, TEXT("Loading screen hidden, input enabled"));
 	}
 }
+
+void ABioPlayerController::OnRep_Pawn()
+{
+	Super::OnRep_Pawn();
+
+	if (InGameHUD)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BioPlayerController] Pawn Changed! Re-binding HUD..."));
+		InGameHUD->BindStaffStatusComponent();
+		InGameHUD->BindPlayerState();
+	}
+}

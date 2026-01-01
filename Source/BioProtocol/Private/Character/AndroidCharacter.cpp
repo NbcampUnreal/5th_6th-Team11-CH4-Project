@@ -1,4 +1,4 @@
-#include "Character/AndroidCharacter.h"
+ï»¿#include "Character/AndroidCharacter.h"
 #include <EnhancedInputComponent.h>
 #include "Engine/Engine.h"
 #include "Components/PostProcessComponent.h"
@@ -11,6 +11,7 @@
 #include "Game/BioProtocolTypes.h"
 #include "NiagaraComponent.h"
 #include "Components/AudioComponent.h"
+#include "Game/BioPlayerState.h"
 
 AAndroidCharacter::AAndroidCharacter()
 {
@@ -86,6 +87,7 @@ void AAndroidCharacter::BeginPlay()
 		BreathAudio->AttenuationSettings = BreathAtt;
 	}
 
+	UpdateCharacterColor();
 }
 
 void AAndroidCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -298,7 +300,7 @@ void AAndroidCharacter::OnRep_IsAndroid()
 		MeleeAttackMontage = OriginMeleeAttackMontage;
 	}
 
-	// --- 1ÀÎÄª: ÀÚ±â ÀÚ½Å¸¸ ---
+	// --- 1ì¸ì¹­: ìê¸° ìì‹ ë§Œ ---
 	if (IsLocallyControlled())
 	{
 		if (bIsAndroid)
@@ -384,13 +386,13 @@ void AAndroidCharacter::SwitchAndroidMode()
 
 	bool bMode = !bIsAndroid;
 
-	// --- ¼­¹ö°¡ ¾Æ´Ñ °æ¿ì RPC È£Ãâ ---
+	// --- ì„œë²„ê°€ ì•„ë‹Œ ê²½ìš° RPC í˜¸ì¶œ ---
 	if (!HasAuthority())
 	{
 		ServerSwitchAndroid();
 	}
 
-	// ---------- 1ÀÎÄª ----------
+	// ---------- 1ì¸ì¹­ ----------
 	if (IsLocallyControlled())
 	{
 		if (bMode)
@@ -405,7 +407,7 @@ void AAndroidCharacter::SwitchAndroidMode()
 		}
 	}
 
-	// ---------- 3ÀÎÄª ----------
+	// ---------- 3ì¸ì¹­ ----------
 	if (bMode)
 	{
 		GetMesh()->SetSkeletalMesh(AndroidMesh);
@@ -419,10 +421,10 @@ void AAndroidCharacter::SwitchAndroidMode()
 		MeleeAttackMontage = OriginMeleeAttackMontage;
 	}
 
-	// ---------- ¼­¹ö¸¸ Replicate ----------
+	// ---------- ì„œë²„ë§Œ Replicate ----------
 	if (HasAuthority())
 	{
 		bIsAndroid = bMode;
-		// OnRep ÀÚµ¿ ½ÇÇàµÊ(¼­¹ö¡æÅ¬¶ó)
+		// OnRep ìë™ ì‹¤í–‰ë¨(ì„œë²„â†’í´ë¼)
 	}
 }

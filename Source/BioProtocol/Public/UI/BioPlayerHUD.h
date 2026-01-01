@@ -13,9 +13,11 @@ class UProgressBar;
 class UTextBlock;
 class UItemSlotWidget;
 class UTexture2D;
+class UImage;
 class UWidgetSwitcher;
 class UStaffStatusComponent;
 class ABioGameState;
+class ABioPlayerState;
 
 UCLASS()
 class BIOPROTOCOL_API UBioPlayerHUD : public UUserWidget
@@ -32,6 +34,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void UpdateItemSlot(int32 SlotIndex, UTexture2D* Icon);
 
+	UFUNCTION(BlueprintCallable)
+	void BindStaffStatusComponent();
+
+	UFUNCTION(BlueprintCallable)
+	void BindPlayerState();
 
 protected:
 	UPROPERTY(meta = (BindWidget))
@@ -85,8 +92,19 @@ protected:
 
 	void UpdateGameStateInfo();
 
+	UPROPERTY(meta = (BindWidget))
+	UImage* PlayerColorImage;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Color")
+	TArray<FLinearColor> PlayerColors;
+
+	UFUNCTION()
+	void UpdatePlayerColor(int32 NewColorIndex);
+
 private:
 	TWeakObjectPtr<UStaffStatusComponent> CachedStatusComp;
 
 	TWeakObjectPtr<ABioGameState> CachedGameState;
+
+	TWeakObjectPtr<ABioPlayerState> CachedPlayerState;
 };

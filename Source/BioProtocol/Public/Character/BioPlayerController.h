@@ -98,6 +98,7 @@ public:
 	UFUNCTION(Client, Reliable)
 	void ClientHideLoadingScreen();
 
+	virtual void OnRep_Pawn() override;
 
 private:
 	// EOS Login

@@ -1,15 +1,10 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 #include "CoreMinimal.h"
 #include "StaffCharacter.h"
 #include "AndroidCharacter.generated.h"
 
-/**
-
- *
-
- */
 class UPostProcessComponent;
 class UNiagaraComponent;
 class UAudioComponent;
@@ -21,7 +16,7 @@ class BIOPROTOCOL_API AAndroidCharacter : public AStaffCharacter
 public:
 	AAndroidCharacter();
 
-	//olivia ½ºÅ² ±³Ã¼ÇÔ¼ö(ÆóÁö¿¹Á¤)
+	//olivia ìŠ¤í‚¨ êµì²´í•¨ìˆ˜(íì§€ì˜ˆì •)
 	void SwitchAndroidMode();
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -52,7 +47,7 @@ protected:
 	virtual void BeginPlay() override;
 
 	// ================================
-	// Olivia °ü·Ã¿ë º¯¼ö (ÆóÁö ¿¹»ó)
+	// Olivia ê´€ë ¨ìš© ë³€ìˆ˜ (íì§€ ì˜ˆìƒ)
 	// ================================	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<UAnimInstance> StaffAnim;
@@ -89,7 +84,7 @@ protected:
 	TSoftObjectPtr<UMaterialInterface> XRayMaterial;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
-	//skill(´ë½Ã,º®Åõ½Ã)¿ë imc
+	//skill(ëŒ€ì‹œ,ë²½íˆ¬ì‹œ)ìš© imc
 	TObjectPtr<UInputMappingContext> SkillMappingContext;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
@@ -137,7 +132,7 @@ private:
 	int8 bIsXray = false;
 
 /// <summary>
-/// ÆÛÁö¸ğµå Å©±âº¯°æ°ü·Ã
+/// í¼ì§€ëª¨ë“œ í¬ê¸°ë³€ê²½ê´€ë ¨
 /// </summary>
 	UPROPERTY(ReplicatedUsing = OnRep_CharacterScale)
 	float CharacterScale = 1.f;
