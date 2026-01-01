@@ -75,10 +75,10 @@ protected:
 	void ExecutePlayer(APawn* Victim);
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Bio|GameRule")
-	float DayDuration = 240.0f;
+	float DayDuration = 5.0f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Bio|GameRule")
-	int32 NightDuration = 45;
+	int32 NightDuration = 5;
 
 	float TimeCounter = 0.0f;
 	void AssignRoles();

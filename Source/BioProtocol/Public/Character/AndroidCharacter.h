@@ -3,11 +3,13 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "StaffCharacter.h"
+#include "Game/BioProtocolTypes.h"
 #include "AndroidCharacter.generated.h"
 
 class UPostProcessComponent;
 class UNiagaraComponent;
 class UAudioComponent;
+class ABioGameState;
 
 UCLASS()
 class BIOPROTOCOL_API AAndroidCharacter : public AStaffCharacter
@@ -21,12 +23,12 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	UFUNCTION()
-	void OnRep_IsAndroid();	
+	void OnRep_IsAndroid();
 	UPROPERTY(Replicated);
 	int8 bHasKilledPlayer = false;
 
 	void UpdateEyeFX(int8 val);
-	
+
 	virtual void EquipSlot1(const FInputActionValue& InValue) override;
 	virtual void EquipSlot2(const FInputActionValue& InValue) override;
 	virtual void EquipSlot3(const FInputActionValue& InValue) override;
@@ -34,7 +36,7 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_IsHunter)
 	uint8 bIsHunter = false;
 
-protected:	
+protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PostProcess")
 	UPostProcessComponent* PostProcessComp;
 
@@ -73,11 +75,16 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_OnChangeMode();
 
+	UFUNCTION(Server, Reliable)
+	void Server_DayChangeMode();
+
 	UFUNCTION()
 	void OnRep_CharacterScale();
 
 	UFUNCTION(Server, Reliable)
 	void Server_Dash();
+	UFUNCTION(Client, Reliable)
+	void Client_TurnOffXray();
 
 	void Xray();
 	UPROPERTY(EditDefaultsOnly, Category = "XRay")
@@ -109,9 +116,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blink")
 	float BlinkDistance = 800.f;
 
+	UFUNCTION()
+
+	void OnGamePhaseChanged(EBioGamePhase NewPhase);
 	bool IsNightPhase();
 
 	void AndroidArmAttack();
+
+	void SetIsNight(bool val);
 
 	virtual void AttackInput(const FInputActionValue& InValue) override;
 
@@ -131,9 +143,9 @@ protected:
 private:
 	int8 bIsXray = false;
 
-/// <summary>
-/// 퍼지모드 크기변경관련
-/// </summary>
+	/// <summary>
+	/// 퍼지모드 크기변경관련
+	/// </summary>
 	UPROPERTY(ReplicatedUsing = OnRep_CharacterScale)
 	float CharacterScale = 1.f;
 private:
@@ -145,6 +157,7 @@ private:
 	float NormalScale = 1.0f;
 	float HunterScale = 1.5f;
 
+	TWeakObjectPtr<ABioGameState> CachedGameState;
 
 
 };
