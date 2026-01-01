@@ -104,6 +104,7 @@ public:
 	UFUNCTION(Client, Reliable)
 	void ClientHideWinScreen();
 
+	virtual void OnRep_Pawn() override;
 
 private:
 	// EOS Login

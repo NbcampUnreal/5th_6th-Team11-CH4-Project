@@ -1,4 +1,4 @@
-#include "Character/AndroidCharacter.h"
+ï»¿#include "Character/AndroidCharacter.h"
 #include <EnhancedInputComponent.h>
 #include "Engine/Engine.h"
 #include "Components/PostProcessComponent.h"
@@ -8,9 +8,9 @@
 #include "GameFramework/CharacterMovementComponent.h" 
 #include <Game/BioGameMode.h>
 #include "Game/BioGameState.h"
-#include "Game/BioProtocolTypes.h"
 #include "NiagaraComponent.h"
 #include "Components/AudioComponent.h"
+#include "Game/BioPlayerState.h"
 
 AAndroidCharacter::AAndroidCharacter()
 {
@@ -84,6 +84,16 @@ void AAndroidCharacter::BeginPlay()
 	if (BreathAtt)
 	{
 		BreathAudio->AttenuationSettings = BreathAtt;
+	}
+
+	UpdateCharacterColor();
+	
+	if (ABioGameState* GS = GetWorld()->GetGameState<ABioGameState>())
+	{
+		GS->OnPhaseChanged.AddDynamic(
+			this,
+			&AAndroidCharacter::OnGamePhaseChanged
+		);
 	}
 
 }
@@ -171,6 +181,24 @@ void AAndroidCharacter::OnChangeMode(float scale)
 	Move->BrakingDecelerationWalking = BaseBrakingDecel * scale;*/
 }
 
+void AAndroidCharacter::Server_DayChangeMode_Implementation()
+{
+
+	if (HasAuthority())
+	{
+
+		if (!bIsHunter) {
+			CharacterScale = HunterScale;
+			ServerCleanHands();
+		}
+		else
+			CharacterScale = NormalScale;
+
+		OnRep_CharacterScale();
+		bIsHunter = !bIsHunter;
+	}
+}
+
 void AAndroidCharacter::OnRep_CharacterScale()
 {
 	OnChangeMode(CharacterScale);
@@ -196,6 +224,8 @@ void AAndroidCharacter::Server_OnChangeMode_Implementation()
 		bIsHunter = !bIsHunter;
 	}
 }
+
+
 
 void AAndroidCharacter::Server_Dash_Implementation()
 {
@@ -234,6 +264,12 @@ void AAndroidCharacter::Xray()
 	bIsXray = PostProcessComp->bEnabled;
 }
 
+void AAndroidCharacter::OnGamePhaseChanged(EBioGamePhase NewPhase)
+{
+
+	SetIsNight(NewPhase == EBioGamePhase::Night);
+}
+
 bool AAndroidCharacter::IsNightPhase()
 {
 	if (const ABioGameState* GS = GetWorld()->GetGameState<ABioGameState>())
@@ -247,6 +283,13 @@ void AAndroidCharacter::AndroidArmAttack()
 {
 
 
+}
+
+void AAndroidCharacter::SetIsNight(bool val)
+{
+	if (!val&&bIsHunter) {
+		Server_DayChangeMode();
+	}
 }
 
 void AAndroidCharacter::AttackInput(const FInputActionValue& InValue)
@@ -298,7 +341,7 @@ void AAndroidCharacter::OnRep_IsAndroid()
 		MeleeAttackMontage = OriginMeleeAttackMontage;
 	}
 
-	// --- 1ÀÎÄª: ÀÚ±â ÀÚ½Å¸¸ ---
+	// --- 1ì¸ì¹­: ìê¸° ìì‹ ë§Œ ---
 	if (IsLocallyControlled())
 	{
 		if (bIsAndroid)
@@ -384,13 +427,13 @@ void AAndroidCharacter::SwitchAndroidMode()
 
 	bool bMode = !bIsAndroid;
 
-	// --- ¼­¹ö°¡ ¾Æ´Ñ °æ¿ì RPC È£Ãâ ---
+	// --- ì„œë²„ê°€ ì•„ë‹Œ ê²½ìš° RPC í˜¸ì¶œ ---
 	if (!HasAuthority())
 	{
 		ServerSwitchAndroid();
 	}
 
-	// ---------- 1ÀÎÄª ----------
+	// ---------- 1ì¸ì¹­ ----------
 	if (IsLocallyControlled())
 	{
 		if (bMode)
@@ -405,7 +448,7 @@ void AAndroidCharacter::SwitchAndroidMode()
 		}
 	}
 
-	// ---------- 3ÀÎÄª ----------
+	// ---------- 3ì¸ì¹­ ----------
 	if (bMode)
 	{
 		GetMesh()->SetSkeletalMesh(AndroidMesh);
@@ -419,10 +462,10 @@ void AAndroidCharacter::SwitchAndroidMode()
 		MeleeAttackMontage = OriginMeleeAttackMontage;
 	}
 
-	// ---------- ¼­¹ö¸¸ Replicate ----------
+	// ---------- ì„œë²„ë§Œ Replicate ----------
 	if (HasAuthority())
 	{
 		bIsAndroid = bMode;
-		// OnRep ÀÚµ¿ ½ÇÇàµÊ(¼­¹ö¡æÅ¬¶ó)
+		// OnRep ìë™ ì‹¤í–‰ë¨(ì„œë²„â†’í´ë¼)
 	}
 }

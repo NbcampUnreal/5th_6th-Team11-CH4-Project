@@ -800,4 +800,14 @@ void ABioPlayerController::ClientHideWinScreen_Implementation()
 	}
 
 	EnableInput(this);
+void ABioPlayerController::OnRep_Pawn()
+{
+	Super::OnRep_Pawn();
+
+	if (InGameHUD)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BioPlayerController] Pawn Changed! Re-binding HUD..."));
+		InGameHUD->BindStaffStatusComponent();
+		InGameHUD->BindPlayerState();
+	}
 }

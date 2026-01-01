@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Character/StaffCharacter.h"
@@ -12,7 +12,7 @@
 #include <Character/MyPlayerController.h>
 #include <Kismet/GameplayStatics.h>
 #include "Components/ChildActorComponent.h"
-
+#include "Game/BioPlayerState.h"
 #include "BioProtocol/Public/Inventory/InventoryComponent.h"
 #include "BioProtocol/Public/Items/ItemBase.h"
 #include "BioProtocol/Public/World/PickUp.h"
@@ -160,6 +160,8 @@ void AStaffCharacter::BeginPlay()
 
 		MeshComp->SetCustomDepthStencilValue(1);
 	}
+
+	UpdateCharacterColor();
 }
 
 // Called every frame
@@ -397,6 +399,7 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 	//UseEquippedItem();
 
 	if (CurrentTool == EToolType::None&&!bIsGunEquipped) {
+		if (!bIsCanAttack) return;
 		ServerRPCMeleeAttack();
 		return;
 	}
@@ -2609,4 +2612,50 @@ void AStaffCharacter::SetItemMesh()
 void AStaffCharacter::ResetFire()
 {
 	bCanFire = true;
+}
+
+void AStaffCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	UpdateCharacterColor();
+}
+
+void AStaffCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	UpdateCharacterColor();
+}
+
+void AStaffCharacter::UpdateCharacterColor()
+{
+	ABioPlayerState* BioPS = GetPlayerState<ABioPlayerState>();
+	if (!BioPS) return;
+
+	BioPS->OnColorChanged.RemoveDynamic(this, &AStaffCharacter::OnColorIndexChanged);
+	BioPS->OnColorChanged.AddDynamic(this, &AStaffCharacter::OnColorIndexChanged);
+
+	OnColorIndexChanged(BioPS->ColorIndex);
+}
+
+void AStaffCharacter::OnColorIndexChanged(int32 NewIndex)
+{
+	if (ColorSettings.IsValidIndex(NewIndex))
+	{
+		const FStaffColorInfo& SelectedColor = ColorSettings[NewIndex];
+
+		if (GetMesh())
+		{
+			if (SelectedColor.Material_01)
+			{
+				GetMesh()->SetMaterial(0, SelectedColor.Material_01);
+			}
+
+			if (SelectedColor.Material_02)
+			{
+				GetMesh()->SetMaterial(1, SelectedColor.Material_02);
+			}
+
+			UE_LOG(LogTemp, Log, TEXT("[StaffCharacter] Color Applied: Index %d"), NewIndex);
+		}
+	}
 }

@@ -11,7 +11,7 @@ class UHorizontalBox;
 class UButton;
 class UTextBlock;
 class ULobbySlotWidget;
-class ALobbyPlayerState;
+class ABioPlayerState;
 
 UCLASS()
 class BIOPROTOCOL_API ULobbyMainWidget : public UUserWidget
@@ -32,12 +32,18 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UButton* ExitButton;
 
+	UPROPERTY(meta = (BindWidget))
+	UButton* StartGameButton;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Lobby")
 	TSubclassOf<ULobbySlotWidget> SlotWidgetClass;
 
-	TWeakObjectPtr<ALobbyPlayerState> LocalPlayerState;
+	TWeakObjectPtr<ABioPlayerState> LocalPlayerState;
 	int32 LastPlayerCount = 0;
 	bool bIsBound = false;
+
+	UFUNCTION()
+	void OnStartGameClicked();
 
 	UFUNCTION()
 	void OnReadyClicked();
@@ -49,6 +55,6 @@ protected:
 	void OnExitClicked();
 
 	void RefreshPlayerList();
-	void AddPlayerSlot(ALobbyPlayerState* PlayerState, int32 SlotIndex);
+	void AddPlayerSlot(ABioPlayerState* PlayerState, int32 SlotIndex);
 
 };

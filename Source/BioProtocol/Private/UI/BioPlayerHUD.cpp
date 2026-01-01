@@ -10,26 +10,16 @@
 #include "Components/WidgetSwitcher.h"
 #include "Game/BioGameState.h"
 #include "Character/StaffStatusComponent.h"
+#include "Components/Image.h"
+#include "Game/BioPlayerState.h"
 
 void UBioPlayerHUD::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	APawn* OwningPawn = GetOwningPlayerPawn();
-	if (OwningPawn)
-	{
-		UStaffStatusComponent* StatusComp = OwningPawn->FindComponentByClass<UStaffStatusComponent>();
-		if (StatusComp)
-		{
-			CachedStatusComp = StatusComp;
+	BindStaffStatusComponent();
 
-			StatusComp->OnHPChanged.AddDynamic(this, &UBioPlayerHUD::UpdateHP);
-			StatusComp->OnStaminaChanged.AddDynamic(this, &UBioPlayerHUD::UpdateStamina);
-
-			UpdateHP(StatusComp->CurrentHP);
-			UpdateStamina(StatusComp->CurrentStamina);
-		}
-	}
+	BindPlayerState();
 
 	UWorld* World = GetWorld();
 	if (World)
@@ -61,6 +51,35 @@ void UBioPlayerHUD::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
 	UpdateGameStateInfo();
+}
+
+void UBioPlayerHUD::BindStaffStatusComponent()
+{
+	if (CachedStatusComp.IsValid())
+	{
+		CachedStatusComp->OnHPChanged.RemoveDynamic(this, &UBioPlayerHUD::UpdateHP);
+		CachedStatusComp->OnStaminaChanged.RemoveDynamic(this, &UBioPlayerHUD::UpdateStamina);
+	}
+	APawn* OwningPawn = GetOwningPlayerPawn();
+	if (!OwningPawn) return;
+
+	UStaffStatusComponent* StatusComp = OwningPawn->FindComponentByClass<UStaffStatusComponent>();
+	if (StatusComp)
+	{
+		CachedStatusComp = StatusComp;
+
+		StatusComp->OnHPChanged.AddDynamic(this, &UBioPlayerHUD::UpdateHP);
+		StatusComp->OnStaminaChanged.AddDynamic(this, &UBioPlayerHUD::UpdateStamina);
+
+		UpdateHP(StatusComp->CurrentHP);
+		UpdateStamina(StatusComp->CurrentStamina);
+
+		UE_LOG(LogTemp, Warning, TEXT("[BioPlayerHUD] Successfully Re-bound to New Pawn: %s"), *OwningPawn->GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[BioPlayerHUD] Failed to find StaffStatusComponent on Pawn: %s"), *OwningPawn->GetName());
+	}
 }
 
 void UBioPlayerHUD::UpdateHP(float NewHP)
@@ -193,5 +212,42 @@ void UBioPlayerHUD::UpdateHUDState(EBioPlayerRole Role, EBioGamePhase CurrentPha
 		{
 			RoleSpecificContainer->SetActiveWidgetIndex(0);
 		}
+	}
+}
+
+void UBioPlayerHUD::BindPlayerState()
+{
+	APlayerController* PC = GetOwningPlayer();
+	if (!PC) return;
+
+	ABioPlayerState* BioPS = PC->GetPlayerState<ABioPlayerState>();
+	if (BioPS)
+	{
+		if (CachedPlayerState.IsValid())
+		{
+			CachedPlayerState->OnColorChanged.RemoveDynamic(this, &UBioPlayerHUD::UpdatePlayerColor);
+		}
+
+		CachedPlayerState = BioPS;
+
+		BioPS->OnColorChanged.AddDynamic(this, &UBioPlayerHUD::UpdatePlayerColor);
+
+		UpdatePlayerColor(BioPS->ColorIndex);
+
+		UE_LOG(LogTemp, Log, TEXT("[HUD] PlayerState Bound. Current Color Index: %d"), BioPS->ColorIndex);
+	}
+}
+
+void UBioPlayerHUD::UpdatePlayerColor(int32 NewColorIndex)
+{
+	if (!PlayerColorImage) return;
+
+	if (PlayerColors.IsValidIndex(NewColorIndex))
+	{
+		PlayerColorImage->SetColorAndOpacity(PlayerColors[NewColorIndex]);
+	}
+	else
+	{
+		PlayerColorImage->SetColorAndOpacity(FLinearColor::White);
 	}
 }

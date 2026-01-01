@@ -6,7 +6,8 @@
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "UI/LobbySlotWidget.h"
-#include "Session/LobbyPlayerState.h"
+#include "Game/BioPlayerState.h"
+#include "BioProtocol/Session/SessionSubsystem.h"
 #include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -23,6 +24,11 @@ void ULobbyMainWidget::NativeConstruct()
 	{
 		ExitButton->OnClicked.AddDynamic(this, &ULobbyMainWidget::OnExitClicked);
 	}
+	if (StartGameButton)
+	{
+		StartGameButton->OnClicked.AddDynamic(this, &ULobbyMainWidget::OnStartGameClicked);
+		StartGameButton->SetIsEnabled(false);
+	}
 }
 
 void ULobbyMainWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
@@ -34,29 +40,56 @@ void ULobbyMainWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime
 		APlayerController* PC = GetOwningPlayer();
 		if (PC)
 		{
-			ALobbyPlayerState* MyPS = PC->GetPlayerState<ALobbyPlayerState>();
+			ABioPlayerState* MyPS = PC->GetPlayerState<ABioPlayerState>();
 			if (MyPS)
 			{
 				LocalPlayerState = MyPS;
-
-				MyPS->OnStatusChanged.AddDynamic(this, &ULobbyMainWidget::UpdateButtonText);
-
 				UpdateButtonText();
-
 				bIsBound = true;
 			}
 		}
 	}
 
+	if (LocalPlayerState.IsValid())
+	{
+		UpdateButtonText();
+	}
+
 	AGameStateBase* GameState = UGameplayStatics::GetGameState(GetWorld());
 	if (GameState)
 	{
-		TArray<APlayerState*> PlayerArray = GameState->PlayerArray;
-
-		if (PlayerArray.Num() != LastPlayerCount)
+		if (GameState->PlayerArray.Num() != LastPlayerCount)
 		{
 			RefreshPlayerList();
-			LastPlayerCount = PlayerArray.Num();
+			LastPlayerCount = GameState->PlayerArray.Num();
+		}
+		if (StartGameButton && StartGameButton->GetVisibility() == ESlateVisibility::Visible)
+		{
+			bool bAllReady = true;
+
+			if (GameState->PlayerArray.Num() == 0)
+			{
+				bAllReady = false;
+			}
+			else
+			{
+				for (APlayerState* PS : GameState->PlayerArray)
+				{
+					if (ABioPlayerState* BioPS = Cast<ABioPlayerState>(PS))
+					{
+						if (!BioPS->bIsReady)
+						{
+							bAllReady = false;
+							break;
+						}
+					}
+				}
+			}
+			if (StartGameButton->GetIsEnabled() != bAllReady)
+			{
+				StartGameButton->SetIsEnabled(bAllReady);
+				StartGameButton->SetRenderOpacity(bAllReady ? 1.0f : 0.5f);
+			}
 		}
 	}
 }
@@ -75,7 +108,7 @@ void ULobbyMainWidget::RefreshPlayerList()
 
 		for (int32 i = 0; i < PlayerArray.Num(); ++i)
 		{
-			ALobbyPlayerState* BioPS = Cast<ALobbyPlayerState>(PlayerArray[i]);
+			ABioPlayerState* BioPS = Cast<ABioPlayerState>(PlayerArray[i]);
 			if (BioPS)
 			{
 				AddPlayerSlot(BioPS, i);
@@ -84,16 +117,14 @@ void ULobbyMainWidget::RefreshPlayerList()
 	}
 }
 
-void ULobbyMainWidget::AddPlayerSlot(ALobbyPlayerState* PlayerState, int32 SlotIndex)
+void ULobbyMainWidget::AddPlayerSlot(ABioPlayerState* PlayerState, int32 SlotIndex)
 {
 	if (!SlotWidgetClass || !PlayerListBox) return;
 
 	ULobbySlotWidget* NewSlotWidget = CreateWidget<ULobbySlotWidget>(this, SlotWidgetClass);
 	if (NewSlotWidget)
 	{
-		//FString Nickname = PlayerState->GetNickname();
-		NewSlotWidget->Setup(PlayerState , SlotIndex);
-
+		NewSlotWidget->Setup(PlayerState, SlotIndex);
 		PlayerListBox->AddChild(NewSlotWidget);
 	}
 }
@@ -103,6 +134,17 @@ void ULobbyMainWidget::OnReadyClicked()
 	if (LocalPlayerState.IsValid())
 	{
 		LocalPlayerState->ServerToggleReady();
+	}
+}
+
+void ULobbyMainWidget::OnStartGameClicked()
+{
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (USessionSubsystem* SessionSub = GI->GetSubsystem<USessionSubsystem>())
+		{
+			SessionSub->StartGameSession();
+		}
 	}
 }
 

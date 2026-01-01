@@ -9,7 +9,7 @@
 
 class UTextBlock;
 class UCheckBox;
-class ALobbyPlayerState;
+class ABioPlayerState;
 class UButton;
 class UImage;
 class UGridPanel;
@@ -20,8 +20,8 @@ class BIOPROTOCOL_API ULobbySlotWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	void UpdateSlot(ALobbyPlayerState* PlayerState);
-	void Setup(ALobbyPlayerState* PlayerState, int32 SlotIndex);
+	void UpdateSlot(ABioPlayerState* PlayerState);
+	void Setup(ABioPlayerState* PlayerState, int32 SlotIndex);
 	virtual void NativeDestruct() override;
 protected:
 	virtual void NativeConstruct() override;
@@ -44,7 +44,7 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UGridPanel* ColorButtonContainer;
 
-	TWeakObjectPtr<ALobbyPlayerState> TargetPlayerState;
+	TWeakObjectPtr<ABioPlayerState> TargetPlayerState;
 
 	UFUNCTION()
 	void UpdatePlayerInfo();
@@ -59,6 +59,12 @@ private:
 	void UpdateCharacterMaterials(UMaterialInterface* M1, UMaterialInterface* M2);
 
 	void ApplyMaterialByIndex(int32 Index);
+
+	UFUNCTION()
+	void UpdateColorVisuals(int32 NewColorIndex); // 색상만 갱신
+
+	UFUNCTION()
+	void UpdateReadyVisuals(bool bIsReady); // 준비 상태 갱신
 
 protected:
 	UPROPERTY(meta = (BindWidget))
