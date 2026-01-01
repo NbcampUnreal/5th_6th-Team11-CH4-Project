@@ -83,6 +83,8 @@ protected:
 
 	UFUNCTION(Server, Reliable)
 	void Server_Dash();
+	UFUNCTION(Client, Reliable)
+	void Client_TurnOffXray();
 
 	void Xray();
 	UPROPERTY(EditDefaultsOnly, Category = "XRay")

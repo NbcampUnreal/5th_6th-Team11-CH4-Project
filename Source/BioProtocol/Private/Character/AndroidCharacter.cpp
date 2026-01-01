@@ -87,7 +87,7 @@ void AAndroidCharacter::BeginPlay()
 	}
 
 	UpdateCharacterColor();
-	
+
 	if (ABioGameState* GS = GetWorld()->GetGameState<ABioGameState>())
 	{
 		GS->OnPhaseChanged.AddDynamic(
@@ -181,29 +181,28 @@ void AAndroidCharacter::OnChangeMode(float scale)
 	Move->BrakingDecelerationWalking = BaseBrakingDecel * scale;*/
 }
 
-void AAndroidCharacter::Server_DayChangeMode_Implementation()
-{
 
-	if (HasAuthority())
-	{
-
-		if (!bIsHunter) {
-			CharacterScale = HunterScale;
-			ServerCleanHands();
-		}
-		else
-			CharacterScale = NormalScale;
-
-		OnRep_CharacterScale();
-		bIsHunter = !bIsHunter;
-	}
-}
 
 void AAndroidCharacter::OnRep_CharacterScale()
 {
 	OnChangeMode(CharacterScale);
 	UpdateEyeFX(bIsHunter);
 	UnequipAll();
+}
+
+void AAndroidCharacter::Server_DayChangeMode_Implementation()
+{
+	if (HasAuthority())
+	{
+		UE_LOG(LogTemp, Error, TEXT("daychange"));
+
+		CharacterScale = NormalScale;
+
+		OnRep_CharacterScale();
+		Client_TurnOffXray();
+
+		bIsHunter = false;
+	}
 }
 
 void AAndroidCharacter::Server_OnChangeMode_Implementation()
@@ -213,12 +212,18 @@ void AAndroidCharacter::Server_OnChangeMode_Implementation()
 
 	if (HasAuthority())
 	{
+		UE_LOG(LogTemp, Error, TEXT("manual"));
+
 		if (!bIsHunter) {
 			CharacterScale = HunterScale;
 			ServerCleanHands();
 		}
-		else
+		else {
 			CharacterScale = NormalScale;
+			Client_TurnOffXray();
+
+		}
+
 
 		OnRep_CharacterScale();
 		bIsHunter = !bIsHunter;
@@ -255,8 +260,14 @@ void AAndroidCharacter::Server_Dash_Implementation()
 	TeleportTo(FinalLocation, GetActorRotation(), false, true);
 }
 
-void AAndroidCharacter::Xray()
+void AAndroidCharacter::Client_TurnOffXray_Implementation()
 {
+	PostProcessComp->bEnabled = false;
+	bIsXray = false;
+}
+
+void AAndroidCharacter::Xray()
+{	
 	if (!PostProcessComp || !bIsHunter) return;
 
 	PostProcessComp->bEnabled = !PostProcessComp->bEnabled;
@@ -287,7 +298,8 @@ void AAndroidCharacter::AndroidArmAttack()
 
 void AAndroidCharacter::SetIsNight(bool val)
 {
-	if (!val&&bIsHunter) {
+	if (!val && bIsHunter) {
+		//Xray();
 		Server_DayChangeMode();
 	}
 }
