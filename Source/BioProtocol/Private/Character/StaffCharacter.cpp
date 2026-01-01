@@ -396,10 +396,10 @@ void AStaffCharacter::AttackInput(const FInputActionValue& InValue)
 	}
 	//UseEquippedItem();
 
-	//if (CurrentTool == EToolType::None&&!bIsGunEquipped) {
-	//	MulticastRPCMeleeAttack();
-	//	return;
-	//}
+	if (CurrentTool == EToolType::None&&!bIsGunEquipped) {
+		MulticastRPCMeleeAttack();
+		return;
+	}
 	if (Ammo > 0 && CurrentTool == EToolType::Gun) {
 		if (!bCanFire) return;
 
@@ -925,11 +925,7 @@ void AStaffCharacter::Client_PlayHitSound_Implementation()
 }
 
 void AStaffCharacter::Multicast_PlayGunSound_Implementation()
-{
-	GEngine->AddOnScreenDebugMessage(
-		-1, 3.f, FColor::Yellow,
-		FString::Printf(TEXT("Multicast | Local=%d"), IsLocallyControlled())
-	);
+{	
 	if (!IsLocallyControlled())
 	{
 		UGameplayStatics::PlaySoundAtLocation(
