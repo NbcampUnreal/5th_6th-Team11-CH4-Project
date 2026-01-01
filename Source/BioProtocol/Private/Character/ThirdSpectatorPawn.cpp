@@ -30,11 +30,14 @@ AThirdSpectatorPawn::AThirdSpectatorPawn()
     CameraBoom->SetupAttachment(RootComponent);
     CameraBoom->TargetArmLength = 200.0f;
 
-    CameraBoom->bUsePawnControlRotation = true;
-   
-    CameraBoom->bDoCollisionTest = false;
+    CameraBoom->bUsePawnControlRotation = true;   
 
-   
+    CameraBoom->bDoCollisionTest = true;
+
+    CameraBoom->ProbeSize = 12.f;
+
+    CameraBoom->ProbeChannel = ECC_Camera;
+
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false; 
