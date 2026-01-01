@@ -87,7 +87,7 @@ void AAndroidCharacter::BeginPlay()
 	}
 
 	UpdateCharacterColor();
-
+	
 	if (ABioGameState* GS = GetWorld()->GetGameState<ABioGameState>())
 	{
 		GS->OnPhaseChanged.AddDynamic(
@@ -95,6 +95,7 @@ void AAndroidCharacter::BeginPlay()
 			&AAndroidCharacter::OnGamePhaseChanged
 		);
 	}
+
 }
 
 void AAndroidCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -180,6 +181,24 @@ void AAndroidCharacter::OnChangeMode(float scale)
 	Move->BrakingDecelerationWalking = BaseBrakingDecel * scale;*/
 }
 
+void AAndroidCharacter::Server_DayChangeMode_Implementation()
+{
+
+	if (HasAuthority())
+	{
+
+		if (!bIsHunter) {
+			CharacterScale = HunterScale;
+			ServerCleanHands();
+		}
+		else
+			CharacterScale = NormalScale;
+
+		OnRep_CharacterScale();
+		bIsHunter = !bIsHunter;
+	}
+}
+
 void AAndroidCharacter::OnRep_CharacterScale()
 {
 	OnChangeMode(CharacterScale);
@@ -205,6 +224,8 @@ void AAndroidCharacter::Server_OnChangeMode_Implementation()
 		bIsHunter = !bIsHunter;
 	}
 }
+
+
 
 void AAndroidCharacter::Server_Dash_Implementation()
 {
@@ -245,8 +266,8 @@ void AAndroidCharacter::Xray()
 
 void AAndroidCharacter::OnGamePhaseChanged(EBioGamePhase NewPhase)
 {
-	const bool bIsNight = (NewPhase == EBioGamePhase::Night);
-	SetIsNight(bIsNight);
+
+	SetIsNight(NewPhase == EBioGamePhase::Night);
 }
 
 bool AAndroidCharacter::IsNightPhase()
@@ -267,7 +288,7 @@ void AAndroidCharacter::AndroidArmAttack()
 void AAndroidCharacter::SetIsNight(bool val)
 {
 	if (!val&&bIsHunter) {
-		Server_OnChangeMode();
+		Server_DayChangeMode();
 	}
 }
 

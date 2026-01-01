@@ -9,7 +9,8 @@
 class UPostProcessComponent;
 class UNiagaraComponent;
 class UAudioComponent;
-//class EBioGamePhase;
+class ABioGameState;
+
 UCLASS()
 class BIOPROTOCOL_API AAndroidCharacter : public AStaffCharacter
 {
@@ -74,6 +75,9 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_OnChangeMode();
 
+	UFUNCTION(Server, Reliable)
+	void Server_DayChangeMode();
+
 	UFUNCTION()
 	void OnRep_CharacterScale();
 
@@ -109,6 +113,8 @@ protected:
 	TObjectPtr<UAnimMontage> OriginMeleeAttackMontage;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blink")
 	float BlinkDistance = 800.f;
+
+	UFUNCTION()
 
 	void OnGamePhaseChanged(EBioGamePhase NewPhase);
 	bool IsNightPhase();
@@ -149,6 +155,7 @@ private:
 	float NormalScale = 1.0f;
 	float HunterScale = 1.5f;
 
+	TWeakObjectPtr<ABioGameState> CachedGameState;
 
 
 };
