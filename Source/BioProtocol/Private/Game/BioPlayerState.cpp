@@ -105,7 +105,6 @@ void ABioPlayerState::TryInitEOSPlayerName()
 	}
 
 	ForceNetUpdate();
-	//RestoreRoleFromGameInstance();
 }
 
 void ABioPlayerState::RestoreRoleFromGameInstance()
@@ -124,16 +123,4 @@ void ABioPlayerState::RestoreRoleFromGameInstance()
 	{
 		return;
 	}
-
-	// 게임 인스턴스에서 저장된 역할 불러오기
-	//bool bFound = false;
-	//EBioPlayerRole SavedRole = GI->GetPlayerRole(EOSPlayerName, bFound);
-
-	//if (bFound)
-	//{
-	//	GameRole = SavedRole;
-	//	ForceNetUpdate();
-	//	UE_LOG(LogTemp, Warning, TEXT("[BioPlayerState] Restored role for %s: %d"),
-	//		*EOSPlayerName, (int32)SavedRole);
-	//}
 }

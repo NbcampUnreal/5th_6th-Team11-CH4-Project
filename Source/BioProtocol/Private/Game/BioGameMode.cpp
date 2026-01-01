@@ -4,6 +4,7 @@
 #include "Game/BioGameMode.h"
 #include "Game/BioGameState.h"
 #include "Game/BioPlayerState.h"
+#include "MyTestGameInstance.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "Character/StaffStatusComponent.h"
@@ -382,6 +383,14 @@ void ABioGameMode::CheckWinConditions()
 	{
 		UE_LOG(LogTemp, Error, TEXT("!!! CLEANER WINS !!! All Staff Incinerated."));
 
+		if (UGameInstance* GI = GetGameInstance())
+		{
+			if (UMyTestGameInstance* MyGI = Cast<UMyTestGameInstance>(GI))
+			{
+				MyGI->bIsStaffWin = true;
+			}
+		}
+
 		if (ABioGameState* BioGS = GetGameState<ABioGameState>())
 		{
 			BioGS->SetGamePhase(EBioGamePhase::End);
@@ -397,6 +406,14 @@ void ABioGameMode::CheckStaffWinConditions()
 	// 탈출 포드 사용 시에 이 함수를 호출
 	if (BioGameState->bCanEscape)
 	{
+		if (UGameInstance* GI = GetGameInstance())
+		{
+			if (UMyTestGameInstance* MyGI = Cast<UMyTestGameInstance>(GI))
+			{
+				MyGI->bIsStaffWin = true;
+			}
+		}
+	
 		UE_LOG(LogTemp, Error, TEXT("!!! STAFF WINS !!! Staff Escaped."));
 
 		if (ABioGameState* BioGS = GetGameState<ABioGameState>())
@@ -502,7 +519,13 @@ void ABioGameMode::EndGame()
 			}
 
 			VCM->OnGameEnd();
+
+			if (UMyTestGameInstance* MyGI = Cast<UMyTestGameInstance>(GI))
+			{
+				MyGI->bIsEndGame = true;
+			}
 		}
+	
 	}
 
 	FTimerHandle TimerHandle;

@@ -16,6 +16,7 @@ class BIOPROTOCOL_API UMyTestGameInstance : public UGameInstance
     GENERATED_BODY()
 
 public:
+
     TMap<FString, EBioPlayerRole> PlayerRoleMap;
 
     // 역할 저장
@@ -46,4 +47,12 @@ public:
         bFound = false;
         return EBioPlayerRole::None;
     }
+
+    bool bIsEndGame = false;
+    bool bIsStaffWin = false;
+
+    bool GetIsStaffWin() { return bIsStaffWin; }
+    bool GetIsEndGame() { return bIsEndGame; }
+
+
 };

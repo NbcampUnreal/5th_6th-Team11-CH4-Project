@@ -98,6 +98,12 @@ public:
 	UFUNCTION(Client, Reliable)
 	void ClientHideLoadingScreen();
 
+	UFUNCTION(Client, Reliable)
+	void ClientShowWinScreen(bool bIsStaffWin);
+
+	UFUNCTION(Client, Reliable)
+	void ClientHideWinScreen();
+
 
 private:
 	// EOS Login
@@ -127,7 +133,13 @@ private:
 	// 로딩 UI
 	UPROPERTY()
 	class UUserWidget* LoadingScreenWidget;
+	class UUserWidget* CleanerWinWidget;
+	class UUserWidget* StaffWinWidget;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> LoadingScreenWidgetClass;
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> CleanerWinWidgetClass;
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> StaffWinWidgetClass;
 };

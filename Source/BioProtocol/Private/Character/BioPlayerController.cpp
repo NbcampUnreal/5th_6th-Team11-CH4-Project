@@ -15,6 +15,7 @@
 #include "IOnlineSubsystemEOS.h"
 #include "EOSVoiceChat.h"
 #include "EOSVoiceChatTypes.h"
+#include "MyTestGameInstance.h"
 
 ABioPlayerController::ABioPlayerController()
 {
@@ -105,6 +106,27 @@ void ABioPlayerController::BeginPlay()
 			VoiceTransmitToNone();
 		}
 
+		if (UGameInstance* GI = GetGameInstance())
+		{
+			if (UMyTestGameInstance* MyGI = Cast<UMyTestGameInstance>(GI))
+			{
+				if (MapName.Contains(TEXT("MainMenu")) && MyGI->bIsEndGame)
+				{
+					ClientShowWinScreen(MyGI->bIsStaffWin);
+					MyGI->bIsEndGame = false;
+
+					FTimerHandle TimerHandle;
+					GetWorldTimerManager().SetTimer(TimerHandle, [this]()
+						{
+							this->ClientHideWinScreen();
+						}, 3.0f, false);
+				}
+			}
+
+		}
+
+
+
 		//if (IsLocalController() && MapName.Contains(TEXT("Lobby")))
 		//{
 		//	VoiceTransmitToALL();
@@ -176,6 +198,8 @@ void ABioPlayerController::LoginToEOS(int32 Credential)
 
 	Identity->Login(LocalUserNum, Creds);
 }
+
+
 
 
 void ABioPlayerController::HandleLoginComplete(int32, bool bOk, const FUniqueNetId& Id, const FString& Err)
@@ -709,4 +733,60 @@ void ABioPlayerController::ClientHideLoadingScreen_Implementation()
 
 		UE_LOG(LogTemp, Log, TEXT("Loading screen hidden, input enabled"));
 	}
+}
+
+
+void ABioPlayerController::ClientShowWinScreen_Implementation(bool bIsStaffWin)
+{
+	if (!CleanerWinWidgetClass && !StaffWinWidgetClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("CleanerWinWidgetClass or StaffWinWidgetClass is not set!"));
+		return;
+	}
+
+	if (bIsStaffWin && !StaffWinWidget)
+	{
+		StaffWinWidget = CreateWidget<UUserWidget>(this, StaffWinWidgetClass);
+	}
+
+	else if(!bIsStaffWin && !CleanerWinWidget)
+	{
+		CleanerWinWidget = CreateWidget<UUserWidget>(this, CleanerWinWidgetClass);
+	}
+
+	if (StaffWinWidget && !StaffWinWidget->IsInViewport())
+	{
+		StaffWinWidget->AddToViewport(999);
+
+		UE_LOG(LogTemp, Log, TEXT("Loading screen shown, input disabled"));
+	}
+
+	else if (CleanerWinWidget && !CleanerWinWidget->IsInViewport())
+	{
+		CleanerWinWidget->AddToViewport(999);
+
+		UE_LOG(LogTemp, Log, TEXT("Loading screen shown, input disabled"));
+	}
+
+	// 입력 비활성화
+	DisableInput(this);
+}
+
+void ABioPlayerController::ClientHideWinScreen_Implementation()
+{
+	if (StaffWinWidget && StaffWinWidget->IsInViewport())
+	{
+		StaffWinWidget->RemoveFromParent();
+
+		UE_LOG(LogTemp, Log, TEXT("Staff Win hidden, input enabled"));
+	}
+
+	else if (CleanerWinWidget && CleanerWinWidget->IsInViewport())
+	{
+		CleanerWinWidget->RemoveFromParent();
+
+		UE_LOG(LogTemp, Log, TEXT("Cleaner Win shown, input disabled"));
+	}
+
+	EnableInput(this);
 }
