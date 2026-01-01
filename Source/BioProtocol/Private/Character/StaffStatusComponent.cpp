@@ -30,6 +30,7 @@ void UStaffStatusComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(UStaffStatusComponent, PlayerStatus);
 	DOREPLIFETIME(UStaffStatusComponent, bIsTransformed);
 	DOREPLIFETIME(UStaffStatusComponent, bIsRunable);
+	DOREPLIFETIME(UStaffStatusComponent, JailTimer);
 }
 
 
@@ -203,10 +204,9 @@ void UStaffStatusComponent::ConsumeJumpStamina()
 
 void UStaffStatusComponent::OnRep_CurrentHP()
 {
-	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow,
-		FString::Printf(TEXT("%s HP: %f (RepNotified)"), *GetOwner()->GetName(), CurrentHP));
+	//GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow,
+	//	FString::Printf(TEXT("%s HP: %f (RepNotified)"), *GetOwner()->GetName(), CurrentHP));
 	OnHPChanged.Broadcast(CurrentHP);
-
 }
 
 void UStaffStatusComponent::OnRep_CurrentStamina()
@@ -240,36 +240,34 @@ void UStaffStatusComponent::ApplyDamage(float Damage,AController* DamageInstigat
 		CurrentHP = 0.f;
 		SetJailed();
 		PlayerStatus = EBioPlayerStatus::Jailed;
-
-		if (AStaffCharacter* OwnerChar = Cast<AStaffCharacter>(GetOwner()))
-		{
-			OwnerChar->Die(DamageInstigator);
-		}
 	}
 }
 
 void UStaffStatusComponent::SetJailed()
 {
 	if (!GetOwner()->HasAuthority()) return;
+
 	if (PlayerStatus != EBioPlayerStatus::Alive) return;
 
 	PlayerStatus = EBioPlayerStatus::Jailed;
-	JailTimer = 60.0f;
 	OnRep_PlayerStatus();
 
-	GetWorld()->GetTimerManager().SetTimer(
-		TimerHandle_Jail,
-		this,
-		&UStaffStatusComponent::JailTimerTick,
-		1.0f,
-		true
-	);
-
-	UE_LOG(LogTemp, Warning, TEXT("[StaffStatus] Player Jailed. Timer Started."));
+	UE_LOG(LogTemp, Warning, TEXT("[StaffStatus] Player Jailed. Requesting GameMode Logic."));
 
 	if (ABioGameMode* GM = Cast<ABioGameMode>(GetWorld()->GetAuthGameMode()))
 	{
-		GM->SendPlayerToJail(Cast<AController>(Cast<APawn>(GetOwner())->GetController()));
+		if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
+		{
+			GM->SendPlayerToJail(OwningPawn);
+		}
+	}
+}
+
+void UStaffStatusComponent::UpdateJailTime(float NewTime)
+{
+	if (GetOwner()->HasAuthority())
+	{
+		JailTimer = NewTime;
 	}
 }
 
@@ -291,49 +289,20 @@ void UStaffStatusComponent::ServerSetTransform_Implementation(bool bNewState)
 	OnRep_IsTransformed();
 }
 
-void UStaffStatusComponent::JailTimerTick()
-{
-	JailTimer -= 1.0f;
-
-	if (JailTimer <= 0.0f)
-	{
-		JailTimer = 0.0f;
-		GetWorld()->GetTimerManager().ClearTimer(TimerHandle_Jail);
-		SetDead();
-	}
-}
-
 void UStaffStatusComponent::SetDead()
 {
 	if (!GetOwner()->HasAuthority()) return;
-
 	if (PlayerStatus == EBioPlayerStatus::Dead) return;
-
-	GetWorld()->GetTimerManager().ClearTimer(TimerHandle_Jail);
 
 	PlayerStatus = EBioPlayerStatus::Dead;
 	CurrentHP = 0.0f;
 	OnRep_PlayerStatus();
 
-	UE_LOG(LogTemp, Error, TEXT("[StaffStatus] Player INCINERATED (Dead)."));
-
-	if (ABioGameMode* GM = Cast<ABioGameMode>(GetWorld()->GetAuthGameMode()))
-	{
-		GM->CheckWinConditions();
-	}
+	UE_LOG(LogTemp, Error, TEXT("[StaffStatus] SetDead Called by GameMode."));
 
 	if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
 	{
 		OwnerChar->GetCharacterMovement()->DisableMovement();
-
-		if (APlayerController* PC = Cast<APlayerController>(OwnerChar->GetController()))
-		{
-			ABioGameMode* GM = Cast<ABioGameMode>(GetWorld()->GetAuthGameMode());
-			if (GM)
-			{
-				GM->SetPlayerSpectating(PC);
-			}
-		}
 	}
 }
 
@@ -341,12 +310,15 @@ void UStaffStatusComponent::SetRevived()
 {
 	if (!GetOwner()->HasAuthority()) return;
 
-	GetWorld()->GetTimerManager().ClearTimer(TimerHandle_Jail);
-
 	PlayerStatus = EBioPlayerStatus::Alive;
 	JailTimer = 0.0f;
-	CurrentHP = MaxHP * 0.3f;
+	CurrentHP = 20.0f;
 	OnRep_PlayerStatus();
 
-	UE_LOG(LogTemp, Log, TEXT("[StaffStatus] Player Revived!"));
+	UE_LOG(LogTemp, Log, TEXT("[StaffStatus] Player Revived via Lever!"));
+
+	if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
+	{
+		OwnerChar->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	}
 }
