@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -40,6 +40,18 @@ struct FInteractionData
 	float LastInteractionCheckTime;
 };
 
+USTRUCT(BlueprintType)
+struct FStaffColorInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UMaterialInterface* Material_01;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UMaterialInterface* Material_02;
+};
+
 UCLASS()
 class BIOPROTOCOL_API AStaffCharacter : public ACharacter
 {
@@ -48,6 +60,18 @@ class BIOPROTOCOL_API AStaffCharacter : public ACharacter
 public:
 	// Sets default values for this character's properties
 	AStaffCharacter();
+
+	virtual void OnRep_PlayerState() override;
+	virtual void PossessedBy(AController* NewController) override;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Customization")
+	TArray<FStaffColorInfo> ColorSettings;
+
+	UFUNCTION(BlueprintCallable)
+	void UpdateCharacterColor();
+
+	UFUNCTION()
+	void OnColorIndexChanged(int32 NewIndex);
 
 protected:
 	// Called when the game starts or when spawned

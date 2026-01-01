@@ -6,7 +6,7 @@
 #include "Components/CheckBox.h"
 #include "Components/Button.h"
 #include "Components/Image.h"
-#include "Session/LobbyPlayerState.h"
+#include "Game/BioPlayerState.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Components/GridPanel.h"
@@ -59,7 +59,7 @@ void ULobbySlotWidget::NativeDestruct()
 	}
 }
 
-void ULobbySlotWidget::Setup(ALobbyPlayerState* PlayerState, int32 SlotIndex)
+void ULobbySlotWidget::Setup(ABioPlayerState* PlayerState, int32 SlotIndex)
 {
 	if (!PlayerState) return;
 
@@ -91,6 +91,7 @@ void ULobbySlotWidget::Setup(ALobbyPlayerState* PlayerState, int32 SlotIndex)
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
+		if (MyViewModel) MyViewModel->Destroy();
 		MyViewModel = World->SpawnActor<ALobbyViewModel>(ViewModelActorClass, SpawnLoc, SpawnRot, SpawnParams);
 
 		if (MyViewModel && CharacterImage)
@@ -111,43 +112,60 @@ void ULobbySlotWidget::Setup(ALobbyPlayerState* PlayerState, int32 SlotIndex)
 
 	if (TargetPlayerState.IsValid())
 	{
-		TargetPlayerState->OnStatusChanged.RemoveDynamic(this, &ULobbySlotWidget::UpdatePlayerInfo);
-		TargetPlayerState->OnStatusChanged.AddDynamic(this, &ULobbySlotWidget::UpdatePlayerInfo);
+		TargetPlayerState->OnColorChanged.RemoveDynamic(this, &ULobbySlotWidget::UpdateColorVisuals);
+		TargetPlayerState->OnReadyStatusChanged.RemoveDynamic(this, &ULobbySlotWidget::UpdateReadyVisuals);
+		TargetPlayerState->OnColorChanged.AddDynamic(this, &ULobbySlotWidget::UpdateColorVisuals);
+		TargetPlayerState->OnReadyStatusChanged.AddDynamic(this, &ULobbySlotWidget::UpdateReadyVisuals);
 
 		UpdatePlayerInfo();
+		UpdateColorVisuals(TargetPlayerState->ColorIndex);
+		UpdateReadyVisuals(TargetPlayerState->bIsReady);
 	}
 }
 
-void ULobbySlotWidget::UpdateSlot(ALobbyPlayerState* PlayerState)
+void ULobbySlotWidget::UpdateSlot(ABioPlayerState* PlayerState)
 {
 	if (!PlayerState) return;
 
-	TargetPlayerState = PlayerState;
-
-	if (PlayerNameText)
+	if (TargetPlayerState.Get() != PlayerState)
 	{
-		PlayerNameText->SetText(FText::FromString(PlayerState->GetPlayerName()));
-	}
+		TargetPlayerState = PlayerState;
 
-	if (TargetPlayerState->OnStatusChanged.IsAlreadyBound(this, &ULobbySlotWidget::UpdatePlayerInfo))
-	{
-		TargetPlayerState->OnStatusChanged.RemoveDynamic(this, &ULobbySlotWidget::UpdatePlayerInfo);
-	}
-	TargetPlayerState->OnStatusChanged.AddDynamic(this, &ULobbySlotWidget::UpdatePlayerInfo);
+		if (PlayerNameText)
+		{
+			PlayerNameText->SetText(FText::FromString(PlayerState->GetPlayerName()));
+		}
+		if (TargetPlayerState.IsValid())
+		{
+			TargetPlayerState->OnColorChanged.RemoveDynamic(this, &ULobbySlotWidget::UpdateColorVisuals);
+			TargetPlayerState->OnReadyStatusChanged.RemoveDynamic(this, &ULobbySlotWidget::UpdateReadyVisuals);
 
-	UpdatePlayerInfo();
+			TargetPlayerState->OnColorChanged.AddDynamic(this, &ULobbySlotWidget::UpdateColorVisuals);
+			TargetPlayerState->OnReadyStatusChanged.AddDynamic(this, &ULobbySlotWidget::UpdateReadyVisuals);
+		}
+		UpdatePlayerInfo();
+	}
 }
 
 void ULobbySlotWidget::UpdatePlayerInfo()
 {
 	if (!TargetPlayerState.IsValid()) return;
 
+	UpdateReadyVisuals(TargetPlayerState->bIsReady);
+	UpdateColorVisuals(TargetPlayerState->ColorIndex);
+}
+
+void ULobbySlotWidget::UpdateReadyVisuals(bool bIsReady)
+{
 	if (ReadyCheckBox)
 	{
-		ReadyCheckBox->SetIsChecked(TargetPlayerState->bIsReady);
+		ReadyCheckBox->SetIsChecked(bIsReady);
 	}
+}
 
-	ApplyMaterialByIndex(TargetPlayerState->CurrentColorIndex);
+void ULobbySlotWidget::UpdateColorVisuals(int32 NewColorIndex)
+{
+	ApplyMaterialByIndex(NewColorIndex);
 }
 
 void ULobbySlotWidget::ApplyMaterialByIndex(int32 Index)

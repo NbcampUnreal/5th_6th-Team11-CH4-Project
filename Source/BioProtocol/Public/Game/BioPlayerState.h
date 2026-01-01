@@ -9,6 +9,8 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerRoleChanged, EBioPlayerRole, NewRole);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerTransformChanged, bool, bIsTransformed);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnColorChanged, int32, NewColorIndex);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnReadyStatusChanged, bool, bReady);
 
 UCLASS()
 class BIOPROTOCOL_API ABioPlayerState : public APlayerState
@@ -22,14 +24,32 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_GameRole, BlueprintReadOnly, Category = "Bio|Role")
 	EBioPlayerRole GameRole;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Bio|Appearance")
-	int32 ColorIndex;
-
 	UPROPERTY(BlueprintAssignable, Category = "Bio|Event")
 	FOnPlayerRoleChanged OnRoleChanged;
 
-	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Bio|Ready")
-	bool bIsReady = false;
+	UPROPERTY(ReplicatedUsing = OnRep_ColorIndex, BlueprintReadOnly, Category = "Bio|State")
+	int32 ColorIndex;
+
+	UFUNCTION()
+	void OnRep_ColorIndex();
+
+	UPROPERTY(BlueprintAssignable, Category = "Bio|Event")
+	FOnColorChanged OnColorChanged;
+
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void ServerSetColorIndex(int32 NewIndex);
+
+	UPROPERTY(ReplicatedUsing = OnRep_IsReady, BlueprintReadOnly, Category = "Bio|State")
+	bool bIsReady;
+
+	UFUNCTION()
+	void OnRep_IsReady();
+
+	UPROPERTY(BlueprintAssignable, Category = "Bio|Event")
+	FOnReadyStatusChanged OnReadyStatusChanged;
+
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void ServerToggleReady();
 
 	UPROPERTY(ReplicatedUsing = OnRep_EOSPlayerName, BlueprintReadOnly, Category = "Bio|EOS")
 	FString EOSPlayerName;

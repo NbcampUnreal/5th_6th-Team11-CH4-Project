@@ -7,8 +7,9 @@
 ABioPlayerState::ABioPlayerState()
 {
 	GameRole = EBioPlayerRole::Staff;
-	ColorIndex = -1;
+	ColorIndex = 0; // 기본값 0 (Red)
 	bIsReady = false;
+	bReplicates = true;
 }
 
 void ABioPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -136,4 +137,28 @@ void ABioPlayerState::RestoreRoleFromGameInstance()
 	//	UE_LOG(LogTemp, Warning, TEXT("[BioPlayerState] Restored role for %s: %d"),
 	//		*EOSPlayerName, (int32)SavedRole);
 	//}
+}
+
+void ABioPlayerState::OnRep_ColorIndex()
+{
+	OnColorChanged.Broadcast(ColorIndex);
+}
+
+void ABioPlayerState::ServerSetColorIndex_Implementation(int32 NewIndex)
+{
+	ColorIndex = NewIndex;
+	ForceNetUpdate();
+	OnRep_ColorIndex();
+}
+
+void ABioPlayerState::OnRep_IsReady()
+{
+	OnReadyStatusChanged.Broadcast(bIsReady);
+}
+
+void ABioPlayerState::ServerToggleReady_Implementation()
+{
+	bIsReady = !bIsReady;
+	ForceNetUpdate();
+	OnRep_IsReady();
 }
