@@ -46,4 +46,13 @@ public:
         bFound = false;
         return EBioPlayerRole::None;
     }
+
+    UPROPERTY()
+    TMap<FString, int32> PlayerColorMap;
+
+    UFUNCTION(BlueprintCallable)
+    void SavePlayerColor(FString PlayerName, int32 ColorIdx);
+
+    UFUNCTION(BlueprintCallable)
+    int32 GetPlayerColor(FString PlayerName, bool& bFound);
 };

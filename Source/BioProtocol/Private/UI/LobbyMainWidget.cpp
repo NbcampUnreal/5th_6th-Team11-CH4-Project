@@ -10,6 +10,7 @@
 #include "BioProtocol/Session/SessionSubsystem.h"
 #include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
+#include "Character/BioPlayerController.h"
 
 void ULobbyMainWidget::NativeConstruct()
 {
@@ -139,12 +140,18 @@ void ULobbyMainWidget::OnReadyClicked()
 
 void ULobbyMainWidget::OnStartGameClicked()
 {
-	if (UGameInstance* GI = GetGameInstance())
+	APlayerController* PC = GetOwningPlayer();
+	if (!PC) return;
+
+	if (ABioPlayerController* BioPC = Cast<ABioPlayerController>(PC))
 	{
-		if (USessionSubsystem* SessionSub = GI->GetSubsystem<USessionSubsystem>())
-		{
-			SessionSub->StartGameSession();
-		}
+		UE_LOG(LogTemp, Warning, TEXT("[UI] Start Game Button Clicked. Requesting Server..."));
+
+		BioPC->Server_StartGameSession();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[UI] Failed to cast to BioPlayerController."));
 	}
 }
 

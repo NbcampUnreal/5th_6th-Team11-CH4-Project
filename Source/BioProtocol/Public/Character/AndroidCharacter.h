@@ -3,11 +3,13 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "StaffCharacter.h"
+#include "Game/BioProtocolTypes.h"
 #include "AndroidCharacter.generated.h"
 
 class UPostProcessComponent;
 class UNiagaraComponent;
 class UAudioComponent;
+class ABioGameState;
 
 UCLASS()
 class BIOPROTOCOL_API AAndroidCharacter : public AStaffCharacter
@@ -73,11 +75,16 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_OnChangeMode();
 
+	UFUNCTION(Server, Reliable)
+	void Server_DayChangeMode();
+
 	UFUNCTION()
 	void OnRep_CharacterScale();
 
 	UFUNCTION(Server, Reliable)
 	void Server_Dash();
+	UFUNCTION(Client, Reliable)
+	void Client_TurnOffXray();
 
 	void Xray();
 	UPROPERTY(EditDefaultsOnly, Category = "XRay")
@@ -109,9 +116,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blink")
 	float BlinkDistance = 800.f;
 
+	UFUNCTION()
+
+	void OnGamePhaseChanged(EBioGamePhase NewPhase);
 	bool IsNightPhase();
 
 	void AndroidArmAttack();
+
+	void SetIsNight(bool val);
 
 	virtual void AttackInput(const FInputActionValue& InValue) override;
 
@@ -145,6 +157,7 @@ private:
 	float NormalScale = 1.0f;
 	float HunterScale = 1.5f;
 
+	TWeakObjectPtr<ABioGameState> CachedGameState;
 
 
 };
