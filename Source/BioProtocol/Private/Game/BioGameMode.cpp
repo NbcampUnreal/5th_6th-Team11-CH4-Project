@@ -424,6 +424,11 @@ void ABioGameMode::ExecutePlayer(APawn* Victim)
 		PlayerJailMap.Remove(Victim);
 	}
 
+	if (APlayerController* PC = Cast<APlayerController>(Victim->GetController()))
+	{
+		SetPlayerSpectating(Victim->GetController());
+	}
+
 	Victim->Destroy();
 }
 
@@ -590,7 +595,7 @@ void ABioGameMode::EndGame()
 void ABioGameMode::HideLoadingScreenFromAllPlayers()
 {
 	UE_LOG(LogTemp, Error, TEXT("[GameMode] Start HideLoadingScreenFromAllPlayers"));
-	for(FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
 		UE_LOG(LogTemp, Error, TEXT("[GameMode] HideLoadingScreenFromAllPlayers for"));
 		APlayerController* PC = It->Get();
@@ -719,7 +724,7 @@ void ABioGameMode::CreateLobbyVoiceChannel(const TArray<APlayerController*>& Pla
 
 	CreateRequest->OnProcessRequestComplete().BindLambda(
 		[this, ValidControllers, ValidPlayerStates, ChannelName, RoomId]
-	(FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
+		(FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
 		{
 			if (!bSuccess || !Res.IsValid())
 			{
@@ -772,7 +777,7 @@ void ABioGameMode::CreateLobbyVoiceChannel(const TArray<APlayerController*>& Pla
 				const int32 PlayerIndex = i;
 				AddRequest->OnProcessRequestComplete().BindLambda(
 					[this, ValidControllers, PlayerIndex, ChannelName, ClientBaseUrl]
-				(FHttpRequestPtr Req2, FHttpResponsePtr Res2, bool bSuccess2)
+					(FHttpRequestPtr Req2, FHttpResponsePtr Res2, bool bSuccess2)
 					{
 						if (!bSuccess2 || !Res2.IsValid()) return;
 
@@ -792,12 +797,12 @@ void ABioGameMode::CreateLobbyVoiceChannel(const TArray<APlayerController*>& Pla
 							}
 						}
 					}
-					);
+				);
 
 				AddRequest->ProcessRequest();
 			}
 		}
-		);
+	);
 
 	CreateRequest->ProcessRequest();
 }
@@ -847,7 +852,7 @@ void ABioGameMode::CreateGameChannel(EBioPlayerRole Team, const TArray<APlayerCo
 
 	CreateRequest->OnProcessRequestComplete().BindLambda(
 		[this, Team, ValidControllers, ValidPlayerStates, ChannelName, RoomId]
-	(FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
+		(FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
 		{
 			if (!bSuccess || !Res.IsValid())
 			{
@@ -894,7 +899,7 @@ void ABioGameMode::CreateGameChannel(EBioPlayerRole Team, const TArray<APlayerCo
 				const int32 PlayerIndex = i;
 				AddRequest->OnProcessRequestComplete().BindLambda(
 					[this, ValidControllers, PlayerIndex, ChannelName, ClientBaseUrl]
-				(FHttpRequestPtr Req2, FHttpResponsePtr Res2, bool bSuccess2)
+					(FHttpRequestPtr Req2, FHttpResponsePtr Res2, bool bSuccess2)
 					{
 						if (!bSuccess2 || !Res2.IsValid())
 						{
@@ -919,12 +924,12 @@ void ABioGameMode::CreateGameChannel(EBioPlayerRole Team, const TArray<APlayerCo
 							}
 						}
 					}
-					);
+				);
 
 				AddRequest->ProcessRequest();
 			}
 		}
-		);
+	);
 
 	CreateRequest->ProcessRequest();
 }
