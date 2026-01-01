@@ -226,16 +226,13 @@ void UBioPlayerHUD::BindPlayerState()
 		if (CachedPlayerState.IsValid())
 		{
 			CachedPlayerState->OnColorChanged.RemoveDynamic(this, &UBioPlayerHUD::UpdatePlayerColor);
-			CachedPlayerState->OnRoleChanged.RemoveDynamic(this, &UBioPlayerHUD::UpdateRoleUI);
 		}
 
 		CachedPlayerState = BioPS;
 
 		BioPS->OnColorChanged.AddDynamic(this, &UBioPlayerHUD::UpdatePlayerColor);
-		BioPS->OnRoleChanged.AddDynamic(this, &UBioPlayerHUD::UpdateRoleUI);
 
 		UpdatePlayerColor(BioPS->ColorIndex);
-		UpdateRoleUI(BioPS->GameRole);
 
 		UE_LOG(LogTemp, Log, TEXT("[HUD] PlayerState Bound. Current Color Index: %d"), BioPS->ColorIndex);
 	}
@@ -253,35 +250,4 @@ void UBioPlayerHUD::UpdatePlayerColor(int32 NewColorIndex)
 	{
 		PlayerColorImage->SetColorAndOpacity(FLinearColor::White);
 	}
-}
-
-void UBioPlayerHUD::UpdateRoleUI(EBioPlayerRole NewRole)
-{
-	if (!RoleText) return;
-
-	FString RoleString;
-	FSlateColor RoleColor;
-
-	switch (NewRole)
-	{
-	case EBioPlayerRole::Cleaner:
-		RoleString = TEXT("안드로이드");
-		RoleColor = FSlateColor(FLinearColor::Red);
-		break;
-
-	case EBioPlayerRole::Staff:
-		RoleString = TEXT("직원");
-		RoleColor = FSlateColor(FLinearColor::Green);
-		break;
-
-	default:
-		RoleString = TEXT("Error");
-		RoleColor = FSlateColor(FLinearColor::White);
-		break;
-	}
-
-	RoleText->SetText(FText::FromString(RoleString));
-	RoleText->SetColorAndOpacity(RoleColor);
-
-	UE_LOG(LogTemp, Warning, TEXT("[HUD] RoleText Updated: %s"), *RoleString);
 }

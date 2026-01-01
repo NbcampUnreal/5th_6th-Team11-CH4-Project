@@ -64,8 +64,6 @@ public:
 	// 서버에서 EOS 플레이어 이름 설정
 	void Server_SetEOSPlayerName(const FString& InEOSPlayerName);
 
-	virtual void CopyProperties(APlayerState* PlayerState) override;
-
 protected:
 	virtual void BeginPlay() override;
 
@@ -82,6 +80,4 @@ private:
 
 	// 게임 인스턴스에서 역할 복원
 	void RestoreRoleFromGameInstance();
-
-	void RestoreStateFromGameInstance();
 };

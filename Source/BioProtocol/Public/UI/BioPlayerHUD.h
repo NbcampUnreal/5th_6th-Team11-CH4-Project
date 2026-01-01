@@ -101,9 +101,6 @@ protected:
 	UFUNCTION()
 	void UpdatePlayerColor(int32 NewColorIndex);
 
-	UFUNCTION()
-	void UpdateRoleUI(EBioPlayerRole NewRole);
-
 private:
 	TWeakObjectPtr<UStaffStatusComponent> CachedStatusComp;
 

@@ -6,6 +6,8 @@
 
 ABioPlayerState::ABioPlayerState()
 {
+	GameRole = EBioPlayerRole::Staff;
+	ColorIndex = 0; // 기본값 0 (Red)
 	bIsReady = false;
 	bReplicates = true;
 }
@@ -27,7 +29,6 @@ void ABioPlayerState::BeginPlay()
 	{
 		TryInitEOSPlayerName();
 	}
-	
 }
 
 void ABioPlayerState::OnRep_GameRole()
@@ -80,7 +81,7 @@ void ABioPlayerState::TryInitEOSPlayerName()
 	// 이미 이름이 설정되어 있으면 역할 복원
 	if (!EOSPlayerName.IsEmpty())
 	{
-		RestoreStateFromGameInstance();
+		//RestoreRoleFromGameInstance();
 		return;
 	}
 
@@ -105,24 +106,23 @@ void ABioPlayerState::TryInitEOSPlayerName()
 	}
 
 	ForceNetUpdate();
-
-	RestoreStateFromGameInstance();
+	//RestoreRoleFromGameInstance();
 }
 
 void ABioPlayerState::RestoreRoleFromGameInstance()
 {
-	UMyTestGameInstance* GI = Cast<UMyTestGameInstance>(GetWorld()->GetGameInstance());
-	if (!GI)
-	{
-		return;
-	}
-
 	// EOS 플레이어 이름이 없으면 재시도
 	if (EOSPlayerName.IsEmpty())
 	{
 		FTimerHandle RetryTimer;
 		GetWorldTimerManager().SetTimer(RetryTimer, this,
 			&ABioPlayerState::RestoreRoleFromGameInstance, 0.2f, false);
+		return;
+	}
+
+	UMyTestGameInstance* GI = Cast<UMyTestGameInstance>(GetWorld()->GetGameInstance());
+	if (!GI)
+	{
 		return;
 	}
 
@@ -149,14 +149,6 @@ void ABioPlayerState::ServerSetColorIndex_Implementation(int32 NewIndex)
 	ColorIndex = NewIndex;
 	ForceNetUpdate();
 	OnRep_ColorIndex();
-
-	if (!EOSPlayerName.IsEmpty())
-	{
-		if (UMyTestGameInstance* GI = Cast<UMyTestGameInstance>(GetWorld()->GetGameInstance()))
-		{
-			GI->SavePlayerColor(EOSPlayerName, NewIndex);
-		}
-	}
 }
 
 void ABioPlayerState::OnRep_IsReady()
@@ -169,58 +161,4 @@ void ABioPlayerState::ServerToggleReady_Implementation()
 	bIsReady = !bIsReady;
 	ForceNetUpdate();
 	OnRep_IsReady();
-}
-
-void ABioPlayerState::CopyProperties(APlayerState* PlayerState)
-{
-	Super::CopyProperties(PlayerState);
-
-	if (ABioPlayerState* TargetBioPS = Cast<ABioPlayerState>(PlayerState))
-	{
-		TargetBioPS->ColorIndex = this->ColorIndex;
-		TargetBioPS->EOSPlayerName = this->EOSPlayerName;
-	}
-}
-
-void ABioPlayerState::RestoreStateFromGameInstance()
-{
-	if (EOSPlayerName.IsEmpty())
-	{
-		FTimerHandle RetryTimer;
-		GetWorldTimerManager().SetTimer(RetryTimer, this,
-			&ABioPlayerState::RestoreStateFromGameInstance, 0.2f, false);
-		return;
-	}
-
-	UMyTestGameInstance* GI = Cast<UMyTestGameInstance>(GetWorld()->GetGameInstance());
-	if (!GI) return;
-
-	bool bUpdated = false;
-
-	bool bFoundRole = false;
-	EBioPlayerRole SavedRole = GI->GetPlayerRole(EOSPlayerName, bFoundRole);
-
-	if (bFoundRole)
-	{
-		GameRole = SavedRole;
-		OnRep_GameRole();
-		bUpdated = true;
-		UE_LOG(LogTemp, Warning, TEXT("[BioPlayerState] Restored ROLE: %d"), (int32)GameRole);
-	}
-
-	bool bFoundColor = false;
-	int32 SavedColor = GI->GetPlayerColor(EOSPlayerName, bFoundColor);
-
-	if (bFoundColor)
-	{
-		ColorIndex = SavedColor;
-		OnRep_ColorIndex();
-		bUpdated = true;
-		UE_LOG(LogTemp, Warning, TEXT("[BioPlayerState] Restored COLOR: %d"), ColorIndex);
-	}
-
-	if (bUpdated)
-	{
-		ForceNetUpdate();
-	}
 }
