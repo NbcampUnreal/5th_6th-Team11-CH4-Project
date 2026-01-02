@@ -1,7 +1,6 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Character/BioPlayerController.h"
-#include "UI/BioPlayerHUD.h"
 #include "Blueprint/UserWidget.h"
 #include "VoiceChat.h"
 #include "../Session/SessionSubsystem.h"
@@ -34,20 +33,6 @@ void ABioPlayerController::BeginPlay()
 	// UI 초기화 (로컬 컨트롤러만)
 	if (IsLocalController())
 	{
-		if (BioHUDClass)
-		{
-			InGameHUD = CreateWidget<UBioPlayerHUD>(this, BioHUDClass);
-
-			if (InGameHUD)
-			{
-				InGameHUD->AddToViewport();
-			}
-		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("BioHUDClass is NOT set in BioPlayerController!"));
-		}
-
 		// 근접 보이스 시작
 		StartProximityVoice();
 	}
@@ -708,17 +693,5 @@ void ABioPlayerController::ClientHideLoadingScreen_Implementation()
 		EnableInput(this);
 
 		UE_LOG(LogTemp, Log, TEXT("Loading screen hidden, input enabled"));
-	}
-}
-
-void ABioPlayerController::OnRep_Pawn()
-{
-	Super::OnRep_Pawn();
-
-	if (InGameHUD)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[BioPlayerController] Pawn Changed! Re-binding HUD..."));
-		InGameHUD->BindStaffStatusComponent();
-		InGameHUD->BindPlayerState();
 	}
 }

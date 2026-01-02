@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
-#include "TESTPlayerState.h"
 #include "Game/BioProtocolTypes.h"
 #include "MyTestGameInstance.generated.h"
 

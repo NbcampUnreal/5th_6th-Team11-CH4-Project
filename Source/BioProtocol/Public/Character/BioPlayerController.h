@@ -23,12 +23,6 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 public:
-	// UI
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<UBioPlayerHUD> BioHUDClass;
-
-	UPROPERTY(BlueprintReadOnly, Category = "UI")
-	UBioPlayerHUD* InGameHUD;
 
 	// EOS Login
 	UFUNCTION(BlueprintCallable, Category = "EOS")
@@ -92,13 +86,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Voice|Proximity")
 	float ProxMaxDist = 2000.f;
 
+
+
 	UFUNCTION(Client, Reliable)
 	void ClientShowLoadingScreen();
 
 	UFUNCTION(Client, Reliable)
 	void ClientHideLoadingScreen();
-
-	virtual void OnRep_Pawn() override;
 
 private:
 	// EOS Login

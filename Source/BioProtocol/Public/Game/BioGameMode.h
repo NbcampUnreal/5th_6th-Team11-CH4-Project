@@ -26,22 +26,8 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
-	UFUNCTION(BlueprintCallable, Category = "Bio|Jail")
-	void SendPlayerToJail(APawn* Victim);
-
-	UFUNCTION(BlueprintCallable, Category = "Bio|Jail")
-	void ReleasePlayerFromJail(APawn* Victim);
-
-	void CheckWinConditions();
-
-	void CheckStaffWinConditions();
 
 	void SetPlayerSpectating(AController* VictimController);
-
-	//biogamemode BP에서 BP_ThirdSpectatorPawn추가 필요
-	UPROPERTY(EditDefaultsOnly, Category = "Spectator")
-	TSubclassOf<AThirdSpectatorPawn> SpectatorPawnClass;
-
 
 	// 게임 시작/종료
 	UFUNCTION(BlueprintCallable, Category = "Game")
@@ -50,39 +36,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void EndGame();
 
-
 	// 로딩 화면 숨기기
 	void HideLoadingScreenFromAllPlayers();
-
-	UPROPERTY(EditDefaultsOnly, Category = "Bio|Pawn")
-	TSubclassOf<APawn> StaffPawnClass;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Bio|Pawn")
-	TSubclassOf<APawn> CleanerPawnClass;
 
 	virtual UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
 	
 
 protected:
-	UPROPERTY()
-	TMap<APawn*, float> JailTimers;
-
-	UPROPERTY()
-	TMap<APawn*, AIsolationDoor*> PlayerJailMap;
-
-	const float MaxJailTime = 60.0f;
-
-	void ExecutePlayer(APawn* Victim);
-	
-	UPROPERTY(EditDefaultsOnly, Category = "Bio|GameRule")
-	float DayDuration = 240.0f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Bio|GameRule")
-	int32 NightDuration = 45;
 
 	float TimeCounter = 0.0f;
-	void AssignRoles();
-	void UpdateJailTimers(float DeltaTime);
 
 	UPROPERTY()
 	ABioGameState* BioGameState;
@@ -104,7 +66,4 @@ protected:
 	bool bLobbyVoiceStarted = false;
 
 	FString LobbyChannelName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpawnPoint")
-	TArray<TObjectPtr<AActor>> SpawnPointArray;
 };
