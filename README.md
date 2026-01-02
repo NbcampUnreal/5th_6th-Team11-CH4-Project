@@ -34,6 +34,7 @@
 ## 🔁 게임 플로우 및 승리 조건
 
 ### 게임플로우
+<img width="2648" height="1531" alt="image" src="https://github.com/user-attachments/assets/a5cd62c9-20c0-4678-820b-d59760202aac" />
 
 |  | 시간 | 핵심 플레이 |
 |------|------|-------------|
