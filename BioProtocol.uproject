@@ -7,7 +7,13 @@
 		{
 			"Name": "BioProtocol",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"CoreUObject",
+				"UMG",
+				"Engine"
+			]
 		}
 	],
 	"Plugins": [
@@ -23,8 +29,21 @@
 			"Enabled": true
 		},
 		{
-			"Name": "OnlineSubsystemSteam",
+			"Name": "EOSVoiceChat",
 			"Enabled": true
+		},
+		{
+			"Name": "FabLauncher",
+			"Enabled": false,
+			"SupportedTargetPlatforms": [
+				"Win64",
+				"Mac",
+				"Linux"
+			]
+		},
+		{
+			"Name": "UdpMessaging",
+			"Enabled": false
 		}
 	]
 }

@@ -1,0 +1,45 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Animation/AnimInstance.h"
+#include "AndroidAnimInstance.generated.h"
+
+class AAndroidCharacter;
+class UCharacterMovementComponent;
+/**
+ * 
+ */
+UCLASS()
+class BIOPROTOCOL_API UAndroidAnimInstance : public UAnimInstance
+{
+	GENERATED_BODY()
+public:
+	virtual void NativeInitializeAnimation() override;
+
+	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
+
+	
+protected:
+	UPROPERTY()
+	TObjectPtr<AAndroidCharacter> OwnerCharacter;
+
+	UPROPERTY()
+	TObjectPtr<UCharacterMovementComponent> OwnerCharacterMovementComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	FVector Velocity;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	float GroundSpeed;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	uint8 bShouldMove : 1;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	uint8 bIsFalling : 1;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	uint8 bIsRunning : 1;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	uint8 bIsCrouch : 1;
+};
