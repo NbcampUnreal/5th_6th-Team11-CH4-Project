@@ -18,12 +18,9 @@ class BIOPROTOCOL_API AAndroidCharacter : public AStaffCharacter
 public:
 	AAndroidCharacter();
 
-	//olivia 스킨 교체함수(폐지예정)
-	void SwitchAndroidMode();
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	UFUNCTION()
-	void OnRep_IsAndroid();
+
 	UPROPERTY(Replicated);
 	int8 bHasKilledPlayer = false;
 
@@ -48,22 +45,6 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	// ================================
-	// Olivia 관련용 변수 (폐지 예상)
-	// ================================	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<UAnimInstance> StaffAnim;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	USkeletalMesh* AndroidMesh;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	USkeletalMesh* AndroidArmMesh;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<UAnimInstance> AndroidAnim;
-	UFUNCTION(Server, Reliable)
-	void ServerSwitchAndroid();
-	UFUNCTION(Server, Reliable)
-	void ServerSwitchToStaff();
-	// ================================
 	UFUNCTION()
 	void OnRep_IsHunter();
 	void UpdateBreathSound();
@@ -105,8 +86,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DXPlayerCharacter|Input")
 	TObjectPtr<UInputAction> ChangeAction;
-	UPROPERTY(ReplicatedUsing = OnRep_IsAndroid)
-	uint8 bIsAndroid : 1;
+
 	UPROPERTY()
 	USkeletalMeshComponent* ArmsMesh;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
