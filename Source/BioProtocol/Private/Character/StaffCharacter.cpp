@@ -149,10 +149,6 @@ void AStaffCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
 	EIC->BindAction(RunAction, ETriggerEvent::Triggered, this, &ThisClass::HandleStartRun);
 	EIC->BindAction(RunAction, ETriggerEvent::Completed, this, &ThisClass::HandleStopRun);
-
-	/*EIC->BindAction(CrouchAction, ETriggerEvent::Started, this, &AStaffCharacter::HandleCrouch);
-	EIC->BindAction(CrouchAction, ETriggerEvent::Completed, this, &AStaffCharacter::HandleStand);*/
-
 	EIC->BindAction(AttackAction, ETriggerEvent::Started, this, &ThisClass::AttackInput);
 
 	EIC->BindAction(TestKillAction, ETriggerEvent::Started, this, &ThisClass::TestHit);
@@ -164,17 +160,6 @@ void AStaffCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	EIC->BindAction(Item2, ETriggerEvent::Started, this, &ThisClass::EquipSlot2);
 	EIC->BindAction(Item3, ETriggerEvent::Started, this, &ThisClass::EquipSlot3);
 
-}
-
-void AStaffCharacter::OnDeath()
-{
-	/*if (APlayerController* PC = Cast<APlayerController>(GetController()))
-	{
-		if (AMyPlayerController* MyPC = Cast<AMyPlayerController>(PC))
-		{
-			MyPC->ClientStartSpectate();
-		}
-	}*/
 }
 
 void AStaffCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -194,8 +179,6 @@ void AStaffCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AStaffCharacter, bIsWrenchEquipped);
 	DOREPLIFETIME(AStaffCharacter, InventoryDurability);
 	DOREPLIFETIME(AStaffCharacter, Ammo);
-
-
 }
 
 void AStaffCharacter::SetMaterialByIndex(int32 NewIndex)
