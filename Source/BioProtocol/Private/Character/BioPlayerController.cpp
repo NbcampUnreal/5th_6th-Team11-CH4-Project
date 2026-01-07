@@ -720,5 +720,6 @@ void ABioPlayerController::OnRep_Pawn()
 		UE_LOG(LogTemp, Warning, TEXT("[BioPlayerController] Pawn Changed! Re-binding HUD..."));
 		InGameHUD->BindStaffStatusComponent();
 		InGameHUD->BindPlayerState();
+		InGameHUD->BindCharacterInteraction();
 	}
 }

@@ -12,6 +12,7 @@
 #include "Character/StaffStatusComponent.h"
 #include "Components/Image.h"
 #include "Game/BioPlayerState.h"
+#include "Character/StaffCharacter.h"
 
 void UBioPlayerHUD::NativeConstruct()
 {
@@ -284,4 +285,31 @@ void UBioPlayerHUD::UpdateRoleUI(EBioPlayerRole NewRole)
 	RoleText->SetColorAndOpacity(RoleColor);
 
 	UE_LOG(LogTemp, Warning, TEXT("[HUD] RoleText Updated: %s"), *RoleString);
+}
+
+void UBioPlayerHUD::BindCharacterInteraction()
+{
+	APawn* OwningPawn = GetOwningPlayerPawn();
+	AStaffCharacter* StaffChar = Cast<AStaffCharacter>(OwningPawn);
+
+	if (StaffChar)
+	{
+		if (CachedCharacter.IsValid())
+		{
+			CachedCharacter->OnInteractionStateChanged.RemoveDynamic(this, &UBioPlayerHUD::UpdateInteractionUI);
+		}
+
+		CachedCharacter = StaffChar;
+
+		StaffChar->OnInteractionStateChanged.AddDynamic(this, &UBioPlayerHUD::UpdateInteractionUI);
+
+		UpdateInteractionUI(false);
+
+		UE_LOG(LogTemp, Log, TEXT("[HUD] Interaction Delegate Bound Successfully!"));
+	}
+}
+
+void UBioPlayerHUD::UpdateInteractionUI(bool bIsVisible)
+{
+	OnInteractionStateUpdated(bIsVisible);
 }

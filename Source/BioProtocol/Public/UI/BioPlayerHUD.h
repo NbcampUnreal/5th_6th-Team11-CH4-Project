@@ -18,6 +18,7 @@ class UWidgetSwitcher;
 class UStaffStatusComponent;
 class ABioGameState;
 class ABioPlayerState;
+class AStaffCharacter;
 
 UCLASS()
 class BIOPROTOCOL_API UBioPlayerHUD : public UUserWidget
@@ -39,6 +40,10 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void BindPlayerState();
+
+	UFUNCTION(BlueprintCallable)
+	void BindCharacterInteraction();
+
 
 protected:
 	UPROPERTY(meta = (BindWidget))
@@ -104,10 +109,18 @@ protected:
 	UFUNCTION()
 	void UpdateRoleUI(EBioPlayerRole NewRole);
 
+	UFUNCTION()
+	void UpdateInteractionUI(bool bIsVisible);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "UI")
+	void OnInteractionStateUpdated(bool bIsVisible);
+
 private:
 	TWeakObjectPtr<UStaffStatusComponent> CachedStatusComp;
 
 	TWeakObjectPtr<ABioGameState> CachedGameState;
 
 	TWeakObjectPtr<ABioPlayerState> CachedPlayerState;
+
+	TWeakObjectPtr<AStaffCharacter> CachedCharacter;
 };

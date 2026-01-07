@@ -9,6 +9,8 @@
 #include "Daeho/TestCharacter.h"
 #include "StaffCharacter.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractionStateChanged, bool, bIsVisible);
+
 class UCameraComponent;
 class USpringArmComponent;
 class UInputMappingContext;
@@ -427,4 +429,14 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* ThirdPotionMesh;
+
+public:
+	UPROPERTY(BlueprintAssignable, Category = "Interaction")
+	FOnInteractionStateChanged OnInteractionStateChanged;
+
+protected:
+	UPROPERTY()
+	FInteractionData InteractionData;
+
+	void PerformInteractionCheck();
 };

@@ -131,6 +131,10 @@ void AStaffCharacter::Tick(float DeltaTime)
 
 	// 디버그 라인 그리기 (개발 확인용)
 
+	if (IsLocallyControlled())
+	{
+		PerformInteractionCheck();
+	}
 }
 
 // Called to bind functionality to input
@@ -1461,5 +1465,40 @@ void AStaffCharacter::OnColorIndexChanged(int32 NewIndex)
 
 			UE_LOG(LogTemp, Log, TEXT("[StaffCharacter] Color Applied: Index %d"), NewIndex);
 		}
+	}
+}
+
+void AStaffCharacter::PerformInteractionCheck()
+{
+	if (!IsLocallyControlled()) return;
+
+	FVector Start = FirstPersonCamera->GetComponentLocation();
+	FVector End = Start + (FirstPersonCamera->GetForwardVector() * 300.0f);
+
+	FHitResult HitResult;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, Params);
+
+	AActor* HitActor = bHit ? HitResult.GetActor() : nullptr;
+
+	if (HitActor && !HitActor->GetClass()->ImplementsInterface(UMyInteractableInterface::StaticClass()))
+	{
+		HitActor = nullptr;
+	}
+
+	if (HitActor != InteractionData.CurrentInteractable)
+	{
+		if (HitActor)
+		{
+			OnInteractionStateChanged.Broadcast(true);
+		}
+		else
+		{
+			OnInteractionStateChanged.Broadcast(false);
+		}
+
+		InteractionData.CurrentInteractable = HitActor;
 	}
 }
